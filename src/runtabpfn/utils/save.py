@@ -47,7 +47,7 @@ def create_dict_results(additional_columns: list[str] = ADDITIONAL_COLUMNS) -> d
 
 
 def _populate_dict_result_(dict_results: dict[str, list], **kwargs) -> None:
-    '''Utility to extend the dict results internal list. Modify the dict in place.'''
+    '''Utility to extend the dict results internal lists. Modifies the dict in place.'''
     for key, value in kwargs.items():
         dict_results[key].append(value)
 
