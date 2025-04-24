@@ -84,19 +84,16 @@ def create_classifier_pipeline(classifier: Any, type_preprocessing: Literal["no"
 
 
 
-def get_repetition_fold(iteration: int, pars: dict, logger: logging.Logger) -> tuple: 
+def get_repetition_fold(iteration: int, pars: dict) -> tuple: 
     '''
-    Utility to get the repetition and fold info based on the current iteration and splitting details, 
-    info retrieved from the dict with of parsed arguments (pars param).
+    Utility to get the repetition and fold info based on the current iteration and splitting mode.
     Returns a binary tuple of int and/or pd.NA.
     '''
     if pars["splitting_mode"] == "cv":
         repetition = iteration // pars["splitting_specs"]["n_splits"]
         fold = iteration - (pars["splitting_specs"]["n_splits"] * repetition)
-        logger.debug(f'Running on fold number {fold} of repetition number {repetition}:')
     elif pars["splitting_mode"] == "holdout":
         fold, repetition = iteration, pd.NA
-        logger.debug(f'Running holdout iteration {fold}, with train size {pars["splitting_specs"]["train_size"]}:')
     else:
         fold, repetition = pd.NA, pd.NA
     

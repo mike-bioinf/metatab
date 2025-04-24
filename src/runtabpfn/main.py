@@ -2,38 +2,37 @@ import os
 import sys
 import json
 import pandas as pd
-from pathlib import Path
 from functools import partial
-from tabutils.sets import load_dict_sets
 from tabutils.prediction import PredictionDataframe
 from tabutils.percentage import filter_percentage, get_filtering_thresh
 from runtabpfn.params import parse_args, check_args, adjust_args
-from runtabpfn.utils.constants import ADDITIONAL_COLUMNS
-from runtabpfn.utils.load import load_data_df_mode, load_data_xy_mode
-from runtabpfn.utils.log import create_logger
-from runtabpfn.utils.run_model import pick_splitter, pick_model, create_classifier_pipeline, get_repetition_fold
-from runtabpfn.utils.save import create_dict_hpo, create_dict_results, populate_dict_result_, populate_dict_hpo_, create_configuration_dict
+from runtabpfn.constants import ADDITIONAL_COLUMNS
+from runtabpfn.load import load_data_df_mode, load_data_xy_mode, load_data_sets_mode
+from runtabpfn.log import create_logger, log_iteration
+from runtabpfn.run_model import pick_splitter, pick_model, create_classifier_pipeline, get_repetition_fold
+from runtabpfn.save import create_dict_hpo, create_dict_results, populate_dict_result_, populate_dict_hpo_, create_configuration_dict
 
 
 
 def main():
 
-    # collect args and set variables
+    # collect args
     pars = vars(parse_args(sys.argv[1:]))
     check_args(pars)
     pars = adjust_args(pars)
     stdout_logger = create_logger(sys.stdout)
     
+    # set variables
     do_without_preprocessing = True if "no" in pars["preprocessing"] else False
     do_filtering = True if "filter" in pars["preprocessing"] else False
     do_pca = True if "pca" in pars["preprocessing"] else False
     name_dataset = pars["input_path"].stem
-    name_test_dataset = pd.NA if pars["test_dataset"] is None else Path(pars["test_dataset"]).stem
+    name_test_dataset = pd.NA if pars["test_dataset"] is None else pars["test_dataset"].stem
 
 
     # load data
     if pars["input_mode"] == "sets":
-        dict_sets = load_dict_sets(pars["input_path"], train_augmented=False, val_augmented=False, save_missing=True)
+        dict_sets = load_data_sets_mode(pars["input_path"], save_missing=True)
         X, y = None, None
     else:
         load_data_func = load_data_df_mode if pars["input_mode"] == "df" else load_data_xy_mode
@@ -54,7 +53,9 @@ def main():
 
     # run the model
     for i, (idx_train, idx_test) in enumerate(splitter.split(X, y)):
-        repetition, fold = get_repetition_fold(i, pars, stdout_logger)
+        repetition, fold = get_repetition_fold(i, pars)
+        log_iteration(pars, fold, repetition, stdout_logger)
+        
 
         if pars["input_mode"] == "sets":
             X_train, y_train, X_test, y_test = dict_sets["X_train"], dict_sets["y_train"], dict_sets["X_test"], dict_sets["y_test"]

@@ -15,3 +15,12 @@ def create_logger(stream) -> logging.Logger:
     logger.addHandler(stream_handler)
     logger.propagate = False
     return logger
+
+
+
+def log_iteration(pars: dict, fold: int, repetition: int, logger: logging.Logger) -> None:
+    '''Utility that logs info about the current iteration'''
+    if pars["splitting_mode"] == "cv":
+        logger.debug(f'Running on fold number {fold} of repetition number {repetition}:')
+    elif pars["splitting_mode"] == "holdout":
+        logger.debug(f'Running holdout iteration {fold}, with train size {pars["splitting_specs"]["train_size"]}:')

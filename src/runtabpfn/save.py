@@ -4,11 +4,12 @@ from typing import Any
 from sklearn.model_selection import GridSearchCV
 from tabpfn import TabPFNClassifier
 from tabpfn_extensions_mod.post_hoc_ensembles.sklearn_interface import AutoTabPFNClassifier
-from runtabpfn.utils.constants import ADDITIONAL_COLUMNS, HPO_DICT_KEYS
+from runtabpfn.constants import ADDITIONAL_COLUMNS, HPO_DICT_KEYS
 
 
 
 def create_dict_hpo(grid_search: None | dict, hpo_dict_keys: list[str] = HPO_DICT_KEYS) -> dict[str, list]:
+    '''Create the empty dict for storing best hyperparameters info'''
     d = {}
     for key in hpo_dict_keys:
         d.update({key: []})
@@ -27,6 +28,7 @@ def populate_dict_hpo_(
         repetition: int,
         fold: int
     ) -> None:
+    '''Populate the hpo dict in place'''
     if isinstance(classifier, GridSearchCV):
         dict_hpo["splitting_mode"].append(splitting_mode)
         dict_hpo["preprocessing"].append(preprocessing)

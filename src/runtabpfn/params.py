@@ -78,6 +78,7 @@ def adjust_args(pars: dict) -> dict:
 
     pars["input_path"] = Path(pars["input_path"])
     pars["output_path"] = Path(pars["output_path"])
+    pars["test_dataset"] = Path(pars["test_dataset"]) if pars["test_dataset"] else pars["test_dataset"]
 
     if pars["splitting_mode"] == "no" and pars["splitting_specs"] is not None:
         warnings.warn("--splitting-specs is ignored since --splitting-mode is 'no'")
@@ -109,7 +110,7 @@ def adjust_args(pars: dict) -> dict:
 
 
 def try_parse_specs_into_dict(specs: str, error_message_specs: str) -> dict[str, Any]:
-    '''Utility to wrap the specs from the {'key':value, ...} format into a dict(key: value)'''
+    '''Utility to parse the string dict representation to a dict'''
     try:
         specs = literal_eval(specs)
     except Exception:
