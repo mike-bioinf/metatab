@@ -23,10 +23,7 @@ def load_data_xy_mode(path: str | Path, **kwargs) -> tuple[pd.DataFrame | pd.Ser
 
 
 
-def load_data_sets_mode(
-        path: str | Path, 
-        save_missing: bool = False
-    ) -> dict[str, pd.DataFrame | pd.Series]:
+def load_data_sets_mode(path: str | Path, save_missing: bool = False) -> dict[str, pd.DataFrame | pd.Series]:
     '''
     Utility to load the X and y training and testing sets for a dataset.
     The function assumes that the sets files are named following the convention : "X/y_train/test.txt".

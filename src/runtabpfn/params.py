@@ -3,6 +3,8 @@ import warnings
 from pathlib import Path
 from typing import Any
 from ast import literal_eval
+from finetabpfn import SKLEARN_WRAPPER_SECONDARY_PARAMS
+from copy import deepcopy
 
 
 
@@ -29,12 +31,16 @@ def parse_args(args):
     p.add_argument("-p", "--preprocessing", default="no", choices=["no", "filter", "pca"], nargs="+",
                     help= "Preprocessing on the feature space. Choose one or more: 'no', 'filter' and 'pca'")
 
-    p.add_argument("-m", "--model", default="base", choices=["base", "auto", "rf"], 
-                    help="ML 'model'. One of base, auto and rf. Note that base and auto refers to TabPFN and AutoTabPFN.")
+    p.add_argument("-m", "--model", default="base", choices=["base", "auto", "ft", "ft_opt", "rf"], 
+                    help=""" ML 'model'. One of base, auto, ft, ft_opt and rf. 
+                    Note that base and auto refers to TabPFN and AutoTabPFN, 
+                    while ft and ft_opt to finetune and finetune with optimization.""")
 
     p.add_argument("-n", "--model-specs", default=None, 
-                    help="String represenatation of a dict of param value couples like {'param': value, ...} to pass to the model.\
-                    See the TabPFNClassifier, AutoTabPFNClassifier or RandomForestClassifier params for info.")
+                    help="""String represenatation of a dict of param value couples like "{'param': value, ...}" to pass to the model.
+                    See the TabPFNClassifier, AutoTabPFNClassifier, FineTuneTabPFN, SklearnFineTuneTabPFN and RandomForestClassifier params for info.
+                    In case of a "finetune model" ('ft' or 'ft_opt') one can/must pass the parameters of both FineTuneTabPFN and SklearnFineTuneTabPFN
+                    classes. The correct ripartion is internally managed.""")
 
     p.add_argument("-t", "--test-dataset", default=None, 
                     help="Path to the folder/file (respects --input-mode) of a second dataset that is used as test data.")
@@ -43,12 +49,15 @@ def parse_args(args):
                     help="Name of the target feature column. Must be provided if --input-mode is equal to 'df'")
 
     p.add_argument("-g", "--grid-search", default=None, 
-                    help="dict formatted argument that will be passed to the 'param_grid' parameter of GridSearchCV class.\
-                            To use when model is 'rf' and when HPO is desired.")
+                    help="""dict formatted argument that will be passed to the 'param_grid' parameter of GridSearchCV class.
+                    To use when model is 'rf' and when HPO is desired.""")
 
     p.add_argument("-r", "--seed", default=10, type=int, 
-                    help="Seed used to control randomness. Deafults to 10.")
-    
+                    help="""Seed used to control randomness. 
+                    In particular it controls the randomness inherent to the random forest model, splitting, ensemble and finetune procedures.
+                    It does not control the randomness inherent to the base tabpfn model, which is controlled by a second random state that can be
+                    set in "-n"/"--model-specs". This is true also for the base model finetuned in finetuning scenarios. Deafults to 10.""")
+
     return p.parse_args(args)
 
 
@@ -70,6 +79,9 @@ def check_args(pars: dict):
         
     if pars["test_dataset"] is not None and pars["splitting_mode"] != "no":
         raise ValueError("with a second dataset used as test --splitting-mode must be equal to 'no'")
+    
+    if pars["model"] in ["auto", "ft", "ft_opt"] and "pca" in pars["preprocessing"]:
+        raise ValueError("Is not possible use the 'pca' preprocessing with 'auto', 'ft' and 'ft_opt' model.")
 
 
 
@@ -105,6 +117,26 @@ def adjust_args(pars: dict) -> dict:
     if pars["splitting_mode"] == "holdout" and pars["splitting_specs"] is None:
         pars["splitting_specs"] = {"n_splits": 50, "train_size": 0.9}
 
+    pars = adjust_args_for_finetune(pars)
+    return pars
+
+
+
+def adjust_args_for_finetune(pars: dict) -> dict:
+    '''
+    Adjust the parsed dict of arguments separating the params of the SklearnFineTuneTabPFN class
+    to a separate dict. This dict is set to an empty dict if no finetuning is involved.
+    '''
+    model_specs = pars["model_specs"]
+    ft_wrapper_specs = {}
+
+    if pars["model"] in ["ft", "ft_opt"]:
+        for key in SKLEARN_WRAPPER_SECONDARY_PARAMS:
+            if key in model_specs:
+                ft_wrapper_specs[key] = deepcopy(model_specs[key])
+                del model_specs[key]
+    
+    pars["ft_wrapper_specs"] = ft_wrapper_specs
     return pars
 
 

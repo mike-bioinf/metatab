@@ -1,7 +1,6 @@
-import logging
 import numpy as np
 import pandas as pd
-from typing import Generator, Any, Literal
+from typing import Generator, Literal
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import GridSearchCV, RepeatedStratifiedKFold, StratifiedShuffleSplit
 from sklearn.feature_selection import VarianceThreshold
@@ -10,6 +9,8 @@ from sklearn.decomposition import PCA
 from sklearn.pipeline import Pipeline, make_pipeline
 from tabpfn import TabPFNClassifier
 from tabpfn_extensions_mod.post_hoc_ensembles.sklearn_interface import AutoTabPFNClassifier
+from finetabpfn import SklearnFineTuneTabPFN, FineTuneTabPFN
+from runtabpfn.constants import Classifier
 # from tabpfn_extensions.post_hoc_ensembles.sklearn_interface import AutoTabPFNClassifier
 
 
@@ -24,8 +25,12 @@ class MockSplitter:
 
 
 
-def pick_splitter(splitting_mode: str, splitting_specs: dict, seed: int):
+def pick_splitter(pars: dict):
     '''Utility to pick and create the right splitter depending on splitting_mode'''
+    splitting_mode = pars["splitting_mode"]
+    splitting_specs = pars["splitting_specs"]
+    seed = pars["seed"]
+    
     if splitting_mode == "cv":
         splitter = RepeatedStratifiedKFold(
             n_splits=splitting_specs["n_splits"], 
@@ -45,12 +50,18 @@ def pick_splitter(splitting_mode: str, splitting_specs: dict, seed: int):
 
 
 
-def pick_model(model: str, model_specs: dict, grid_search: None | dict, seed: int):
+def pick_model(pars):
     '''
     Utility to select the right model. 
     Sets the right preprocessing pipeline in case of "rf". The pipeline is fixed.
     Sets also the cv specs if HPO is desired in case of "rf". Also these are fixed.  
     ''' 
+    model = pars["model"]
+    model_specs = pars["model_specs"]
+    ft_wrapper_specs = pars["ft_wrapper_specs"]
+    grid_search = pars["grid_search"]
+    seed = pars["seed"]
+
     if model in ["auto", "rf"]:
         model_specs["random_state"] = np.random.RandomState(seed)
 
@@ -63,24 +74,29 @@ def pick_model(model: str, model_specs: dict, grid_search: None | dict, seed: in
     elif model == "rf" and grid_search is not None:
         cv = RepeatedStratifiedKFold(n_splits=5, n_repeats=5, random_state=seed)
         return GridSearchCV(RandomForestClassifier(**model_specs), param_grid=grid_search, scoring="roc_auc", n_jobs=-1, refit=True, cv=cv)
+    elif model in  ["ft", "ft_opt"]:
+        return SklearnFineTuneTabPFN(FineTuneTabPFN(**model_specs), **ft_wrapper_specs)
     else:
-        raise NotImplementedError(f"'{model}' must be one of: 'base', 'auto' or 'rf'.")
+        raise NotImplementedError(f"'{model}' must be one of: 'base', 'auto', 'ft', 'ft_opt' or 'rf'.")
 
 
 
-def create_classifier_pipeline(classifier: Any, type_preprocessing: Literal["no", "filter", "pca"]) -> Any | Pipeline:
+def create_classifier_pipeline(
+        classifier: Classifier, 
+        type_preprocessing: Literal["no", "filter", "pca"]
+    ) -> Classifier | Pipeline:
     '''
     Utility to create the transformation pipeline with the classifier as last step.
     Returns a Pipeline object or the classifier depending on the setting.
     '''
-    is_tabpfn_clf = isinstance(classifier, (TabPFNClassifier, AutoTabPFNClassifier))
+    is_tabpfn_clf = isinstance(classifier, (TabPFNClassifier, AutoTabPFNClassifier, SklearnFineTuneTabPFN))
     
-    if is_tabpfn_clf and type_preprocessing != "pca":
+    if type_preprocessing == "pca":
+        return make_pipeline(VarianceThreshold(), StandardScaler(), PCA(random_state=0), classifier)
+    elif is_tabpfn_clf:
         return classifier
-    elif not is_tabpfn_clf and type_preprocessing != "pca":
+    else:
         return make_pipeline(VarianceThreshold(), StandardScaler(), classifier)
-    elif type_preprocessing == "pca":
-        return make_pipeline(VarianceThreshold(), StandardScaler(), PCA(), classifier)
 
 
 

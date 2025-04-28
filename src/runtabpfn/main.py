@@ -6,7 +6,7 @@ from functools import partial
 from tabutils.prediction import PredictionDataframe
 from tabutils.percentage import filter_percentage, get_filtering_thresh
 from runtabpfn.params import parse_args, check_args, adjust_args
-from runtabpfn.constants import ADDITIONAL_COLUMNS
+from runtabpfn.constants import PRED_DATAFRAME_ADDITIONAL_COLUMNS
 from runtabpfn.load import load_data_df_mode, load_data_xy_mode, load_data_sets_mode
 from runtabpfn.log import create_logger, log_iteration
 from runtabpfn.run_model import pick_splitter, pick_model, create_classifier_pipeline, get_repetition_fold
@@ -20,9 +20,9 @@ def main():
     pars = vars(parse_args(sys.argv[1:]))
     check_args(pars)
     pars = adjust_args(pars)
-    stdout_logger = create_logger(sys.stdout)
     
     # set variables
+    stdout_logger = create_logger(sys.stdout)
     do_without_preprocessing = True if "no" in pars["preprocessing"] else False
     do_filtering = True if "filter" in pars["preprocessing"] else False
     do_pca = True if "pca" in pars["preprocessing"] else False
@@ -46,9 +46,9 @@ def main():
     stdout_logger.debug("Data correctly loaded in memory\n")
 
 
-    splitter = pick_splitter(pars["splitting_mode"], pars["splitting_specs"], pars["seed"])
+    splitter = pick_splitter(pars)
     dict_results = create_dict_results()
-    dict_hpo = create_dict_hpo(pars["grid_search"])
+    dict_hpo = create_dict_hpo(pars)
     
 
     # run the model
@@ -80,12 +80,12 @@ def main():
 
 
         if do_without_preprocessing:
-            clf = pick_model(pars["model"], pars["model_specs"], pars["grid_search"], pars["seed"])
+            clf = pick_model(pars)
             clf_piped = create_classifier_pipeline(clf, "no")
             clf_piped.fit(X_train, y_train)
             pred_proba = clf_piped.predict_proba(X_test)
             partial_populate_dict_result_(pred_proba=pred_proba, preprocessing="no")
-            populate_dict_hpo_(dict_hpo, clf, pars["splitting_mode"], "no", repetition, fold)
+            populate_dict_hpo_(dict_hpo, pars["model"], clf, pars["splitting_mode"], "no", repetition, fold)
             stdout_logger.debug("\t -Completed inference with no preprocessing")
 
         
@@ -114,12 +114,12 @@ def main():
                     X_test_filtered = X_test.reindex(columns=X_train_filtered.columns)
                     number_filtered_features = number_initial_features - X_train_filtered.shape[1]
                 
-                clf = pick_model(pars["model"], pars["model_specs"], pars["grid_search"], pars["seed"])
+                clf = pick_model(pars)
                 clf_piped = create_classifier_pipeline(clf, type_preprocessing="filter")
                 clf_piped.fit(X_train_filtered, y_train)
                 pred_proba = clf_piped.predict_proba(X_test_filtered)
 
-                populate_dict_hpo_(dict_hpo, clf, pars["splitting_mode"], "filter", repetition, fold)
+                populate_dict_hpo_(dict_hpo, pars["model"], clf, pars["splitting_mode"], "filter", repetition, fold)
 
                 partial_populate_dict_result_(
                     pred_proba=pred_proba, 
@@ -133,13 +133,13 @@ def main():
         
 
         if do_pca:
-            clf = pick_model(pars["model"], pars["model_specs"], pars["grid_search"], pars["seed"])
+            clf = pick_model(pars)
             clf_piped = create_classifier_pipeline(clf, "pca")
             clf_piped.fit(X_train, y_train)
             clf_piped.predict_proba(X_test)
             pca = clf_piped.named_steps["pca"]
 
-            populate_dict_hpo_(dict_hpo, clf, pars["splitting_mode"], "pca", repetition, fold)
+            populate_dict_hpo_(dict_hpo, pars["model"], clf, pars["splitting_mode"], "pca", repetition, fold)
 
             partial_populate_dict_result_(
                 pred_proba=pred_proba, 
@@ -164,14 +164,14 @@ def main():
         y_test=dict_results["y_test"], 
         pred_proba=dict_results["pred_proba"],
         save_path=pars["output_path"],
-        **{key: dict_results[key] for key in ADDITIONAL_COLUMNS}
+        **{key: dict_results[key] for key in PRED_DATAFRAME_ADDITIONAL_COLUMNS}
     )
 
     if not df_pred.has_recovered:
         df_pred.compute_metrics()
         df_pred.to_csv(path_pred_dataframe, sep="\t", index=False)
 
-    if pars["model"] == "rf" and pars["grid_search"] is not None:
+    if (pars["model"] == "rf" and pars["grid_search"] is not None) or pars["model"] == "ft_opt":
         pd.DataFrame(dict_hpo).to_csv(path_rf_hpo, sep="\t", index=False)
         
     with open(path_configuration_file, "w") as f:

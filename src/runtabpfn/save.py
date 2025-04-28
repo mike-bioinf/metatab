@@ -2,45 +2,63 @@ import pandas as pd
 from functools import partial
 from typing import Any
 from sklearn.model_selection import GridSearchCV
-from tabpfn import TabPFNClassifier
-from tabpfn_extensions_mod.post_hoc_ensembles.sklearn_interface import AutoTabPFNClassifier
-from runtabpfn.constants import ADDITIONAL_COLUMNS, HPO_DICT_KEYS
+from finetabpfn import SklearnFineTuneTabPFN, HPS_FINETUNE
+from runtabpfn.constants import PRED_DATAFRAME_ADDITIONAL_COLUMNS, HPO_DICT_BASE_KEYS, Classifier
 
 
 
-def create_dict_hpo(grid_search: None | dict, hpo_dict_keys: list[str] = HPO_DICT_KEYS) -> dict[str, list]:
-    '''Create the empty dict for storing best hyperparameters info'''
+def create_dict_hpo(pars: dict, base_keys: list[str] = HPO_DICT_BASE_KEYS) -> dict[str, list]:
+    '''
+    Creates the dictionary used to store the best hyperparameters info.
+    This dict is used either when we use the random forest with hpo, or when we finetune tabpfn with hpo.
+    Note: returns an empty dict when no hpo is involved.
+    '''
+    model = pars["model"] 
+    grid_search = pars["model"] 
     d = {}
-    for key in hpo_dict_keys:
+
+    if model not in ["rf", "ft_opt"]:
+        return d
+    
+    # add the base training keys
+    for key in base_keys:
         d.update({key: []})
-    if grid_search is not None:
-        for key in grid_search.keys():
-            d.update({key: []})
+    
+    # add the hpo scenario-specific keys
+    hpo_specific_keys = list(grid_search.keys()) if grid_search is not None else HPS_FINETUNE
+    for key in hpo_specific_keys:
+        d.update({key: []})
+        
     return d
 
 
 
 def populate_dict_hpo_(
         dict_hpo: dict[str, list],
-        classifier: GridSearchCV | TabPFNClassifier | AutoTabPFNClassifier,
+        model: str, 
+        classifier: Classifier,
         splitting_mode: str,        
         preprocessing: str,
         repetition: int,
         fold: int
     ) -> None:
-    '''Populate the hpo dict in place'''
-    if isinstance(classifier, GridSearchCV):
+    '''Populate the HPO dict in place'''
+    if isinstance(classifier, GridSearchCV) or (isinstance(classifier, SklearnFineTuneTabPFN) and model == "ft_opt"):
         dict_hpo["splitting_mode"].append(splitting_mode)
         dict_hpo["preprocessing"].append(preprocessing)
         dict_hpo["repetition"].append(repetition)
         dict_hpo["fold"].append(fold)
-        for key, value in classifier.best_params_.items():
+
+        hpo_instance = classifier if isinstance(classifier, GridSearchCV) else classifier.finetabpfn.study_
+        best_params_attr = "best_params_" if isinstance(classifier, GridSearchCV) else "best_params"
+        
+        for key, value in getattr(hpo_instance, best_params_attr).items():
             dict_hpo[key].append(value)
+        
 
 
-
-def create_dict_results(additional_columns: list[str] = ADDITIONAL_COLUMNS) -> dict:
-    '''Utility to create a base dict result'''
+def create_dict_results(additional_columns: list[str] = PRED_DATAFRAME_ADDITIONAL_COLUMNS) -> dict:
+    '''Utility to create the dict result'''
     d = {"dataset": [], "y_train": [], "y_test": [], "pred_proba": []}
     for key in additional_columns:
         d.update({key: []})
