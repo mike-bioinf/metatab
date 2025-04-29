@@ -65,6 +65,9 @@ def pick_model(pars):
     if model in ["auto", "rf"]:
         model_specs["random_state"] = np.random.RandomState(seed)
 
+    if model in ["ft", "ft_opt"]:
+        model_specs["random_state"] = seed
+
     if model == "base":
         return TabPFNClassifier(**model_specs)  
     elif model == "auto":

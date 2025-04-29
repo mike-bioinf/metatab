@@ -54,9 +54,9 @@ def parse_args(args):
 
     p.add_argument("-r", "--seed", default=10, type=int, 
                     help="""Seed used to control randomness. 
-                    In particular it controls the randomness inherent to the random forest model, splitting, ensemble and finetune procedures.
+                    In particular it controls the randomness inherent to the splitting procedures, and random forest, tabpfn ensemble and finetune "models".
                     It does not control the randomness inherent to the base tabpfn model, which is controlled by a second random state that can be
-                    set in "-n"/"--model-specs". This is true also for the base model finetuned in finetuning scenarios. Deafults to 10.""")
+                    set in "-n"/"--model-specs". This is true also for the base model to finetune in finetuning scenarios. Deafults to 10.""")
 
     return p.parse_args(args)
 

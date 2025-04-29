@@ -4,9 +4,21 @@ from pathlib import Path
 
 
 
-def load_data_df_mode(path: str | Path, target_feature: str) -> tuple[pd.DataFrame | pd.Series]:
-    '''Loads data in 'df' input mode'''
+def load_data_df_mode(path: str | Path, target_feature: str, **kwargs) -> tuple[pd.DataFrame, pd.Series]:
+    '''
+    Loads data in 'df' input mode.
+
+    Parameters:
+        path (str | Path): Path of the file to load.
+        target_feature (str): Name of the y column.
+        kwargs: Does nothing except ensuring compability with other load functions.
+    
+    Returns:
+        tuple[pd.DataFrame,pd.Series]: A tuple of a pandas dataframe and a pandas series.
+    '''
     path = path if isinstance(path, Path) else Path(path)
+    if not path.exists():
+        raise FileNotFoundError(f"The file '{path}' does not exists.")
     df = pd.read_csv(path, sep="\t")
     X = df.drop(columns=target_feature)
     y = df[target_feature]
@@ -14,16 +26,34 @@ def load_data_df_mode(path: str | Path, target_feature: str) -> tuple[pd.DataFra
 
 
 
-def load_data_xy_mode(path: str | Path, **kwargs) -> tuple[pd.DataFrame | pd.Series]:
-    '''Loads data in 'xy' input mode'''
+def load_data_xy_mode(path: str | Path, **kwargs) -> tuple[pd.DataFrame, pd.Series]:
+    '''
+    Loads data in 'xy' input mode.
+    The function assumes that the X and y files are named "X.txt" and "y.txt" respectively.
+    These files must be located at the path specificied in 'path'.
+    
+    Parameters:
+        path (str, Path): Path where the x and y files live.
+        kwargs: Does nothing except ensuring compability with other load functions.
+    
+    Returns:
+        tuple[pd.DataFrame,pd.Series]: A tuple of a pandas dataframe and a pandas series.
+    '''
     path = path if isinstance(path, Path) else Path(path)
-    X = pd.read_csv(path / "X.txt", sep="\t")
-    y = pd.Series(pd.read_csv(path / "y.txt", sep="\t").iloc[:, 0])
+    x_path = path / "X.txt"
+    y_path = path / "y.txt"
+
+    for p in [path, x_path, y_path]:
+        if not p.exists:
+            raise FileNotFoundError(f"The path '{p}' does not exists.")
+
+    X = pd.read_csv(x_path, sep="\t")
+    y = pd.Series(pd.read_csv(y_path, sep="\t").iloc[:, 0])
     return X, y
 
 
 
-def load_data_sets_mode(path: str | Path, save_missing: bool = False) -> dict[str, pd.DataFrame | pd.Series]:
+def load_data_sets_mode(path: str | Path, save_missing: bool = False, **kwargs) -> dict[str, pd.DataFrame | pd.Series]:
     '''
     Utility to load the X and y training and testing sets for a dataset.
     The function assumes that the sets files are named following the convention : "X/y_train/test.txt".
@@ -35,6 +65,7 @@ def load_data_sets_mode(path: str | Path, save_missing: bool = False) -> dict[st
             If True one can avoid errors for missing sets. When False the function will look
             for all x and y train and test sets and will raise an error if some are missing.
             Defaults to False.
+        kwargs: Does nothing except ensuring compability with other load functions.
     
     Returns:
         dict[str,pd.DataFrame|pd.Series]: 

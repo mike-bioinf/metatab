@@ -14,10 +14,12 @@ def create_dict_hpo(pars: dict, base_keys: list[str] = HPO_DICT_BASE_KEYS) -> di
     Note: returns an empty dict when no hpo is involved.
     '''
     model = pars["model"] 
-    grid_search = pars["model"] 
+    grid_search = pars["grid_search"] 
     d = {}
 
-    if model not in ["rf", "ft_opt"]:
+    is_optimization_involved = (model == "rf" and grid_search is not None) or model == "ft_opt"
+
+    if not is_optimization_involved:
         return d
     
     # add the base training keys
@@ -26,6 +28,7 @@ def create_dict_hpo(pars: dict, base_keys: list[str] = HPO_DICT_BASE_KEYS) -> di
     
     # add the hpo scenario-specific keys
     hpo_specific_keys = list(grid_search.keys()) if grid_search is not None else HPS_FINETUNE
+    
     for key in hpo_specific_keys:
         d.update({key: []})
         
@@ -49,7 +52,7 @@ def populate_dict_hpo_(
         dict_hpo["repetition"].append(repetition)
         dict_hpo["fold"].append(fold)
 
-        hpo_instance = classifier if isinstance(classifier, GridSearchCV) else classifier.finetabpfn.study_
+        hpo_instance = classifier if isinstance(classifier, GridSearchCV) else classifier.study_
         best_params_attr = "best_params_" if isinstance(classifier, GridSearchCV) else "best_params"
         
         for key, value in getattr(hpo_instance, best_params_attr).items():
@@ -84,6 +87,10 @@ populate_dict_result_ = partial(
 
 
 def create_configuration_dict(pars: dict) -> dict:
+    # updating model_specs with the ft_wrapper_specs previsously separated
+    model_specs = pars["model_specs"]
+    model_specs.update(pars["ft_wrapper_specs"])
+    
     return {
         "input_path": str(pars["input_path"]),
         "output_path": str(pars["output_path"]),
@@ -91,7 +98,7 @@ def create_configuration_dict(pars: dict) -> dict:
         "splitting_mode": pars["splitting_mode"],
         "splitting_specs": pars["splitting_specs"],
         "model": pars["model"],
-        "model_specs": secure_str(pars["model_specs"], 'not serializable'),
+        "model_specs": secure_str(model_specs, 'not serializable'),
         "grid_search": secure_str(pars["grid_search"], 'not serializable'),
         "preprocessing": pars["preprocessing"],
         "test_dataset": pars["test_dataset"],

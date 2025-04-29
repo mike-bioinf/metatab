@@ -20,7 +20,7 @@ def main():
     pars = vars(parse_args(sys.argv[1:]))
     check_args(pars)
     pars = adjust_args(pars)
-    
+
     # set variables
     stdout_logger = create_logger(sys.stdout)
     do_without_preprocessing = True if "no" in pars["preprocessing"] else False
@@ -29,10 +29,9 @@ def main():
     name_dataset = pars["input_path"].stem
     name_test_dataset = pd.NA if pars["test_dataset"] is None else pars["test_dataset"].stem
 
-
     # load data
     if pars["input_mode"] == "sets":
-        dict_sets = load_data_sets_mode(pars["input_path"], save_missing=True)
+        dict_sets = load_data_sets_mode(pars["input_path"])
         X, y = None, None
     else:
         load_data_func = load_data_df_mode if pars["input_mode"] == "df" else load_data_xy_mode
@@ -151,10 +150,12 @@ def main():
 
 
     # compute performance metrics and save the results
-    os.makedirs(pars["output_path"], exist_ok=True)
-    path_pred_dataframe = pars["output_path"] / "pred_dataframe.txt"
-    path_configuration_file = pars["output_path"] / "configuration.json"
-    path_rf_hpo = pars["output_path"] / "rf_hpo.txt"
+    output_path = pars["output_path"]
+    os.makedirs(output_path, exist_ok=True)
+
+    path_pred_dataframe = output_path / "pred_dataframe.txt"
+    path_configuration_file = output_path / "configuration.json"
+    path_hpo = output_path / "hpo.txt"
 
     df_pred = PredictionDataframe()
 
@@ -163,7 +164,7 @@ def main():
         y_train=dict_results["y_train"], 
         y_test=dict_results["y_test"], 
         pred_proba=dict_results["pred_proba"],
-        save_path=pars["output_path"],
+        save_path=output_path,
         **{key: dict_results[key] for key in PRED_DATAFRAME_ADDITIONAL_COLUMNS}
     )
 
@@ -172,13 +173,13 @@ def main():
         df_pred.to_csv(path_pred_dataframe, sep="\t", index=False)
 
     if (pars["model"] == "rf" and pars["grid_search"] is not None) or pars["model"] == "ft_opt":
-        pd.DataFrame(dict_hpo).to_csv(path_rf_hpo, sep="\t", index=False)
+        pd.DataFrame(dict_hpo).to_csv(path_hpo, sep="\t", index=False)
         
     with open(path_configuration_file, "w") as f:
         conf_dict = create_configuration_dict(pars)
         json.dump(conf_dict, f, indent=4)
 
-    stdout_logger.debug(f"Outputs created at {str(pars["output_path"])}")
+    stdout_logger.debug(f"Outputs created at {output_path}")
 
 
 
