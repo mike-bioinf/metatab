@@ -39,7 +39,7 @@ def parse_args(args):
     p.add_argument("-n", "--model-specs", default=None, 
                     help="""String represenatation of a dict of param value couples like "{'param': value, ...}" to pass to the model.
                     See the TabPFNClassifier, AutoTabPFNClassifier, FineTuneTabPFN, SklearnFineTuneTabPFN and RandomForestClassifier params for info.
-                    In case of a "finetune model" ('ft' or 'ft_opt') one can/must pass the parameters of both FineTuneTabPFN and SklearnFineTuneTabPFN
+                    In case of a "finetune tabpfn" ('ft' or 'ft_opt') one can/must pass the parameters of both FineTuneTabPFN and SklearnFineTuneTabPFN
                     classes. The correct ripartion is internally managed.""")
 
     p.add_argument("-t", "--test-dataset", default=None, 
@@ -50,13 +50,13 @@ def parse_args(args):
 
     p.add_argument("-g", "--grid-search", default=None, 
                     help="""dict formatted argument that will be passed to the 'param_grid' parameter of GridSearchCV class.
-                    To use when model is 'rf' and when HPO is desired.""")
+                    To use with 'rf' model when HPO is desired.""")
 
     p.add_argument("-r", "--seed", default=10, type=int, 
                     help="""Seed used to control randomness. 
-                    In particular it controls the randomness inherent to the splitting procedures, and random forest, tabpfn ensemble and finetune "models".
+                    In particular it controls the randomness inherent to the splitting procedures, random forest, tabpfn ensemble and finetune "models".
                     It does not control the randomness inherent to the base tabpfn model, which is controlled by a second random state that can be
-                    set in "-n"/"--model-specs". This is true also for the base model to finetune in finetuning scenarios. Deafults to 10.""")
+                    set in "-n" / "--model-specs". This is true also for the base model to finetune in finetuning scenarios. Deafults to 10.""")
 
     return p.parse_args(args)
 
@@ -82,12 +82,16 @@ def check_args(pars: dict):
     
     if pars["model"] in ["auto", "ft", "ft_opt"] and "pca" in pars["preprocessing"]:
         raise ValueError("Is not possible use the 'pca' preprocessing with 'auto', 'ft' and 'ft_opt' model.")
+    
+    if pars["model"] in ["base", "auto", "ft", "ft_opt"] and pars["grid_search"] is not None:
+        raise ValueError("It's not possible to perform grid seach HPO with tabpfn related models. Leave --grid-search to None or change model.")
 
 
 
 def adjust_args(pars: dict) -> dict:
-    '''Utility to parse some arguments in python dict and to adjust some arguments value based on other arguments value.'''
-
+    '''
+    Utility to parse some arguments and to adjust some of them based on other arguments value.
+    '''
     pars["input_path"] = Path(pars["input_path"])
     pars["output_path"] = Path(pars["output_path"])
     pars["test_dataset"] = Path(pars["test_dataset"]) if pars["test_dataset"] else pars["test_dataset"]
@@ -117,7 +121,9 @@ def adjust_args(pars: dict) -> dict:
     if pars["splitting_mode"] == "holdout" and pars["splitting_specs"] is None:
         pars["splitting_specs"] = {"n_splits": 50, "train_size": 0.9}
 
+    pars = adjust_grid_search(pars)
     pars = adjust_args_for_finetune(pars)
+
     return pars
 
 
@@ -137,6 +143,31 @@ def adjust_args_for_finetune(pars: dict) -> dict:
                 del model_specs[key]
     
     pars["ft_wrapper_specs"] = ft_wrapper_specs
+    return pars
+
+
+
+def adjust_grid_search(pars: dict) -> dict:
+    '''
+    Adjust the grid_search keys according to the model.
+    This is to address the fact that some models are used in sklearn pipelines.
+    If this is the case then the grid keys must be updated.
+    This function assumes that the pipeline steps are named after the class names 
+    in lower (similar to what is done by default by the 'make_pipeline' function).
+    '''
+    grid_search = pars["grid_search"]
+    model = pars["model"]
+
+    if grid_search is None:
+        return pars
+    
+    model_strings = {'rf': 'randomforestclassifier'}
+
+    # to manage models used in grid search but not inserted in pipelines
+    if model not in model_strings.keys():
+        return pars
+    
+    pars["grid_search"] = {f"{model_strings[model]}__{k}": v for k, v in grid_search.items()}
     return pars
 
 

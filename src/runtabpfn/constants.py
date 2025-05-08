@@ -2,13 +2,11 @@ from typing import TypeAlias, Union
 from finetabpfn import SklearnFineTuneTabPFN
 from tabpfn import TabPFNClassifier
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import GridSearchCV
 from tabpfn_extensions_mod.post_hoc_ensembles.sklearn_interface import AutoTabPFNClassifier
 
 
 Classifier: TypeAlias = Union[
-    RandomForestClassifier, 
-    GridSearchCV, 
+    RandomForestClassifier,
     TabPFNClassifier, 
     AutoTabPFNClassifier, 
     SklearnFineTuneTabPFN

@@ -3,13 +3,14 @@ import sys
 import json
 import pandas as pd
 from functools import partial
+from sklearn.pipeline import Pipeline
 from tabutils.prediction import PredictionDataframe
 from tabutils.percentage import filter_percentage, get_filtering_thresh
 from runtabpfn.params import parse_args, check_args, adjust_args
 from runtabpfn.constants import PRED_DATAFRAME_ADDITIONAL_COLUMNS
 from runtabpfn.load import load_data_df_mode, load_data_xy_mode, load_data_sets_mode
 from runtabpfn.log import create_logger, log_iteration
-from runtabpfn.run_model import pick_splitter, pick_model, create_classifier_pipeline, get_repetition_fold
+from runtabpfn.run_model import pick_splitter, pick_classifier, create_classifier_pipeline, get_repetition_fold
 from runtabpfn.save import create_dict_hpo, create_dict_results, populate_dict_result_, populate_dict_hpo_, create_configuration_dict
 
 
@@ -79,12 +80,12 @@ def main():
 
 
         if do_without_preprocessing:
-            clf = pick_model(pars)
-            clf_piped = create_classifier_pipeline(clf, "no")
+            clf = pick_classifier(pars)
+            clf_piped = create_classifier_pipeline(clf, "no", pars)
             clf_piped.fit(X_train, y_train)
             pred_proba = clf_piped.predict_proba(X_test)
             partial_populate_dict_result_(pred_proba=pred_proba, preprocessing="no")
-            populate_dict_hpo_(dict_hpo, pars["model"], clf, pars["splitting_mode"], "no", repetition, fold)
+            populate_dict_hpo_(dict_hpo, clf_piped, pars["model"], pars["splitting_mode"], "no", repetition, fold)
             stdout_logger.debug("\t -Completed inference with no preprocessing")
 
         
@@ -113,12 +114,12 @@ def main():
                     X_test_filtered = X_test.reindex(columns=X_train_filtered.columns)
                     number_filtered_features = number_initial_features - X_train_filtered.shape[1]
                 
-                clf = pick_model(pars)
-                clf_piped = create_classifier_pipeline(clf, type_preprocessing="filter")
+                clf = pick_classifier(pars)
+                clf_piped = create_classifier_pipeline(clf, "filter", pars)
                 clf_piped.fit(X_train_filtered, y_train)
                 pred_proba = clf_piped.predict_proba(X_test_filtered)
 
-                populate_dict_hpo_(dict_hpo, pars["model"], clf, pars["splitting_mode"], "filter", repetition, fold)
+                populate_dict_hpo_(dict_hpo, clf_piped, pars["model"], pars["splitting_mode"], "filter", repetition, fold)
 
                 partial_populate_dict_result_(
                     pred_proba=pred_proba, 
@@ -132,13 +133,13 @@ def main():
         
 
         if do_pca:
-            clf = pick_model(pars)
-            clf_piped = create_classifier_pipeline(clf, "pca")
+            clf = pick_classifier(pars)
+            clf_piped = create_classifier_pipeline(clf, "pca", pars)
             clf_piped.fit(X_train, y_train)
             clf_piped.predict_proba(X_test)
-            pca = clf_piped.named_steps["pca"]
+            pca = clf_piped.named_steps["pca"] if isinstance(clf_piped, Pipeline) else clf_piped.best_estimator_.named_steps["pca"]
 
-            populate_dict_hpo_(dict_hpo, pars["model"], clf, pars["splitting_mode"], "pca", repetition, fold)
+            populate_dict_hpo_(dict_hpo, clf_piped, pars["model"], pars["splitting_mode"], "pca", repetition, fold)
 
             partial_populate_dict_result_(
                 pred_proba=pred_proba, 

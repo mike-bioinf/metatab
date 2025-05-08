@@ -50,16 +50,14 @@ def pick_splitter(pars: dict):
 
 
 
-def pick_model(pars):
+def pick_classifier(pars) -> Classifier:
     '''
-    Utility to select the right model. 
-    Sets the right preprocessing pipeline in case of "rf". The pipeline is fixed.
-    Sets also the cv specs if HPO is desired in case of "rf". Also these are fixed.  
+    Utility to select and build the right classifier.
+    Returns the classifier.
     ''' 
     model = pars["model"]
     model_specs = pars["model_specs"]
     ft_wrapper_specs = pars["ft_wrapper_specs"]
-    grid_search = pars["grid_search"]
     seed = pars["seed"]
 
     if model in ["auto", "rf"]:
@@ -72,34 +70,42 @@ def pick_model(pars):
         return TabPFNClassifier(**model_specs)  
     elif model == "auto":
         return AutoTabPFNClassifier(**model_specs)  
-    elif model == "rf" and grid_search is None:
+    elif model == "rf":
         return  RandomForestClassifier(**model_specs)
-    elif model == "rf" and grid_search is not None:
-        cv = RepeatedStratifiedKFold(n_splits=5, n_repeats=5, random_state=seed)
-        return GridSearchCV(RandomForestClassifier(**model_specs), param_grid=grid_search, scoring="roc_auc", n_jobs=-1, refit=True, cv=cv)
-    elif model in  ["ft", "ft_opt"]:
+    elif model in ["ft", "ft_opt"]:
         return SklearnFineTuneTabPFN(FineTuneTabPFN(**model_specs), **ft_wrapper_specs)
     else:
-        raise NotImplementedError(f"'{model}' must be one of: 'base', 'auto', 'ft', 'ft_opt' or 'rf'.")
+        raise NotImplementedError(f"'{model}' must be one of: 'base', 'auto', 'rf', 'ft' or 'ft_opt'.")
 
 
 
 def create_classifier_pipeline(
         classifier: Classifier, 
-        type_preprocessing: Literal["no", "filter", "pca"]
-    ) -> Classifier | Pipeline:
+        type_preprocessing: Literal["no", "filter", "pca"],
+        pars: dict,
+    ) -> Classifier | Pipeline | GridSearchCV:
     '''
-    Utility to create the transformation pipeline with the classifier as last step.
-    Returns a Pipeline object or the classifier depending on the setting.
+    Utility to insert the classifier in the correct pipeline according to the scenario.
+    Note: Uses a fixed 5-repeated 5-fold cv for random forest grid search HPO.
+    Returns a Classifier, Pipeline or GridSearchCV object.
     '''
-    is_tabpfn_clf = isinstance(classifier, (TabPFNClassifier, AutoTabPFNClassifier, SklearnFineTuneTabPFN))
-    
+    grid_search = pars["grid_search"]
+    seed = pars["seed"]
+    is_rf_clf = isinstance(classifier, RandomForestClassifier)
+
+    # in case of pca preprocessing the trasformation steps are identical for all classifiers
     if type_preprocessing == "pca":
-        return make_pipeline(VarianceThreshold(), StandardScaler(), PCA(random_state=0), classifier)
-    elif is_tabpfn_clf:
-        return classifier
+        pipe = make_pipeline(VarianceThreshold(), StandardScaler(), PCA(random_state=0), classifier)
+    elif is_rf_clf:
+        pipe = make_pipeline(VarianceThreshold(), StandardScaler(), classifier)
     else:
-        return make_pipeline(VarianceThreshold(), StandardScaler(), classifier)
+        pipe = classifier
+
+    if grid_search is not None:
+        cv = RepeatedStratifiedKFold(n_splits=5, n_repeats=5, random_state=seed)
+        pipe = GridSearchCV(pipe, param_grid=grid_search, scoring="roc_auc", n_jobs=-1, refit=True, cv=cv)
+    
+    return pipe
 
 
 

@@ -1,6 +1,7 @@
 import pandas as pd
 from functools import partial
 from typing import Any
+from sklearn.pipeline import Pipeline
 from sklearn.model_selection import GridSearchCV
 from finetabpfn import SklearnFineTuneTabPFN, HPS_FINETUNE
 from runtabpfn.constants import PRED_DATAFRAME_ADDITIONAL_COLUMNS, HPO_DICT_BASE_KEYS, Classifier
@@ -37,16 +38,19 @@ def create_dict_hpo(pars: dict, base_keys: list[str] = HPO_DICT_BASE_KEYS) -> di
 
 
 def populate_dict_hpo_(
-        dict_hpo: dict[str, list],
-        model: str, 
-        classifier: Classifier,
-        splitting_mode: str,        
-        preprocessing: str,
-        repetition: int,
-        fold: int
-    ) -> None:
-    '''Populate the HPO dict in place'''
-    if isinstance(classifier, GridSearchCV) or (isinstance(classifier, SklearnFineTuneTabPFN) and model == "ft_opt"):
+    dict_hpo: dict[str, list],
+    classifier: Classifier | Pipeline | GridSearchCV,      
+    model: str,
+    splitting_mode: str, 
+    preprocessing: str,
+    repetition: int,
+    fold: int
+) -> None:
+    '''Populate the HPO dict in place'''    
+    is_hpo_done = isinstance(classifier, GridSearchCV) or \
+        (isinstance(Classifier, SklearnFineTuneTabPFN) and model == "ft_opt")
+
+    if is_hpo_done:
         dict_hpo["splitting_mode"].append(splitting_mode)
         dict_hpo["preprocessing"].append(preprocessing)
         dict_hpo["repetition"].append(repetition)
@@ -87,7 +91,7 @@ populate_dict_result_ = partial(
 
 
 def create_configuration_dict(pars: dict) -> dict:
-    # updating model_specs with the ft_wrapper_specs previsously separated
+    # updating model_specs with the ft_wrapper_specs previously separated
     model_specs = pars["model_specs"]
     model_specs.update(pars["ft_wrapper_specs"])
     
