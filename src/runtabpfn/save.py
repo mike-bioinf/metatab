@@ -1,10 +1,35 @@
+import pickle
 import pandas as pd
+from pathlib import Path
 from functools import partial
 from typing import Any
 from sklearn.pipeline import Pipeline
 from sklearn.model_selection import GridSearchCV
 from finetabpfn import SklearnFineTuneTabPFN, HPS_FINETUNE
 from runtabpfn.constants import PRED_DATAFRAME_ADDITIONAL_COLUMNS, HPO_DICT_BASE_KEYS, Classifier
+
+
+
+def save_classifier(clf: Classifier | Pipeline | GridSearchCV, file: str | Path, to_save: bool):
+    '''Save the classifier using the pickle module. Does nothing if to_save is False.'''
+    if to_save:
+        with open(str(file), "wb") as f:
+            pickle.dump(clf, f)
+    
+
+
+def get_classifier_filename(pars: dict, repetition: int, fold: int, preprocessing: str) -> str:
+    '''Utiity to get the filename used to save the model'''
+    splitting_mode = pars["splitting_mode"]
+
+    if splitting_mode == "cv":
+        n = f"__{repetition}{fold}"
+    elif splitting_mode == "holdout":
+        n = f"__{fold}"
+    else:
+        n = ""
+    
+    return f"{str(pars["output_path"])}/models/{pars["model"]}__{preprocessing}{n}.pkl"
 
 
 

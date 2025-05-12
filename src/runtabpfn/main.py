@@ -11,7 +11,7 @@ from runtabpfn.constants import PRED_DATAFRAME_ADDITIONAL_COLUMNS
 from runtabpfn.load import load_data_df_mode, load_data_xy_mode, load_data_sets_mode
 from runtabpfn.log import create_logger, log_iteration
 from runtabpfn.run_model import pick_splitter, pick_classifier, create_classifier_pipeline, get_repetition_fold
-from runtabpfn.save import create_dict_hpo, create_dict_results, populate_dict_result_, populate_dict_hpo_, create_configuration_dict
+from runtabpfn.save import create_dict_hpo, create_dict_results, populate_dict_result_, populate_dict_hpo_, create_configuration_dict, get_classifier_filename, save_classifier
 
 
 
@@ -29,6 +29,12 @@ def main():
     do_pca = True if "pca" in pars["preprocessing"] else False
     name_dataset = pars["input_path"].stem
     name_test_dataset = pd.NA if pars["test_dataset"] is None else pars["test_dataset"].stem
+
+    # create output folder
+    output_path = pars["output_path"]
+    os.makedirs(output_path, exist_ok=True)
+    if pars["save_models"]:
+        os.makedirs(output_path / "models", exist_ok=True)
 
     # load data
     if pars["input_mode"] == "sets":
@@ -86,6 +92,8 @@ def main():
             pred_proba = clf_piped.predict_proba(X_test)
             partial_populate_dict_result_(pred_proba=pred_proba, preprocessing="no")
             populate_dict_hpo_(dict_hpo, clf_piped, pars["model"], pars["splitting_mode"], "no", repetition, fold)
+            model_filename = get_classifier_filename(pars, repetition, fold)
+            save_classifier(clf_piped, model_filename, pars["save_models"], "no")
             stdout_logger.debug("\t -Completed inference with no preprocessing")
 
         
@@ -119,6 +127,9 @@ def main():
                 clf_piped.fit(X_train_filtered, y_train)
                 pred_proba = clf_piped.predict_proba(X_test_filtered)
 
+                model_filename = get_classifier_filename(pars, repetition, fold, "no")
+                save_classifier(clf_piped, model_filename, pars["save_models"])
+
                 populate_dict_hpo_(dict_hpo, clf_piped, pars["model"], pars["splitting_mode"], "filter", repetition, fold)
 
                 partial_populate_dict_result_(
@@ -139,6 +150,9 @@ def main():
             clf_piped.predict_proba(X_test)
             pca = clf_piped.named_steps["pca"] if isinstance(clf_piped, Pipeline) else clf_piped.best_estimator_.named_steps["pca"]
 
+            model_filename = get_classifier_filename(pars, repetition, fold, "pca")
+            save_classifier(clf_piped, model_filename, pars["save_models"])
+            
             populate_dict_hpo_(dict_hpo, clf_piped, pars["model"], pars["splitting_mode"], "pca", repetition, fold)
 
             partial_populate_dict_result_(
@@ -151,9 +165,6 @@ def main():
 
 
     # compute performance metrics and save the results
-    output_path = pars["output_path"]
-    os.makedirs(output_path, exist_ok=True)
-
     path_pred_dataframe = output_path / "pred_dataframe.txt"
     path_configuration_file = output_path / "configuration.json"
     path_hpo = output_path / "hpo.txt"

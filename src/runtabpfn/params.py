@@ -58,6 +58,13 @@ def parse_args(args):
                     It does not control the randomness inherent to the base tabpfn model, which is controlled by a second random state that can be
                     set in "-n" / "--model-specs". This is true also for the base model to finetune in finetuning scenarios. Deafults to 10.""")
 
+    p.add_argument("-sm", "--save-models", default=False, choices=[False, True], type=bool,
+                   help="""Option to save the fitted models. The models object are saved via pickle in the 'models' folder.
+                   Note that all models fitted during the splitting procedure are saved.
+                   The filenames follow the generic structure: {model}__{preprocessing}__{repetition}{fold}.
+                   In case of 'holdout' and 'no' splitting modes the {fold} and __{repetition}{fold} parts are omitted.
+                   Accepts two possible values: False and True. Defaults to False.""")
+
     return p.parse_args(args)
 
 
@@ -152,8 +159,8 @@ def adjust_grid_search(pars: dict) -> dict:
     Adjust the grid_search keys according to the model.
     This is to address the fact that some models are used in sklearn pipelines.
     If this is the case then the grid keys must be updated.
-    This function assumes that the pipeline steps are named after the class names 
-    in lower (similar to what is done by default by the 'make_pipeline' function).
+    This function assumes that the pipeline steps are named after the classes 
+    in lowercase (similar to what is done by default by the 'make_pipeline' function).
     '''
     grid_search = pars["grid_search"]
     model = pars["model"]
