@@ -6,12 +6,12 @@ from functools import partial
 from sklearn.pipeline import Pipeline
 from tabutils.prediction import PredictionDataframe
 from tabutils.percentage import filter_percentage, get_filtering_thresh
-from runtabpfn.params import parse_args, check_args, adjust_args
-from runtabpfn.constants import PRED_DATAFRAME_ADDITIONAL_COLUMNS
-from runtabpfn.load import load_data_df_mode, load_data_xy_mode, load_data_sets_mode
-from runtabpfn.log import create_logger, log_iteration
-from runtabpfn.run_model import pick_splitter, pick_classifier, create_classifier_pipeline, get_repetition_fold
-from runtabpfn.save import create_dict_hpo, create_dict_results, populate_dict_result_, populate_dict_hpo_, create_configuration_dict, get_classifier_filename, save_classifier
+from metatab.params import parse_args, check_args, adjust_args
+from metatab.constants import PRED_DATAFRAME_ADDITIONAL_COLUMNS
+from metatab.load import DataLoader
+from metatab.log import create_logger, log_iteration
+from metatab.run_model import pick_splitter, pick_classifier, create_classifier_pipeline, get_repetition_fold
+from metatab.save import create_dict_hpo, create_dict_results, populate_dict_result_, populate_dict_hpo_, create_configuration_dict, get_classifier_filename, save_classifier
 
 
 
@@ -22,7 +22,9 @@ def main():
     check_args(pars)
     pars = adjust_args(pars)
 
+
     # set variables
+    data_loader = DataLoader()
     stdout_logger = create_logger(sys.stdout)
     do_without_preprocessing = True if "no" in pars["preprocessing"] else False
     do_filtering = True if "filter" in pars["preprocessing"] else False
@@ -30,25 +32,35 @@ def main():
     name_dataset = pars["input_path"].stem
     name_test_dataset = pd.NA if pars["test_dataset"] is None else pars["test_dataset"].stem
 
+
     # create output folder
     output_path = pars["output_path"]
     os.makedirs(output_path, exist_ok=True)
     if pars["save_models"]:
         os.makedirs(output_path / "models", exist_ok=True)
 
+
     # load data
-    if pars["input_mode"] == "sets":
-        dict_sets = load_data_sets_mode(pars["input_path"])
-        X, y = None, None
-    else:
-        load_data_func = load_data_df_mode if pars["input_mode"] == "df" else load_data_xy_mode
-        X, y = load_data_func(pars["input_path"], pars["target_feature"])
-        if pars["test_dataset"]:
-            X_test, y_test = load_data_func(pars["test_dataset"], pars["target_feature"])
-            X_test = X_test.reindex(columns=X.columns, fill_value=0.0)
-            if X_test.to_numpy().sum() == 0:
-                raise ValueError("The training and testing datasets have no feature in common! Is impossible to proceed.")
+    load_as = "train" if pars["test_dataset"] else "generic"
     
+    data_loader.load_data(
+        mode=pars["input_mode"], 
+        path=pars["input_path"], 
+        target_feature=pars["target_feature"], 
+        load_as=load_as
+    )
+
+    if pars["test_dataset"]:
+        data_loader.load_data(
+            mode=pars["input_mode"], 
+            path=pars["test_dataset"],
+            target_feature=pars["target_feature"],
+            load_as="test"
+        )
+        data_loader.X_test = data_loader.X_test.reindex(columns=data_loader.X_train.columns, fill_value=0.0)
+        if data_loader.X_test.to_numpy().sum() == 0:
+            raise ValueError("The training and testing datasets have no feature in common! Is impossible to proceed.")
+
     stdout_logger.debug("Data correctly loaded in memory\n")
 
 
@@ -58,18 +70,11 @@ def main():
     
 
     # run the model
-    for i, (idx_train, idx_test) in enumerate(splitter.split(X, y)):
+    for i, (idx_train, idx_test) in enumerate(splitter.split(data_loader.X, data_loader.y)):
         repetition, fold = get_repetition_fold(i, pars)
         log_iteration(pars, fold, repetition, stdout_logger)
         
-
-        if pars["input_mode"] == "sets":
-            X_train, y_train, X_test, y_test = dict_sets["X_train"], dict_sets["y_train"], dict_sets["X_test"], dict_sets["y_test"]
-        elif pars["test_dataset"] is None:
-            X_train, y_train, X_test, y_test = X.iloc[idx_train, :], y.iloc[idx_train], X.iloc[idx_test, :], y.iloc[idx_test]
-        else:
-            X_train, y_train = X, y
-
+        X_train, y_train, X_test, y_test = data_loader.return_train_test_xy_sets(idx_train, idx_test)
 
         partial_populate_dict_result_ = partial(
             populate_dict_result_,

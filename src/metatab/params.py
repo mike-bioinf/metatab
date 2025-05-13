@@ -17,7 +17,7 @@ def parse_args(args):
 
     # required options
     p.add_argument("-i", "--input-mode", required=True, choices=["sets", "xy", "df"],
-                    help="Define the expected form of the input (must be one of 'sets', 'xy', or 'df')")
+                    help="Define the input data format. One of 'sets', 'xy' and 'df'.")
 
     p.add_argument("-s", "--splitting-mode", required=True, choices=["no", "holdout", "cv"],
                     help="Define the splitting strategy (must be one of 'no', 'holdout' or 'cv')")

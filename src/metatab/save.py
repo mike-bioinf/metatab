@@ -6,7 +6,7 @@ from typing import Any
 from sklearn.pipeline import Pipeline
 from sklearn.model_selection import GridSearchCV
 from finetabpfn import SklearnFineTuneTabPFN, HPS_FINETUNE
-from runtabpfn.constants import PRED_DATAFRAME_ADDITIONAL_COLUMNS, HPO_DICT_BASE_KEYS, Classifier
+from metatab.constants import PRED_DATAFRAME_ADDITIONAL_COLUMNS, HPO_DICT_BASE_KEYS, Classifier
 
 
 

@@ -1,5 +1,5 @@
 [project]
-name = "runtabpfn"
+name = "metatab"
 version = "0.1"
 dependencies = [
     "tabpfn>=2.0.6",
@@ -10,8 +10,15 @@ dependencies = [
 ]
 
 
+[tool.setuptools]
+# utils is there for testing purposes
+packages = ["metatab", "pretrained_metatab", "utils"] 
+package-dir = {"" = "src"}
+
+
 [project.scripts]
-metatab = "runtabpfn:main.main"
+metatab = "metatab:main.main"
+pmetatab = "pretrained_metatab:main.main"
 
 
 [build-system]
