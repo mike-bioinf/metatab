@@ -10,7 +10,7 @@ from sklearn.pipeline import Pipeline, make_pipeline
 from tabpfn import TabPFNClassifier
 from tabpfn_extensions_mod.post_hoc_ensembles.sklearn_interface import AutoTabPFNClassifier
 from finetabpfn import SklearnFineTuneTabPFN, FineTuneTabPFN
-from metatab.constants import Classifier
+from runtabpfn.constants import Classifier
 # from tabpfn_extensions.post_hoc_ensembles.sklearn_interface import AutoTabPFNClassifier
 
 
