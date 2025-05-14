@@ -92,8 +92,8 @@ def main():
             pred_proba = clf_piped.predict_proba(X_test)
             partial_populate_dict_result_(pred_proba=pred_proba, preprocessing="no")
             populate_dict_hpo_(dict_hpo, clf_piped, pars["model"], pars["splitting_mode"], "no", repetition, fold)
-            model_filename = get_classifier_filename(pars, repetition, fold)
-            save_classifier(clf_piped, model_filename, pars["save_models"], "no")
+            model_filename = get_classifier_filename(pars, repetition, fold, "no")
+            save_classifier(clf_piped, model_filename, pars["save_models"])
             stdout_logger.debug("\t -Completed inference with no preprocessing")
 
         
@@ -127,7 +127,7 @@ def main():
                 clf_piped.fit(X_train_filtered, y_train)
                 pred_proba = clf_piped.predict_proba(X_test_filtered)
 
-                model_filename = get_classifier_filename(pars, repetition, fold, "no")
+                model_filename = get_classifier_filename(pars, repetition, fold, "filter")
                 save_classifier(clf_piped, model_filename, pars["save_models"])
 
                 populate_dict_hpo_(dict_hpo, clf_piped, pars["model"], pars["splitting_mode"], "filter", repetition, fold)

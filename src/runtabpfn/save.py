@@ -130,7 +130,7 @@ def create_configuration_dict(pars: dict) -> dict:
         "model_specs": secure_str(model_specs, 'not serializable'),
         "grid_search": secure_str(pars["grid_search"], 'not serializable'),
         "preprocessing": pars["preprocessing"],
-        "test_dataset": pars["test_dataset"],
+        "test_dataset": str(pars["test_dataset"]),
         "target_feature": pars["target_feature"],
         "seed": pars["seed"]
     }
