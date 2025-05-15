@@ -73,7 +73,7 @@ def populate_dict_hpo_(
 ) -> None:
     '''Populate the HPO dict in place'''    
     is_hpo_done = isinstance(classifier, GridSearchCV) or \
-        (isinstance(Classifier, SklearnFineTuneTabPFN) and model == "ft_opt")
+        (isinstance(classifier, SklearnFineTuneTabPFN) and model == "ft_opt")
 
     if is_hpo_done:
         dict_hpo["splitting_mode"].append(splitting_mode)
