@@ -36,7 +36,7 @@ def parse_args(args):
                     Note that base and auto refers to TabPFN and AutoTabPFN, 
                     while ft and ft_opt to finetune and finetune with optimization.""")
 
-    p.add_argument("-n", "--model-specs", default=None, 
+    p.add_argument("-n", "--model-specs", default=None,
                     help="""String represenatation of a dict of param value couples like "{'param': value, ...}" to pass to the model.
                     See the TabPFNClassifier, AutoTabPFNClassifier, FineTuneTabPFN, SklearnFineTuneTabPFN and RandomForestClassifier params for info.
                     In case of a "finetune tabpfn" ('ft' or 'ft_opt') one can/must pass the parameters of both FineTuneTabPFN and SklearnFineTuneTabPFN
@@ -58,7 +58,7 @@ def parse_args(args):
                     It does not control the randomness inherent to the base tabpfn model, which is controlled by a second random state that can be
                     set in "-n" / "--model-specs". This is true also for the base model to finetune in finetuning scenarios. Deafults to 10.""")
 
-    p.add_argument("-sm", "--save-models", default=False, choices=[False, True], type=bool,
+    p.add_argument("-q", "--save-models", action="store_true",
                    help="""Option to save the fitted models. The models object are saved via pickle in the 'models' folder.
                    Note that all models fitted during the splitting procedure are saved.
                    The filenames follow the generic structure: {model}__{preprocessing}__{repetition}{fold}.
