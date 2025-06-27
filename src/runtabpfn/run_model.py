@@ -9,9 +9,27 @@ from sklearn.decomposition import PCA
 from sklearn.pipeline import Pipeline, make_pipeline
 from tabpfn import TabPFNClassifier
 from tabpfn_extensions_mod.post_hoc_ensembles.sklearn_interface import AutoTabPFNClassifier
-from finetabpfn import SklearnFineTuneTabPFN, FineTuneTabPFN
+from finetabpfn import AesFineTunedTabPFNClassifier
 from runtabpfn.constants import Classifier
 # from tabpfn_extensions.post_hoc_ensembles.sklearn_interface import AutoTabPFNClassifier
+
+
+
+def get_repetition_fold(iteration: int, pars: dict) -> tuple: 
+    '''
+    Utility to get the repetition and fold info based on 
+    the current iteration and splitting mode.
+    Returns a binary tuple of int and/or pd.NA.
+    '''
+    if pars["splitting_mode"] == "cv":
+        repetition = iteration // pars["splitting_specs"]["n_splits"]
+        fold = iteration - (pars["splitting_specs"]["n_splits"] * repetition)
+    elif pars["splitting_mode"] == "holdout":
+        fold, repetition = iteration, pd.NA
+    else:
+        fold, repetition = pd.NA, pd.NA
+    
+    return repetition, fold
 
 
 
@@ -36,7 +54,7 @@ def pick_splitter(pars: dict):
             n_splits=splitting_specs["n_splits"], 
             n_repeats=splitting_specs["n_repeats"], 
             random_state=seed
-            )
+        )
     elif splitting_mode == "holdout":
         splitter = StratifiedShuffleSplit(
             n_splits=splitting_specs["n_splits"], 
@@ -57,14 +75,6 @@ def pick_classifier(pars) -> Classifier:
     ''' 
     model = pars["model"]
     model_specs = pars["model_specs"]
-    ft_wrapper_specs = pars["ft_wrapper_specs"]
-    seed = pars["seed"]
-
-    if model in ["auto", "rf"]:
-        model_specs["random_state"] = np.random.RandomState(seed)
-
-    if model in ["ft", "ft_opt"]:
-        model_specs["random_state"] = seed
 
     if model == "base":
         return TabPFNClassifier(**model_specs)  
@@ -72,21 +82,21 @@ def pick_classifier(pars) -> Classifier:
         return AutoTabPFNClassifier(**model_specs)  
     elif model == "rf":
         return  RandomForestClassifier(**model_specs)
-    elif model in ["ft", "ft_opt"]:
-        return SklearnFineTuneTabPFN(FineTuneTabPFN(**model_specs), **ft_wrapper_specs)
+    elif model == "aes_ft":
+        return AesFineTunedTabPFNClassifier(**model_specs)
     else:
-        raise NotImplementedError(f"'{model}' must be one of: 'base', 'auto', 'rf', 'ft' or 'ft_opt'.")
+        raise NotImplementedError(f"'{model}' must be one of: 'base', 'auto', 'rf' and 'aes_ft'.")
 
 
 
 def create_classifier_pipeline(
-        classifier: Classifier, 
-        type_preprocessing: Literal["no", "filter", "pca"],
-        pars: dict,
-    ) -> Classifier | Pipeline | GridSearchCV:
+    classifier: Classifier, 
+    type_preprocessing: Literal["no", "filter", "pca"],
+    pars: dict,
+) -> Classifier | Pipeline | GridSearchCV:
     '''
     Utility to insert the classifier in the correct pipeline according to the scenario.
-    Note: Uses a fixed 5-repeated 5-fold cv for random forest grid search HPO.
+    Note: Uses a fixed 5-repeated 5-fold cv in grid search.
     Returns a Classifier, Pipeline or GridSearchCV object.
     '''
     grid_search = pars["grid_search"]
@@ -109,17 +119,31 @@ def create_classifier_pipeline(
 
 
 
-def get_repetition_fold(iteration: int, pars: dict) -> tuple: 
+def universal_predict_proba(
+    estimator: Classifier | Pipeline | GridSearchCV, 
+    X: np.ndarray | pd.DataFrame, 
+    **kwargs
+) ->  np.ndarray:
     '''
-    Utility to get the repetition and fold info based on the current iteration and splitting mode.
-    Returns a binary tuple of int and/or pd.NA.
-    '''
-    if pars["splitting_mode"] == "cv":
-        repetition = iteration // pars["splitting_specs"]["n_splits"]
-        fold = iteration - (pars["splitting_specs"]["n_splits"] * repetition)
-    elif pars["splitting_mode"] == "holdout":
-        fold, repetition = iteration, pd.NA
-    else:
-        fold, repetition = pd.NA, pd.NA
+    Adapter that invokes the estimators predict_proba method
+    allowing for additional parameters. 
+    Relies on the assumption that the estimator predict methods 
+    accept the X as first argument.
+    Necessary since AesFineTunedTabPFNClassifier does not 
+    respect the usual predicts signature.
+
+    Parameters:
+        estimator (Classifier | Pipeline | GridSearchCV):
+            The estimator object that calls the predict_proba method.
+        X (np.ndarray | pd.DataFrame):
+            The test data.
+        kwargs:
+            Other keyword arguments.
     
-    return repetition, fold
+    Returns:
+        np.ndarray: The predicted probabilities.
+    '''
+    if isinstance(estimator, AesFineTunedTabPFNClassifier):
+        return estimator.predict_proba(X, **kwargs)
+    else:
+        return estimator.predict_proba(X)

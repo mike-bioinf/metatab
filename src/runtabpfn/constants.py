@@ -1,15 +1,15 @@
 from typing import TypeAlias, Union
-from finetabpfn import SklearnFineTuneTabPFN
-from tabpfn import TabPFNClassifier
 from sklearn.ensemble import RandomForestClassifier
+from tabpfn import TabPFNClassifier
 from tabpfn_extensions_mod.post_hoc_ensembles.sklearn_interface import AutoTabPFNClassifier
+from finetabpfn import AesFineTunedTabPFNClassifier
 
 
 Classifier: TypeAlias = Union[
     RandomForestClassifier,
     TabPFNClassifier, 
     AutoTabPFNClassifier, 
-    SklearnFineTuneTabPFN
+    AesFineTunedTabPFNClassifier
 ]
 
 

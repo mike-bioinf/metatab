@@ -5,8 +5,12 @@ from functools import partial
 from typing import Any
 from sklearn.pipeline import Pipeline
 from sklearn.model_selection import GridSearchCV
-from finetabpfn import SklearnFineTuneTabPFN, HPS_FINETUNE
-from runtabpfn.constants import PRED_DATAFRAME_ADDITIONAL_COLUMNS, HPO_DICT_BASE_KEYS, Classifier
+
+from runtabpfn.constants import (
+    PRED_DATAFRAME_ADDITIONAL_COLUMNS, 
+    HPO_DICT_BASE_KEYS, 
+    Classifier
+)
 
 
 
@@ -18,7 +22,7 @@ def save_classifier(clf: Classifier | Pipeline | GridSearchCV, file: str | Path,
     
 
 
-def get_classifier_filename(pars: dict, repetition: int, fold: int, preprocessing: str) -> str:
+def get_classifier_filepath(pars: dict, repetition: int, fold: int, preprocessing: str) -> str:
     '''Utiity to get the filename used to save the model'''
     splitting_mode = pars["splitting_mode"]
 
@@ -36,14 +40,14 @@ def get_classifier_filename(pars: dict, repetition: int, fold: int, preprocessin
 def create_dict_hpo(pars: dict, base_keys: list[str] = HPO_DICT_BASE_KEYS) -> dict[str, list]:
     '''
     Creates the dictionary used to store the best hyperparameters info.
-    This dict is used either when we use the random forest with hpo, or when we finetune tabpfn with hpo.
-    Note: returns an empty dict when no hpo is involved.
+    The dict is created only when HPO is involved. 
+    In negative cases returns an empty dict.
     '''
     model = pars["model"] 
     grid_search = pars["grid_search"] 
     d = {}
 
-    is_optimization_involved = (model == "rf" and grid_search is not None) or model == "ft_opt"
+    is_optimization_involved = (model == "rf" and grid_search is not None)
 
     if not is_optimization_involved:
         return d
@@ -53,7 +57,7 @@ def create_dict_hpo(pars: dict, base_keys: list[str] = HPO_DICT_BASE_KEYS) -> di
         d.update({key: []})
     
     # add the hpo scenario-specific keys
-    hpo_specific_keys = list(grid_search.keys()) if grid_search is not None else HPS_FINETUNE
+    hpo_specific_keys = list(grid_search.keys())
     
     for key in hpo_specific_keys:
         d.update({key: []})
@@ -72,17 +76,16 @@ def populate_dict_hpo_(
     fold: int
 ) -> None:
     '''Populate the HPO dict in place'''    
-    is_hpo_done = isinstance(classifier, GridSearchCV) or \
-        (isinstance(classifier, SklearnFineTuneTabPFN) and model == "ft_opt")
-
+    is_hpo_done = isinstance(classifier, GridSearchCV)
+    
     if is_hpo_done:
         dict_hpo["splitting_mode"].append(splitting_mode)
         dict_hpo["preprocessing"].append(preprocessing)
         dict_hpo["repetition"].append(repetition)
         dict_hpo["fold"].append(fold)
 
-        hpo_instance = classifier if isinstance(classifier, GridSearchCV) else classifier.study_
-        best_params_attr = "best_params_" if isinstance(classifier, GridSearchCV) else "best_params"
+        hpo_instance = classifier
+        best_params_attr = "best_params_"
         
         for key, value in getattr(hpo_instance, best_params_attr).items():
             dict_hpo[key].append(value)
@@ -116,10 +119,6 @@ populate_dict_result_ = partial(
 
 
 def create_configuration_dict(pars: dict) -> dict:
-    # updating model_specs with the ft_wrapper_specs previously separated
-    model_specs = pars["model_specs"]
-    model_specs.update(pars["ft_wrapper_specs"])
-    
     return {
         "input_path": str(pars["input_path"]),
         "output_path": str(pars["output_path"]),
@@ -127,7 +126,7 @@ def create_configuration_dict(pars: dict) -> dict:
         "splitting_mode": pars["splitting_mode"],
         "splitting_specs": pars["splitting_specs"],
         "model": pars["model"],
-        "model_specs": secure_str(model_specs, 'not serializable'),
+        "model_specs": secure_str(pars["model_specs"], 'not serializable'),
         "grid_search": secure_str(pars["grid_search"], 'not serializable'),
         "preprocessing": pars["preprocessing"],
         "test_dataset": str(pars["test_dataset"]),

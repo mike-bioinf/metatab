@@ -6,12 +6,28 @@ from functools import partial
 from sklearn.pipeline import Pipeline
 from tabutils.prediction import PredictionDataframe
 from tabutils.percentage import filter_percentage, get_filtering_thresh
-from runtabpfn.params import parse_args, check_args, adjust_args
-from runtabpfn.constants import PRED_DATAFRAME_ADDITIONAL_COLUMNS
 from runtabpfn.load import load_data_df_mode, load_data_xy_mode, load_data_sets_mode
 from runtabpfn.log import create_logger, log_iteration
-from runtabpfn.run_model import pick_splitter, pick_classifier, create_classifier_pipeline, get_repetition_fold
-from runtabpfn.save import create_dict_hpo, create_dict_results, populate_dict_result_, populate_dict_hpo_, create_configuration_dict, get_classifier_filename, save_classifier
+from runtabpfn.constants import PRED_DATAFRAME_ADDITIONAL_COLUMNS
+from runtabpfn.params import parse_args, check_args, adjust_args
+
+from runtabpfn.run_model import (
+    get_repetition_fold,
+    pick_splitter, 
+    pick_classifier, 
+    create_classifier_pipeline,
+    universal_predict_proba 
+)
+
+from runtabpfn.save import (
+    create_dict_hpo, 
+    create_dict_results, 
+    populate_dict_result_, 
+    populate_dict_hpo_, 
+    create_configuration_dict, 
+    get_classifier_filepath, 
+    save_classifier
+)
 
 
 
@@ -27,8 +43,8 @@ def main():
     do_without_preprocessing = True if "no" in pars["preprocessing"] else False
     do_filtering = True if "filter" in pars["preprocessing"] else False
     do_pca = True if "pca" in pars["preprocessing"] else False
-    name_dataset = pars["input_path"].stem
-    name_test_dataset = pd.NA if pars["test_dataset"] is None else pars["test_dataset"].stem
+    name_dataset: str = pars["input_path"].stem
+    name_test_dataset: str = pd.NA if pars["test_dataset"] is None else pars["test_dataset"].stem
 
     # create output folder
     output_path = pars["output_path"]
@@ -84,16 +100,15 @@ def main():
             fold=fold
         )
 
-
         if do_without_preprocessing:
             clf = pick_classifier(pars)
             clf_piped = create_classifier_pipeline(clf, "no", pars)
             clf_piped.fit(X_train, y_train)
-            pred_proba = clf_piped.predict_proba(X_test)
+            pred_proba = universal_predict_proba(clf_piped, X_test, X_contest=X_train, y_contest=y_train)
             partial_populate_dict_result_(pred_proba=pred_proba, preprocessing="no")
             populate_dict_hpo_(dict_hpo, clf_piped, pars["model"], pars["splitting_mode"], "no", repetition, fold)
-            model_filename = get_classifier_filename(pars, repetition, fold, "no")
-            save_classifier(clf_piped, model_filename, pars["save_models"])
+            model_filepath = get_classifier_filepath(pars, repetition, fold, "no")
+            save_classifier(clf_piped, model_filepath, pars["save_models"])
             stdout_logger.debug("\t -Completed inference with no preprocessing")
 
         
@@ -102,11 +117,15 @@ def main():
             filt_thresh = get_filtering_thresh(X_train, 499)
 
             if filt_thresh == 0 and do_without_preprocessing:
-                stdout_logger.debug("\t -Warning: the training set has less than 500 features. \
-                    The inference is skipped since it is equal to the 'no' preprocessing scenario.")
+                stdout_logger.debug((
+                    "\t -Warning: the training set has less than 500 features."
+                    " The inference is skipped since it is equal to the 'no' preprocessing scenario."
+                ))
             elif filt_thresh is None and do_without_preprocessing:
-                stdout_logger.debug("\t -Warning: the filtering procedure cannot reduce the number of features under 500. \
-                    The inference is skipped since it's equal to the 'no' preprocessing scenario.")
+                stdout_logger.debug((
+                    "\t -Warning: the filtering procedure cannot reduce the number of features under 500."
+                    " The inference is skipped since it's equal to the 'no' preprocessing scenario."
+                ))
             else:
                 # here we must run the model indipendently of filtering
                 X_train_filtered = X_train
@@ -114,9 +133,14 @@ def main():
                 number_filtered_features = 0
 
                 if filt_thresh is None:
-                    stdout_logger.debug("\t -Warning: the filtering procedure cannot reduce the number of features under 500. No filtering is done.")
+                    stdout_logger.debug((
+                        "\t -Warning: the filtering procedure cannot reduce the number"
+                        " of features under 500. No filtering is done."
+                    ))
                 elif filt_thresh == 0:
-                    stdout_logger.debug("\t -Warning: the training set has less than 500 features. No filtering is done.")
+                    stdout_logger.debug(
+                        "\t -Warning: the training set has less than 500 features. No filtering is done."
+                    )
                 else:
                     X_train_filtered = filter_percentage(X_train, filt_thresh)
                     X_test_filtered = X_test.reindex(columns=X_train_filtered.columns)
@@ -125,10 +149,16 @@ def main():
                 clf = pick_classifier(pars)
                 clf_piped = create_classifier_pipeline(clf, "filter", pars)
                 clf_piped.fit(X_train_filtered, y_train)
-                pred_proba = clf_piped.predict_proba(X_test_filtered)
+                
+                pred_proba = universal_predict_proba(
+                    clf_piped, 
+                    X_test_filtered, 
+                    X_contest=X_train_filtered, 
+                    y_contest=y_train
+                )
 
-                model_filename = get_classifier_filename(pars, repetition, fold, "filter")
-                save_classifier(clf_piped, model_filename, pars["save_models"])
+                model_filepath = get_classifier_filepath(pars, repetition, fold, "filter")
+                save_classifier(clf_piped, model_filepath, pars["save_models"])
 
                 populate_dict_hpo_(dict_hpo, clf_piped, pars["model"], pars["splitting_mode"], "filter", repetition, fold)
 
@@ -147,11 +177,14 @@ def main():
             clf = pick_classifier(pars)
             clf_piped = create_classifier_pipeline(clf, "pca", pars)
             clf_piped.fit(X_train, y_train)
-            clf_piped.predict_proba(X_test)
-            pca = clf_piped.named_steps["pca"] if isinstance(clf_piped, Pipeline) else clf_piped.best_estimator_.named_steps["pca"]
+            pred_proba = universal_predict_proba(clf_piped, X_test, X_contest=X_train, y_contest=y_train)
+            
+            pca = clf_piped.named_steps["pca"] \
+                if isinstance(clf_piped, Pipeline) \
+                else clf_piped.best_estimator_.named_steps["pca"]
 
-            model_filename = get_classifier_filename(pars, repetition, fold, "pca")
-            save_classifier(clf_piped, model_filename, pars["save_models"])
+            model_filepath = get_classifier_filepath(pars, repetition, fold, "pca")
+            save_classifier(clf_piped, model_filepath, pars["save_models"])
             
             populate_dict_hpo_(dict_hpo, clf_piped, pars["model"], pars["splitting_mode"], "pca", repetition, fold)
 
@@ -184,7 +217,7 @@ def main():
         df_pred.compute_metrics()
         df_pred.to_csv(path_pred_dataframe, sep="\t", index=False)
 
-    if (pars["model"] == "rf" and pars["grid_search"] is not None) or pars["model"] == "ft_opt":
+    if (pars["model"] == "rf" and pars["grid_search"] is not None):
         pd.DataFrame(dict_hpo).to_csv(path_hpo, sep="\t", index=False)
         
     with open(path_configuration_file, "w") as f:
