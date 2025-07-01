@@ -89,14 +89,14 @@ def pick_classifier(pars) -> Classifier:
 
 
 
-def create_classifier_pipeline(
+def create_estimator(
     classifier: Classifier, 
     type_preprocessing: Literal["no", "filter", "pca"],
     pars: dict,
 ) -> Classifier | Pipeline | GridSearchCV:
     '''
-    Utility to insert the classifier in the correct pipeline according to the scenario.
-    Note: Uses a fixed 5-repeated 5-fold cv in grid search.
+    Utility to get the final estimator according to the scenario.
+    Note: in grid search cv uses a fixed 5-repeated 5-fold cv and "roc_auc" as scoring metric.
     Returns a Classifier, Pipeline or GridSearchCV object.
     '''
     grid_search = pars["grid_search"]
@@ -105,17 +105,23 @@ def create_classifier_pipeline(
 
     # in case of pca preprocessing the trasformation steps are identical for all classifiers
     if type_preprocessing == "pca":
-        pipe = make_pipeline(VarianceThreshold(), StandardScaler(), PCA(random_state=0), classifier)
+        estimator = make_pipeline(VarianceThreshold(), StandardScaler(), PCA(random_state=0), classifier)
     elif is_rf_clf:
-        pipe = make_pipeline(VarianceThreshold(), StandardScaler(), classifier)
+        estimator = make_pipeline(VarianceThreshold(), StandardScaler(), classifier)
     else:
-        pipe = classifier
+        estimator = classifier
 
     if grid_search is not None:
-        cv = RepeatedStratifiedKFold(n_splits=5, n_repeats=5, random_state=seed)
-        pipe = GridSearchCV(pipe, param_grid=grid_search, scoring="roc_auc", n_jobs=-1, refit=True, cv=cv)
+        estimator = GridSearchCV(
+            estimator=estimator, 
+            param_grid=grid_search, 
+            scoring="roc_auc", 
+            n_jobs=-1, 
+            refit=True, 
+            cv=RepeatedStratifiedKFold(n_splits=5, n_repeats=5, random_state=seed)
+        )
     
-    return pipe
+    return estimator
 
 
 

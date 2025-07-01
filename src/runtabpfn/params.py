@@ -52,6 +52,8 @@ def parse_args(args):
     p.add_argument("-r", "--seed", default=10, type=int, 
                     help="""Seed used to control randomness. 
                     In particular it controls the randomness inherent to the splitting procedures.
+                    Important note: this seed does NOT control the randomness of the models. 
+                    Use the models-specific appropiate parameters to control model randomness. 
                     Deafults to 10.""")
 
     p.add_argument("-q", "--save-models", action="store_true",

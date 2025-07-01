@@ -15,7 +15,7 @@ from runtabpfn.run_model import (
     get_repetition_fold,
     pick_splitter, 
     pick_classifier, 
-    create_classifier_pipeline,
+    create_estimator,
     universal_predict_proba 
 )
 
@@ -25,8 +25,8 @@ from runtabpfn.save import (
     populate_dict_result_, 
     populate_dict_hpo_, 
     create_configuration_dict, 
-    get_classifier_filepath, 
-    save_classifier
+    get_estimator_filepath, 
+    save_estimator
 )
 
 
@@ -102,13 +102,13 @@ def main():
 
         if do_without_preprocessing:
             clf = pick_classifier(pars)
-            clf_piped = create_classifier_pipeline(clf, "no", pars)
-            clf_piped.fit(X_train, y_train)
-            pred_proba = universal_predict_proba(clf_piped, X_test, X_contest=X_train, y_contest=y_train)
+            estimator = create_estimator(clf, "no", pars)
+            estimator.fit(X_train, y_train)
+            pred_proba = universal_predict_proba(estimator, X_test, X_contest=X_train, y_contest=y_train)
             partial_populate_dict_result_(pred_proba=pred_proba, preprocessing="no")
-            populate_dict_hpo_(dict_hpo, clf_piped, pars["model"], pars["splitting_mode"], "no", repetition, fold)
-            model_filepath = get_classifier_filepath(pars, repetition, fold, "no")
-            save_classifier(clf_piped, model_filepath, pars["save_models"])
+            populate_dict_hpo_(dict_hpo, estimator, pars["model"], pars["splitting_mode"], "no", repetition, fold)
+            estimator_filepath = get_estimator_filepath(pars, repetition, fold, "no")
+            save_estimator(estimator, estimator_filepath, pars["save_models"])
             stdout_logger.debug("\t -Completed inference with no preprocessing")
 
         
@@ -147,20 +147,20 @@ def main():
                     number_filtered_features = number_initial_features - X_train_filtered.shape[1]
                 
                 clf = pick_classifier(pars)
-                clf_piped = create_classifier_pipeline(clf, "filter", pars)
-                clf_piped.fit(X_train_filtered, y_train)
+                estimator = create_estimator(clf, "filter", pars)
+                estimator.fit(X_train_filtered, y_train)
                 
                 pred_proba = universal_predict_proba(
-                    clf_piped, 
+                    estimator, 
                     X_test_filtered, 
                     X_contest=X_train_filtered, 
                     y_contest=y_train
                 )
 
-                model_filepath = get_classifier_filepath(pars, repetition, fold, "filter")
-                save_classifier(clf_piped, model_filepath, pars["save_models"])
+                estimator_filepath = get_estimator_filepath(pars, repetition, fold, "filter")
+                save_estimator(estimator, estimator_filepath, pars["save_models"])
 
-                populate_dict_hpo_(dict_hpo, clf_piped, pars["model"], pars["splitting_mode"], "filter", repetition, fold)
+                populate_dict_hpo_(dict_hpo, estimator, pars["model"], pars["splitting_mode"], "filter", repetition, fold)
 
                 partial_populate_dict_result_(
                     pred_proba=pred_proba, 
@@ -175,18 +175,18 @@ def main():
 
         if do_pca:
             clf = pick_classifier(pars)
-            clf_piped = create_classifier_pipeline(clf, "pca", pars)
-            clf_piped.fit(X_train, y_train)
-            pred_proba = universal_predict_proba(clf_piped, X_test, X_contest=X_train, y_contest=y_train)
+            estimator = create_estimator(clf, "pca", pars)
+            estimator.fit(X_train, y_train)
+            pred_proba = universal_predict_proba(estimator, X_test, X_contest=X_train, y_contest=y_train)
             
-            pca = clf_piped.named_steps["pca"] \
-                if isinstance(clf_piped, Pipeline) \
-                else clf_piped.best_estimator_.named_steps["pca"]
+            pca = estimator.named_steps["pca"] \
+                if isinstance(estimator, Pipeline) \
+                else estimator.best_estimator_.named_steps["pca"]
 
-            model_filepath = get_classifier_filepath(pars, repetition, fold, "pca")
-            save_classifier(clf_piped, model_filepath, pars["save_models"])
+            estimator_filepath = get_estimator_filepath(pars, repetition, fold, "pca")
+            save_estimator(estimator, estimator_filepath, pars["save_models"])
             
-            populate_dict_hpo_(dict_hpo, clf_piped, pars["model"], pars["splitting_mode"], "pca", repetition, fold)
+            populate_dict_hpo_(dict_hpo, estimator, pars["model"], pars["splitting_mode"], "pca", repetition, fold)
 
             partial_populate_dict_result_(
                 pred_proba=pred_proba, 

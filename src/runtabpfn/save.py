@@ -14,15 +14,15 @@ from runtabpfn.constants import (
 
 
 
-def save_classifier(clf: Classifier | Pipeline | GridSearchCV, file: str | Path, to_save: bool):
+def save_estimator(estimator: Classifier | Pipeline | GridSearchCV, file: str | Path, to_save: bool):
     '''Save the classifier using the pickle module. Does nothing if to_save is False.'''
     if to_save:
         with open(str(file), "wb") as f:
-            pickle.dump(clf, f)
+            pickle.dump(estimator, f)
     
 
 
-def get_classifier_filepath(pars: dict, repetition: int, fold: int, preprocessing: str) -> str:
+def get_estimator_filepath(pars: dict, repetition: int, fold: int, preprocessing: str) -> str:
     '''Utiity to get the filename used to save the model'''
     splitting_mode = pars["splitting_mode"]
 
