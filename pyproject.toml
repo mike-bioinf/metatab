@@ -12,6 +12,10 @@ dependencies = [
 ]
 
 
+[project.optional-dependencies]
+dev = ["pytest"]
+
+
 [project.scripts]
 metatab = "runtabpfn:main.main"
 

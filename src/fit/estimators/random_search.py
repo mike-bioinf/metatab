@@ -24,7 +24,7 @@ from scipy.stats._distn_infrastructure import (
 if TYPE_CHECKING:
     from sklearn.model_selection import RepeatedStratifiedKFold
     from sklearn.pipeline import Pipeline
-    from .constants import BoostedClassifier
+    from ..constants import BoostedClassifier
 
 
 
@@ -60,11 +60,11 @@ class MyRandomSearchCV:
 
         fixed_params_classifier (dict):
             Dict of the fixed classifier parameters, aka the parameters
-            that must be set and not tuned.
+            that must not be tuned.
         
         param_distributions (dict):
             Dict of the distributions of the parameters to tune.
-            Must be follow the RandomSearchCV related sklearn API.
+            Must follow the RandomizedSearchCV related sklearn API.
         
         splitter (RepeatedStratifiedKFold):
             Instance of "RepeatedStratifiedKFold". Importantly must
@@ -125,7 +125,7 @@ class MyRandomSearchCV:
 
     def fit(self, X: pd.DataFrame, y: pd.Series) -> "MyRandomSearchCV":
         '''
-        Execute the random search sampling n_iter combinations.
+        Execute the random search sampling "n_iter" combinations.
         Set the best combinations of HPs along with other info in attrs.
         '''
         self.classes_ = y.unique()
@@ -161,7 +161,6 @@ class MyRandomSearchCV:
                 
                 # apply preprocessing
                 X_train_trans, X_val_trans, X_test_trans = self._preprocess(
-                    self.preprocessing_pipeline, 
                     X_train, 
                     X_val, 
                     X_test
@@ -195,12 +194,7 @@ class MyRandomSearchCV:
                 stratify=y
             )
 
-            X_train_trans, X_val_trans = self._preprocess(
-                self.preprocessing_pipeline, 
-                X_train, 
-                X_val
-            )
-
+            X_train_trans, X_val_trans = self._preprocess(X_train, X_val)
             # we save the refitted preprocessing pipeline to use on test data
             self.fitted_preprocessing_pipeline_ = self.preprocessing_pipeline
             best_clf: BoostedClassifier = self.classifier(**self.fixed_params_classifier, **best_hps)
@@ -214,7 +208,6 @@ class MyRandomSearchCV:
     def predict_proba(self, X: pd.DataFrame, **kwargs) -> np.ndarray:
         '''Predict class probabilities for X'''
         check_is_fitted(self, "best_clf_")
-        # apply preprocessing if used in training
         if self.fitted_preprocessing_pipeline_ is not None:
             X = self.fitted_preprocessing_pipeline_.transform(X)
         return self.best_clf_.predict_proba(X, **kwargs)
@@ -223,7 +216,6 @@ class MyRandomSearchCV:
 
     def _preprocess(
         self,
-        preprocessing: None | Pipeline,
         train: pd.DataFrame,
         *others: tuple[pd.DataFrame]
      ) -> list[np.ndarray]:
@@ -233,13 +225,13 @@ class MyRandomSearchCV:
         In every case the train data is returned first and the others in input order.
         '''
         preprocessed_data = []
-        if preprocessing is None:
+        if self.preprocessing_pipeline is None:
             preprocessed_data.append(train)
             preprocessed_data.extend(others)
             preprocessed_data = self._to_numpy(*preprocessed_data)
         else:
-            train_trans = preprocessing.fit_transform(train)
-            preprocessed_data= [preprocessing.transform(x) for x in others]
+            train_trans = self.preprocessing_pipeline.fit_transform(train)
+            preprocessed_data = [self.preprocessing_pipeline.transform(x) for x in others]
             preprocessed_data.insert(0, train_trans) 
         return preprocessed_data
 
@@ -266,10 +258,10 @@ class MyRandomSearchCV:
     def _sample_from_distributions(self, n_samples: int) -> Generator[dict, None, None]:
         '''
         Utility to sample from a dict of distibutions like 
-        the ones accepted by RandomSearchCV.
+        the ones accepted by RandomizedSearchCV.
 
         Parameters:
-            dists (dict): RandomSearchCV-like distributions dict.
+            dists (dict): RandomizedSearchCV-like distributions dict.
             n_samples (int): Number of returned samples.
 
         Returns:
@@ -285,7 +277,7 @@ class MyRandomSearchCV:
 
     def _sample_distribution(self) -> dict:
         '''
-        Utility to sample from a randomsearchcv-like distribution dict.
+        Utility to sample from the distribution dict.
         Returns the sample as a dict of param:sampled_value.
         '''
         sample = {}

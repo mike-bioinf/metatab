@@ -8,6 +8,28 @@ from scipy.stats import randint, loguniform
 
 
 
+Classifier: TypeAlias = Union[
+    RandomForestClassifier,
+    XGBClassifier,
+    TabPFNClassifier, 
+    AutoTabPFNClassifier, 
+    AesFineTunedTabPFNClassifier
+]
+
+
+BoostedClassifier: TypeAlias = Union[
+    XGBClassifier
+]
+
+
+SKLEARN_RANDOM_SEARCH_FIXED_PARAMS = {
+    "n_iter": 100,
+    "scoring": "neg_log_loss",
+    "n_jobs": 1,
+    "refit": True
+}
+
+
 RANDOMIZED_XGBCLASSIFIER_PARAMS_DISTRIBUTIONS = {
     "grow_policy": ["depthwise"],
     "tree_method": ["exact"],
@@ -22,9 +44,8 @@ RANDOMIZED_XGBCLASSIFIER_PARAMS_DISTRIBUTIONS = {
 }
 
 
-RANDOMIZED_XGBCLASSIFIER_FIXED_PARAMS = {
+ES_RANDOMIZED_XGBCLASSIFIER_FIXED_PARAMS = {
     "n_estimators": 10000,
-    "n_jobs": -1,
     "eval_metric": "logloss",
     "early_stopping_rounds": 30,
     "random_state": 0,
@@ -33,15 +54,9 @@ RANDOMIZED_XGBCLASSIFIER_FIXED_PARAMS = {
 }
 
 
-Classifier: TypeAlias = Union[
-    RandomForestClassifier,
-    XGBClassifier,
-    TabPFNClassifier, 
-    AutoTabPFNClassifier, 
-    AesFineTunedTabPFNClassifier
-]
-
-
-BoostedClassifier: TypeAlias = Union[
-    XGBClassifier
-]
+RANDOMIZED_XGBCLASSIFIER_FIXED_PARAMS = {
+    "n_estimators": 200,
+    "random_state": 0,
+    "n_jobs": -1,
+    "verbosity": 0
+}
