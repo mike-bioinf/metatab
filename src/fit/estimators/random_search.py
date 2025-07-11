@@ -8,7 +8,7 @@ from copy import deepcopy
 from typing import Generator, TYPE_CHECKING, Literal
 from sklearn.model_selection import train_test_split
 from sklearn.utils.validation import check_is_fitted
-from fit.utils import get_fresh_random_state
+from fit.estimators.utils import get_fresh_random_state
 
 from sklearn.metrics import (
     roc_auc_score, 
@@ -24,7 +24,7 @@ from scipy.stats._distn_infrastructure import (
 if TYPE_CHECKING:
     from sklearn.model_selection import RepeatedStratifiedKFold
     from sklearn.pipeline import Pipeline
-    from ..constants import BoostedClassifier
+    from .constants import BoostedClassifier
 
 
 
@@ -167,7 +167,8 @@ class MyRandomSearchCV:
                 )
 
                 # TODO: check that the fit API is respected for every boosted model used
-                clf.fit(X_train_trans, y_train, eval_set=[(X_val_trans, y_val)])
+                # verbose if for xgboost and if not set here is not possible to avoid logs
+                clf.fit(X_train_trans, y_train, eval_set=[(X_val_trans, y_val)], verbose=False)
                 pred_proba = clf.predict_proba(X_test_trans)
                 cv_scores.append(self.compute_score(pred_proba, y_test, self.n_classes_))
             
@@ -198,7 +199,7 @@ class MyRandomSearchCV:
             # we save the refitted preprocessing pipeline to use on test data
             self.fitted_preprocessing_pipeline_ = self.preprocessing_pipeline
             best_clf: BoostedClassifier = self.classifier(**self.fixed_params_classifier, **best_hps)
-            best_clf.fit(X_train_trans, y_train, eval_set=[(X_val_trans, y_val)])
+            best_clf.fit(X_train_trans, y_train, eval_set=[(X_val_trans, y_val)], verbose=False)
             self.best_clf_ = best_clf
         
         return self

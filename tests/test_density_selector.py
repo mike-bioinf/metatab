@@ -1,5 +1,5 @@
 from fit.preprocessing import DensityFeatureSelector
-from tests.utils_tests import create_mock_data_for_density_selection
+from tests.utils_density import create_mock_data_for_density_selection
 
 
 

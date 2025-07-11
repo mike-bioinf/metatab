@@ -1,5 +1,5 @@
 from fit.preprocessing.utils import get_index_to_retain
-from tests.utils_tests import get_mock_data_densities
+from tests.utils_density import get_mock_data_densities
 
 
 

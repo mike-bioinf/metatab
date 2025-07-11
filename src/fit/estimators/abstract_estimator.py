@@ -1,5 +1,8 @@
+import pickle
 from typing import Literal
 from abc import ABC, abstractmethod
+from pathlib import Path
+from warnings import warn
 
 
 
@@ -36,7 +39,6 @@ class AbstractEstimator(ABC):
         self.params_distributions = params_distributions
         self.fixed_params = fixed_params
         
-
     @abstractmethod
     def fit(*args, **kwargs):
         pass
@@ -44,3 +46,14 @@ class AbstractEstimator(ABC):
     @abstractmethod
     def predict_proba(*args, **kwargs):
         pass
+
+    @abstractmethod
+    def save(self, filepath: str | Path):
+        '''Seriealize the instance using pickle'''
+        if not hasattr(self, "estimator_"):
+            warn(
+                message="The estimator instance is not fitted! Is this expected?", 
+                category=UserWarning
+            )
+        with open(filepath, "wb") as f:
+            pickle.dump(self, f)

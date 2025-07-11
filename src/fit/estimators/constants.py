@@ -48,6 +48,7 @@ ES_RANDOMIZED_XGBCLASSIFIER_FIXED_PARAMS = {
     "n_estimators": 10000,
     "eval_metric": "logloss",
     "early_stopping_rounds": 30,
+    "verbose_eval": False,
     "random_state": 0,
     "n_jobs": -1,
     "verbosity": 0
@@ -55,7 +56,7 @@ ES_RANDOMIZED_XGBCLASSIFIER_FIXED_PARAMS = {
 
 
 RANDOMIZED_XGBCLASSIFIER_FIXED_PARAMS = {
-    "n_estimators": 200,
+    "n_estimators": 700,
     "random_state": 0,
     "n_jobs": -1,
     "verbosity": 0
