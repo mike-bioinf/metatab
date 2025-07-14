@@ -3,7 +3,7 @@ import logging
 
 def create_logger(stream) -> logging.Logger:
     '''
-    Create a logger to a stream.
+    Create a logger to a stream at debug level.
     Parameters:
         stream: Either sys.stdout or sys.stderr.
     Returns: The logger instance.

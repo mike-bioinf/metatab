@@ -2,7 +2,7 @@
 name = "runtabpfn"
 version = "0.1"
 dependencies = [
-    "tabpfn>=2.0.6",
+    "tabpfn>=2.1.0",
     "scikit-learn>=1.2.0,<1.7",
     "pandas>=2.2.3",
     "numpy>=2.1.3",

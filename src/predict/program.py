@@ -8,7 +8,7 @@ from sklearn.model_selection import RandomizedSearchCV
 from typing import TYPE_CHECKING
 from sklearn.pipeline import Pipeline
 
-from fit import(
+from estimators import(
     MyESRandomizedXGBClassifier,
     MyRandomizedXGBClassifier,
     MyRandomSearchCV
@@ -41,9 +41,9 @@ def check_that_object_is_fitted(obj) -> None:
 
 
 
-def take_names_features_in_attr(obj) -> np.ndarray:
+def take_feature_names_in_attr(obj) -> np.ndarray:
     '''
-    Retrieve the "names_features_in_" attribute from the 
+    Retrieve the "feature_names_in_" attribute from the 
     fitted estimator accordingly to his type.
 
     Note that we expect this attribute to be present 
@@ -58,7 +58,7 @@ def take_names_features_in_attr(obj) -> np.ndarray:
     fitted_estimator = obj.estimator_
     
     if isinstance(fitted_estimator, RandomizedSearchCV):
-        return fitted_estimator.best_estimator_.names_features_in_
+        return fitted_estimator.best_estimator_.feature_names_in_
     
     elif isinstance(fitted_estimator, MyRandomSearchCV):
         ## TODO: This is valid for xgboost but must be checked for CATBOOST (and eventually others)
@@ -66,7 +66,7 @@ def take_names_features_in_attr(obj) -> np.ndarray:
     
     else:
         # pipelines and sklearn-like estimators expose directly the attr
-        return fitted_estimator.names_features_in_
+        return fitted_estimator.feature_names_in_
 
 
 
