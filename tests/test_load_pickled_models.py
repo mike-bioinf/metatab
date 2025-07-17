@@ -1,14 +1,18 @@
 import pickle
+import numpy as np
 from pathlib import Path
 from typing import Any
 from sklearn.datasets import load_iris
+from estimators.types import Estimator
 
 
 def try_test_model_on_iris(filename: str):
     X, y = load_iris(return_X_y=True, as_frame=True)
     try:
-        model = load_model(filename)
-        _ = model.predict_proba(X)
+        model: Estimator = load_model(filename)
+        pred_proba = model.predict_proba(X)
+        if not isinstance(pred_proba, np.ndarray):
+            raise TypeError("The estimator does not predict numpy arrays.")
     except Exception:
         assert False, f"Problem when loading and/or using the '{filename}' model."
 

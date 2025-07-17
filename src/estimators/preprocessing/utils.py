@@ -3,11 +3,11 @@ from typing import Literal, Any
 
 
 
-def get_index_to_retain(
+def get_indexes_to_retain(
     densities: pd.Series, 
     n_target: int, 
     strategy: Literal["exact", "oversample", "undersample"]
-) -> list[Any]:
+) -> tuple[list[Any], float]:
     '''
     Get the series indexes to retain to reach the target number of elements.
     The selection is guided by the density scores, i.e. only the n_target 
@@ -35,25 +35,35 @@ def get_index_to_retain(
             the target number, otherwise keep them. 
 
     Returns:
-        list[Any]: The index to keep as a list. The list can be void.
+        tuple:
+        The indexes to keep as a list. The list can be void.
+        The minimum density score that is kept. It is -1 if no index is kept.
     '''
     if n_target < 0:
         raise ValueError("n_target must be in [0, inf].")
     
     if n_target == 0:
-        return []
-    
-    if densities.size <= n_target:
-        return densities.index.to_list()
+        # we use -1 to indicate that no index is kept.
+        # the minimum density score is not determinable in this case.
+        return [], -1
     
     sorted_densities = densities.sort_values(ascending=False, kind="stable")
 
+    if densities.size <= n_target:
+        return densities.index.to_list(), sorted_densities[-1]
+    
     if strategy == "exact":
-        return sorted_densities.iloc[:n_target].index.to_list()
+        return (
+            sorted_densities.iloc[:n_target].index.to_list(),
+            sorted_densities.iloc[n_target-1]
+        )
     
     elif strategy == "oversample":
         target_density = sorted_densities.iloc[n_target-1]
-        return sorted_densities[sorted_densities >= target_density].index.to_list()
+        return (
+            sorted_densities[sorted_densities >= target_density].index.to_list(),
+            target_density
+        )
     
     elif strategy == "undersample":
         target_density = sorted_densities.iloc[n_target-1]
@@ -62,10 +72,15 @@ def get_index_to_retain(
 
         if n_right_ties == 0:
             # we keep the element on the boundary
-            return sorted_densities[sorted_densities >= target_density].index.to_list()
+            return (
+                sorted_densities[sorted_densities >= target_density].index.to_list(),
+                target_density
+            )
         else:
             # we exclude all ties on the boundary
-            return sorted_densities[sorted_densities > target_density].index.to_list()
+            indexes = sorted_densities[sorted_densities > target_density].index.to_list()
+            target_density = target_density if indexes else -1
+            return indexes, target_density
     
     else:
         raise ValueError("strategy must be one of 'exact', 'oversample' or 'undersample'.")
@@ -79,8 +94,7 @@ def get_density_scores(df: pd.DataFrame, axis: int = 0, do_check: bool = False) 
     made about the dataframe. This is useful to avoid repeating 
     the same checks when using other utilities like the sklearn ones.
     '''
-    if do_check: 
-        _check_df_assumptions(df, axis)
+    if do_check: _check_df_assumptions(df, axis)
     return df.apply(lambda x: (x != 0).mean(), axis=axis)
 
 

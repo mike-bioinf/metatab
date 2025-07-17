@@ -4,7 +4,6 @@ from typing import Literal
 from copy import deepcopy
 from pathlib import Path
 from xgboost import XGBClassifier
-from sklearn.utils.validation import check_is_fitted
 from sklearn.pipeline import Pipeline
 
 from sklearn.model_selection import (
@@ -45,9 +44,8 @@ class MyESRandomizedXGBClassifier(AbstractEstimator):
     ):
         super().__init__(preprocessing, seed, params_distributions, fixed_params)
 
-
     def fit(self, X: pd.DataFrame, y: pd.Series, **kwargs) -> "MyESRandomizedXGBClassifier":
-        fixed_params = _adjust_xgb_fixed_params(self.fixed_params, y)
+        fixed_params = _adjust_xgb_objective(self.fixed_params, y)
         fixed_params = _adjust_logloss_es_metric(fixed_params, y)
 
         # pass a seed here in splitter and NOT a RandomState
@@ -69,19 +67,23 @@ class MyESRandomizedXGBClassifier(AbstractEstimator):
         self.estimator_ = estimator.fit(X, y)
         return self
 
+    def collect_fit_preprocessing_info(self) -> dict:
+        return super().collect_fit_preprocessing_info()
+
+    def get_feature_names_in_(self) -> np.ndarray:
+        return super().get_feature_names_in_()
 
     def predict_proba(self, X, **kwargs) -> np.ndarray:
-        check_is_fitted(self, "estimator_")
-        return self.estimator_.predict_proba(X, **kwargs)
+        return super()._classic_predict_proba(X)
     
-
     def save(self, filepath: str | Path) -> None:
         super().save(filepath)       
-
 
     def _create_preprocessing_pipeline(self) -> Pipeline:
         return create_default_pipeline(self.preprocessing, "oversample")
 
+    def _get_preprocessing_pipeline(self):
+        return self.estimator_.preprocessing_pipeline_
 
 
 
@@ -104,12 +106,11 @@ class MyRandomizedXGBClassifier(AbstractEstimator):
     ):
         super().__init__(preprocessing, seed, params_distributions, fixed_params)
 
-
     def fit(self, X: pd.DataFrame, y: pd.Series, **kwargs) -> "MyRandomizedXGBClassifier":
-        fixed_params = _adjust_xgb_fixed_params(self.fixed_params, y)
+        fixed_params = _adjust_xgb_objective(self.fixed_params, y)
         
         estimator = RandomizedSearchCV(
-            estimator=self._create_classifier_pipeline(fixed_params),
+            estimator=self._create_estimator(fixed_params),
             param_distributions=add_string_to_params(self.params_distributions, "xgbclassifier__"),
             cv=RepeatedStratifiedKFold(n_repeats=5, n_splits=5, random_state=self.seed),
             **SKLEARN_RANDOM_SEARCH_FIXED_PARAMS,
@@ -118,23 +119,28 @@ class MyRandomizedXGBClassifier(AbstractEstimator):
         self.estimator_ = estimator.fit(X, y)
         return self
     
+    def collect_fit_preprocessing_info(self) -> dict:
+        return super().collect_fit_preprocessing_info()
+
+    def get_feature_names_in_(self) -> np.ndarray:
+        return super().get_feature_names_in_()
 
     def predict_proba(self, X: pd.DataFrame, **kwargs) -> np.ndarray:
-        check_is_fitted(self, "estimator_")
-        return self.estimator_.predict_proba(X, **kwargs)
-    
+        return super()._classic_predict_proba(X)
     
     def save(self, filepath: str | Path) -> None:
         super().save(filepath)
 
-
-    def _create_classifier_pipeline(self, fixed_params: dict) -> Pipeline:
+    def _create_estimator(self, fixed_params: dict) -> Pipeline:
         return create_default_pipeline(
             preprocessing=self.preprocessing,
             density_feature_selector_strategy="oversample",
             classifier=XGBClassifier,
             classifier_params=fixed_params
         )
+    
+    def _get_preprocessing_pipeline(self) -> Pipeline:
+        return self.estimator_.best_estimator_
         
 
 
@@ -147,7 +153,8 @@ class MyESXGBClassifier(AbstractEstimator):
 
     Attributes
     ------------------    
-    estimator_ (XGBClassifier): Fitted XGBClassifier.
+    estimator_ (XGBClassifier): 
+        Fitted XGBClassifier.
     preprocessing_pipeline_ (Pipeline): 
         Fitted Pipeline that applies the preprocessing.
     '''
@@ -160,7 +167,6 @@ class MyESXGBClassifier(AbstractEstimator):
     ):
         super().__init__(preprocessing, seed, params_distributions, fixed_params)
 
-    
     def fit(self, X: pd.DataFrame, y: pd.Series, **kwargs) -> "MyESXGBClassifier":
         X_train, X_val, y_train, y_val = train_test_split(
             X, 
@@ -170,29 +176,39 @@ class MyESXGBClassifier(AbstractEstimator):
             stratify=y
         )
         self.preprocessing_pipeline_ = self._create_preprocessing_pipeline()
-        self.preprocessing_pipeline_.fit_transform(X_train, y_train)
-        self.preprocessing_pipeline_.transform(X_val)
+        X_train_trans = self.preprocessing_pipeline_.fit_transform(X_train)
+        X_val_trans = self.preprocessing_pipeline_.transform(X_val)
 
-        fixed_params = _adjust_xgb_fixed_params(self.fixed_params, y)
+        fixed_params = _adjust_xgb_objective(self.fixed_params, y)
         fixed_params = _adjust_logloss_es_metric(fixed_params, y)
         estimator = XGBClassifier(**fixed_params)
-        self.estimator_ = estimator.fit(X, y, eval_set=[(X_val, y_val)], verbose=False)
         
+        self.estimator_ = estimator.fit(
+            X_train_trans, 
+            y_train, 
+            eval_set=[(X_val_trans, y_val)], 
+            verbose=False
+        ) 
         return self
     
+    def collect_fit_preprocessing_info(self) -> dict:
+        return super().collect_fit_preprocessing_info()
 
-    def predict_proba(self, X: pd.DataFrame, **kwargs) -> np.ndarray:
-        check_is_fitted(self, "estimator_")
-        X = self.preprocessing_pipeline_.transform(X)
-        return self.estimator_.predict_proba(X, **kwargs)
+    def get_feature_names_in_(self) -> np.ndarray:
+        return super().get_feature_names_in_()
     
-
+    def predict_proba(self, X: pd.DataFrame, **kwargs) -> np.ndarray:
+        X = self.preprocessing_pipeline_.transform(X)
+        return super()._classic_predict_proba(X)
+    
     def save(self, filepath: str | Path) -> None:
         super().save(filepath)
-
-
+    
     def _create_preprocessing_pipeline(self) -> Pipeline:
         return create_default_pipeline(self.preprocessing, "oversample")
+    
+    def _get_preprocessing_pipeline(self) -> Pipeline:
+        return self.preprocessing_pipeline_
 
 
 
@@ -215,37 +231,41 @@ class MyXGBClassifier(AbstractEstimator):
     ):
         super().__init__(preprocessing, seed, params_distributions, fixed_params)
 
-
     def fit(self, X: pd.DataFrame, y: pd.Series, **kwargs) -> "MyXGBClassifier":
-        fixed_params = _adjust_xgb_fixed_params(self.fixed_params, y)
-        estimator = self._create_classifier_pipeline(fixed_params)
+        fixed_params = _adjust_xgb_objective(self.fixed_params, y)
+        estimator = self._create_estimator(fixed_params)
         self.estimator_ = estimator.fit(X, y)
         return self
     
+    def collect_fit_preprocessing_info(self) -> dict:
+        return super().collect_fit_preprocessing_info()
+
+    def get_feature_names_in_(self) -> np.ndarray:
+        return super().get_feature_names_in_()
 
     def predict_proba(self, X: pd.DataFrame, **kwargs) -> np.ndarray:
-        check_is_fitted(self, "estimator_")
-        return self.estimator_.predict_proba(X, **kwargs)
+        return super()._classic_predict_proba(X)
     
-
     def save(self, filepath: str | Path) -> None:
         super().save(filepath)
 
-
-    def _create_classifier_pipeline(self, fixed_params: dict) -> Pipeline:
+    def _create_estimator(self, fixed_params: dict) -> Pipeline:
         return create_default_pipeline(
             preprocessing=self.preprocessing,
             density_feature_selector_strategy="oversample",
             classifier=XGBClassifier,
             classifier_params=fixed_params
         )
+    
+    def _get_preprocessing_pipeline(self) -> Pipeline:
+        return self.estimator_
 
 
 
 
-def _adjust_xgb_fixed_params(fixed_params: dict, y: pd.Series) -> dict:
+def _adjust_xgb_objective(fixed_params: dict, y: pd.Series) -> dict:
     '''
-    Add the fit/data specific params to the dict of fixed ones.
+    Add the objective parameter since it is fit/data specific.
     Returns a new dict.
     '''
     copy_fixed_params = deepcopy(fixed_params)
@@ -259,6 +279,7 @@ def _adjust_xgb_fixed_params(fixed_params: dict, y: pd.Series) -> dict:
         copy_fixed_params["num_class"] = n_classes
     
     return copy_fixed_params 
+
 
 
 def _adjust_logloss_es_metric(fixed_params: dict, y: pd.Series) -> dict:

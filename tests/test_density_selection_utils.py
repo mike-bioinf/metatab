@@ -1,4 +1,4 @@
-from estimators.preprocessing.utils import get_index_to_retain
+from estimators.preprocessing.utils import get_indexes_to_retain
 from tests.utils_density import get_mock_data_densities
 
 
@@ -12,7 +12,7 @@ def test_exact_selection_is_reproducible():
     densities = get_mock_data_densities()
     
     last_selected_column = [
-        get_index_to_retain(densities, n_target=3, strategy="exact")[-1]
+        get_indexes_to_retain(densities, n_target=3, strategy="exact")[0][-1]
         for i in range(20)
     ]
 
@@ -27,10 +27,10 @@ def test_oversample_selection_is_working():
     '''
     densities = get_mock_data_densities()
     
-    selected_indexes = get_index_to_retain(densities, n_target=3, strategy="oversample")
+    selected_indexes, _ = get_indexes_to_retain(densities, n_target=3, strategy="oversample")
     assert len(selected_indexes) == 4, "oversample strategy is not picking all ties at boundary"
 
-    selected_indexes = get_index_to_retain(densities, n_target=1, strategy="oversample")
+    selected_indexes, _ = get_indexes_to_retain(densities, n_target=1, strategy="oversample")
     assert len(selected_indexes) == 1, "oversample strategy is not working with n_target of 1"
 
 
@@ -41,11 +41,11 @@ def test_undersample_selection_is_working():
     '''
     densities = get_mock_data_densities()
     
-    selected_indexes = get_index_to_retain(densities, n_target=3, strategy="undersample")
+    selected_indexes, _ = get_indexes_to_retain(densities, n_target=3, strategy="undersample")
     assert len(selected_indexes) == 1, "undersample strategy is not removing ties when it should"
 
-    selected_indexes = get_index_to_retain(densities, n_target=4, strategy="undersample")
+    selected_indexes, _ = get_indexes_to_retain(densities, n_target=4, strategy="undersample")
     assert len(selected_indexes) == 4, "undersample strategy is removing ties when it should not"
 
-    selected_indexes = get_index_to_retain(densities, n_target=1, strategy="undersample")
+    selected_indexes, _ = get_indexes_to_retain(densities, n_target=1, strategy="undersample")
     assert len(selected_indexes) == 1, "undersample strategy is not working with n_target of 1"

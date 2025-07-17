@@ -6,7 +6,6 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.feature_selection import VarianceThreshold
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import RandomizedSearchCV, RepeatedStratifiedKFold
-from sklearn.utils.validation import check_is_fitted
 from estimators.estimators.abstract_estimator import AbstractEstimator
 from estimators.estimators.utils import add_string_to_params
 
@@ -46,25 +45,30 @@ class MyRandomForestClassifier(AbstractEstimator):
     ):
         super().__init__(preprocessing, seed, params_distributions, fixed_params)
 
-
     def fit(self, X: pd.DataFrame, y: pd.Series, **kwargs) -> "MyRandomForestClassifier":
         self.estimator_ = self._create_estimator()
         self.estimator_.fit(X, y)
         return self
 
+    def collect_fit_preprocessing_info(self) -> dict:
+        return super().collect_fit_preprocessing_info()
+
+    def get_feature_names_in_(self) -> np.ndarray:
+        return super().get_feature_names_in_()
 
     def predict_proba(self, X, **kwargs) -> np.ndarray:
-        check_is_fitted(self, "estimator_")
-        return self.estimator_.predict_proba(X, **kwargs)
-
+        return super()._classic_predict_proba(X)
 
     def save(self, filepath: str | Path) -> None:
         super().save(filepath)
 
-
     def _create_estimator(self) -> Pipeline:
         return _create_rf_preprocessing_pipeline(self.preprocessing, self.fixed_params)
+    
+    def _get_preprocessing_pipeline(self) -> Pipeline:
+        return self.estimator_
 
+        
 
 
 class MyRandomizedRandomForestClassifier(AbstractEstimator):
@@ -85,8 +89,7 @@ class MyRandomizedRandomForestClassifier(AbstractEstimator):
         fixed_params: dict = RANDOM_FOREST_CLASSIFIER_FIXED_PARAMS   
     ):
         super().__init__(preprocessing, seed, params_distributions, fixed_params)
-
-    
+ 
     def fit(self, X: pd.DataFrame, y: pd.Series, **kwargs) -> "MyRandomizedRandomForestClassifier":
         self.estimator_ = RandomizedSearchCV(
             estimator=self._create_estimator(),
@@ -97,19 +100,25 @@ class MyRandomizedRandomForestClassifier(AbstractEstimator):
         self.estimator_.fit(X, y)
         return self
 
+    def collect_fit_preprocessing_info(self) -> dict:
+        return super().collect_fit_preprocessing_info()
+
+    def get_feature_names_in_(self) -> np.ndarray:
+        return super().get_feature_names_in_()
 
     def predict_proba(self, X, **kwargs) -> np.ndarray:
-        check_is_fitted(self, "estimator_")
-        return self.estimator_.predict_proba(X, **kwargs)
-
+        return super()._classic_predict_proba(X)
 
     def save(self, filepath: str | Path) -> None:
         super().save(filepath)
-
-
+        
     def _create_estimator(self) -> Pipeline:
         return _create_rf_preprocessing_pipeline(self.preprocessing, self.fixed_params)
-        
+
+    def _get_preprocessing_pipeline(self) -> Pipeline:
+        return self.estimator_.best_estimator_
+
+
 
 
 def _create_rf_preprocessing_pipeline(

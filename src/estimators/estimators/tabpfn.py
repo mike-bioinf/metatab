@@ -3,7 +3,6 @@ from __future__ import annotations
 import warnings
 from typing import Literal, TYPE_CHECKING
 from sklearn.pipeline import Pipeline
-from sklearn.utils.validation import check_is_fitted
 from tabpfn import TabPFNClassifier
 from estimators.estimators.abstract_estimator import AbstractEstimator
 from estimators.estimators.params import TABPFN_CLASSIFIER_FIXED_PARAMS
@@ -58,22 +57,23 @@ class MyTabPFNClassifier(AbstractEstimator):
     ):
         super().__init__(preprocessing, seed, params_distributions, fixed_params)
 
-
     @suppress_sklearn_and_tabpfn_warnings
     def fit(self, X: pd.DataFrame, y: pd.Series, **kwargs) -> "MyTabPFNClassifier":
         self.estimator_ = self._create_estimator()
         self.estimator_.fit(X, y)
         return self
-
+    
+    def collect_fit_preprocessing_info(self) -> dict:
+        return super().collect_fit_preprocessing_info()
+    
+    def get_feature_names_in_(self) -> np.ndarray:
+        return super().get_feature_names_in_()
 
     def predict_proba(self, X, **kwargs) -> np.ndarray:
-        check_is_fitted(self, "estimator_")
-        return self.estimator_.predict_proba(X, **kwargs)
-
+        return super()._classic_predict_proba(X)
 
     def save(self, filepath: str | Path) -> None:
         super().save(filepath)
-
 
     def _create_estimator(self) -> TabPFNClassifier | Pipeline:
         if self.preprocessing == "base":
@@ -88,3 +88,12 @@ class MyTabPFNClassifier(AbstractEstimator):
             )
         else:
             raise ValueError("Unsupported preprocessing.")
+    
+    def _get_preprocessing_pipeline(self) -> Pipeline | TabPFNClassifier:
+        '''
+        Here we return a tabpfn instance in case of preprocessing 
+        "base" and not a Pipeline object as expected by this method blueprint. 
+        This is not a problem for related downstream functionalities,
+        aka "get_features_names_in_" and "collect_fit_preprocessing_info" methods.
+        '''
+        return self.estimator_

@@ -20,6 +20,9 @@ class DataLoader():
     The class implements {X/y}{ /_train/_test) attributes:
     - X/y represent the data from which the train/test sets are still to be derived.
     - The X/y train/test sets are the ones directly to use in training and testing.
+
+    The class implements also generic/train/test_name attributes which 
+    refer to the loaded dataset names. These are euristically determined.
     '''
     
     def __init__(self):
@@ -29,6 +32,9 @@ class DataLoader():
         self.y: pd.Series = None
         self.y_train: pd.Series = None
         self.y_test: pd.Series = None
+        self.generic_dataset_name: str = None
+        self.train_dataset_name: str = None
+        self.test_dataset_name: str = None
 
     
 
@@ -53,7 +59,7 @@ class DataLoader():
 
     def load(self, mode: Literal["df", "xy", "sets"], **load_params) -> None:
         '''
-        Allow to call a specific 'load' method using the mode attribute.
+        Allow to call a specific 'load' method using the mode parameter.
         One must pass all the specific load method parameters.
         '''
         if mode == "df":
@@ -75,9 +81,10 @@ class DataLoader():
         target_feature: str, 
         load_as: Literal["generic", "train", "test"], 
         **kwargs
-    ):
+    ) -> None:
         '''
         Loads data from an input file ('df' input mode).
+        Set the name of the dataset as the filename without extension.
 
         Parameters:
             path (str | Path): Path of the file to load.
@@ -88,6 +95,7 @@ class DataLoader():
                 Does nothing except ensuring compability with other load functions.
         '''
         path = path if isinstance(path, Path) else Path(path)
+        dname = path.stem
         
         if not path.exists():
             raise FileNotFoundError(f"The file '{path}' does not exists.")
@@ -99,7 +107,7 @@ class DataLoader():
         
         X = df.drop(columns=target_feature)
         y = df[target_feature]
-        self._set_xy_attributes(X, y, load_as)
+        self._set_xyd_attributes(X, y, dname, load_as)
 
 
 
@@ -110,9 +118,12 @@ class DataLoader():
         **kwargs
     ) -> None:
         '''
-        Loads data in 'xy' input mode.The function assumes that the X and y files 
-        are named "X.txt" and "y.txt" respectively.
-        These files must be located at the path specificied in 'path'.
+        Loads data in 'xy' input mode. 
+        The function assumes that the X and y files are named 
+        "X.txt" and "y.txt" respectively.
+        
+        These files must be located at the path specificied in 'path',
+        which last folder is choosen as dataset name.
         
         Parameters:
             path (str, Path): Path where the x and y files live.
@@ -122,6 +133,7 @@ class DataLoader():
                 Does nothing except ensuring compability with other load functions.
         '''
         path = path if isinstance(path, Path) else Path(path)
+        dname = path.stem
         x_path = path / "X.txt"
         y_path = path / "y.txt"
 
@@ -131,7 +143,7 @@ class DataLoader():
 
         X = pd.read_csv(x_path, sep="\t")
         y = pd.Series(pd.read_csv(y_path, sep="\t").iloc[:, 0])
-        self._set_xy_attributes(X, y, load_as)
+        self._set_xyd_attributes(X, y, dname, load_as)
 
 
 
@@ -143,8 +155,11 @@ class DataLoader():
     ) -> None:
         '''
         Loads X/y train/test sets (so no load_as capability). 
-        Assumes that the sets files are named following the convention : "X/y_train/test.txt".
-        These files must be located at the path specificied in 'path'.
+        Assumes that the sets files are named following the convention:
+        "X/y_train/test.txt".
+        
+        These files must be located at the path specificied in 'path',
+        which last folder is choosen as dataset name.
 
         Parameters:
             path (str | Path): Path where the sets files live.
@@ -158,6 +173,9 @@ class DataLoader():
             kwargs: Does nothing except ensuring compability with other load functions.
         '''
         path = Path(path) if isinstance(path, str) else path
+        dname = path.stem
+        setattr(self, "generic_dataset_name", dname)
+
         sets_names = ["X_train", "X_test", "y_train", "y_test"]
         save_missing = [save_missing] if isinstance(save_missing, str) else save_missing
         
@@ -181,24 +199,29 @@ class DataLoader():
 
 
 
-    def _set_xy_attributes(
+    def _set_xyd_attributes(
         self, 
         x_value: Any, 
-        y_value: Any, 
+        y_value: Any,
+        dname_value: str,
         load_type: Literal["generic", "train", "test"]
     ) -> None:
-        '''Set the input x, y values in the correct X/y attributes based on load_type'''
-        x_attr, y_attr = self._get_names_xy_attributes(load_type)        
+        '''
+        Set the input x, y, dataset_name values in the 
+        correct attributes based on load_type.
+        '''
+        x_attr, y_attr, name_attr = self._get_names_xyd_attributes(load_type)        
         setattr(self, x_attr, x_value)
         setattr(self, y_attr, y_value)
+        setattr(self, name_attr, dname_value)
 
 
 
     @staticmethod
-    def _get_names_xy_attributes(load_type: Literal["generic", "train", "test"]) -> tuple[str, str]:
+    def _get_names_xyd_attributes(load_type: Literal["generic", "train", "test"]) -> tuple[str, str, str]:
         if load_type == "generic":
-            return "X", "y"
+            return "X", "y", "generic_dataset_name"
         elif load_type == "train":
-            return "X_train", "y_train"
+            return "X_train", "y_train", "train_dataset_name"
         else:
-            return "X_test", "y_test"
+            return "X_test", "y_test", "test_dataset_name"

@@ -43,7 +43,7 @@ class MyRandomSearchCV:
         seed: int
     ):
         '''
-        Class that execute random search cv allowing and enforcing (is mandatory)
+        Class that executes random search cv allowing and enforcing (is mandatory)
         early stop for boosted tree models.
         In detail the class implements a 3-set strategy where the data is split
         initially in 2 sets during cv and then the train section is further split
@@ -95,13 +95,13 @@ class MyRandomSearchCV:
         ------------
         best_score_ (float): Best validation score from the search.
         
-        best_hps_ (dict): Best combination of HPs from the search.
+        best_params_ (dict): Best combination of HPs from the search.
         
-        best_clf_ (Classifier): 
+        best_estimator_ (BoostedClassifier): 
             Refitted classifier with the best HPs.
-            Present only when refit is True.
+            Present only if refit is True.
         
-        fitted_preprocessing_pipeline_ (Pipeline | None): 
+        preprocessing_pipeline_ (Pipeline | None): 
             Refitted preprocessing pipeline over the final training data.
             Present only when refit is True.
         
@@ -182,7 +182,7 @@ class MyRandomSearchCV:
         
         # set the best attrs
         self.best_score_ = best_score
-        self.best_hps_ = best_hps
+        self.best_params_ = best_hps
 
         # refit with best hps
         if self.refit:
@@ -196,11 +196,12 @@ class MyRandomSearchCV:
             )
 
             X_train_trans, X_val_trans = self._preprocess(X_train, X_val)
-            # we save the refitted preprocessing pipeline to use on test data
-            self.fitted_preprocessing_pipeline_ = self.preprocessing_pipeline
+            # we crate a new reference for the refitted preprocessing pipeline 
+            # to remark that is learned and must be used on test data
+            self.preprocessing_pipeline_ = self.preprocessing_pipeline
             best_clf: BoostedClassifier = self.classifier(**self.fixed_params_classifier, **best_hps)
             best_clf.fit(X_train_trans, y_train, eval_set=[(X_val_trans, y_val)], verbose=False)
-            self.best_clf_ = best_clf
+            self.best_estimator_ = best_clf
         
         return self
 
@@ -208,10 +209,10 @@ class MyRandomSearchCV:
 
     def predict_proba(self, X: pd.DataFrame, **kwargs) -> np.ndarray:
         '''Predict class probabilities for X'''
-        check_is_fitted(self, "best_clf_")
-        if self.fitted_preprocessing_pipeline_ is not None:
-            X = self.fitted_preprocessing_pipeline_.transform(X)
-        return self.best_clf_.predict_proba(X, **kwargs)
+        check_is_fitted(self, "best_estimator_")
+        if self.preprocessing_pipeline_ is not None:
+            X = self.preprocessing_pipeline_.transform(X)
+        return self.best_estimator_.predict_proba(X, **kwargs)
 
 
 

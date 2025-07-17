@@ -4,7 +4,7 @@ from typing import Literal
 from sklearn.base import BaseEstimator
 from sklearn.feature_selection import SelectorMixin
 from sklearn.utils.validation import check_array, check_is_fitted
-from estimators.preprocessing.utils import get_density_scores, get_index_to_retain
+from estimators.preprocessing.utils import get_density_scores, get_indexes_to_retain
 
 
 
@@ -43,6 +43,12 @@ class DensityFeatureSelector(SelectorMixin, BaseEstimator):
 
     Attributes
     -----------------
+    strategy_ (str): 
+        Selection strategy used.
+
+    n_target_features_ (int):
+        Target number of columns.
+
     n_features_in_ (int): 
         Number of columns seen at fit level.
     
@@ -50,8 +56,14 @@ class DensityFeatureSelector(SelectorMixin, BaseEstimator):
         Column names seen at fit level.
         Set only if X is a dataframe.
 
+    n_selected_features_ (int):
+        Number of selected features.
+
     densities_ (pd.Series):
         Density scores for the columns seen at fit level.
+
+    minimum_density_score_ (float):
+        The smallest density score among the selected features.
     '''
     def __init__(
         self, 
@@ -81,6 +93,8 @@ class DensityFeatureSelector(SelectorMixin, BaseEstimator):
             ensure_min_samples=1
         )
         
+        self.strategy_ = self.strategy
+        self.n_target_features_ = self.n_target_cols
         self.n_features_in_ = X.shape[1]
     
         if isinstance(X, pd.DataFrame) and self._are_all_columns_string(X):
@@ -92,12 +106,20 @@ class DensityFeatureSelector(SelectorMixin, BaseEstimator):
             X = pd.DataFrame(X, columns=columns)
         
         self.densities_ = get_density_scores(X)
-        cols_to_keep = get_index_to_retain(self.densities_, self.n_target_cols, self.strategy)
+        
+        features_to_keep, minimum_density_score = get_indexes_to_retain(
+            self.densities_, 
+            self.n_target_cols, 
+            self.strategy
+        )
 
-        if not cols_to_keep and self.error_on_empty:
+        self.n_selected_features_ = len(features_to_keep)
+        self.minimum_density_score_ = minimum_density_score
+
+        if not features_to_keep and self.error_on_empty:
             raise ValueError("Feature selection resulted in an empty feature set.")
         
-        self._mask = X.columns.isin(cols_to_keep)
+        self._mask = X.columns.isin(features_to_keep)
         return self
 
 
@@ -108,7 +130,7 @@ class DensityFeatureSelector(SelectorMixin, BaseEstimator):
 
 
     @staticmethod
-    def _are_all_columns_string(X: pd.DataFrame):
+    def _are_all_columns_string(X: pd.DataFrame) -> bool:
         all_strings = True
 
         for col in X.columns:
