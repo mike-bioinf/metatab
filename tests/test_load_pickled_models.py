@@ -30,8 +30,8 @@ def test_my_randomized_xgb_classifier():
     try_test_model_on_iris("my_randomized_xgb_classifier.pkl")
 
 
-def test_my_es_randomized_xgb_classifier():
-    try_test_model_on_iris("my_es_randomized_xgb_classifier.pkl")
+def test_my_randomized_es_xgb_classifier():
+    try_test_model_on_iris("my_randomized_es_xgb_classifier.pkl")
 
 
 def test_my_xgb_classifier():

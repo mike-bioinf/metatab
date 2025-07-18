@@ -92,7 +92,7 @@ class DataLoader():
             load_as (Literal["generic", "train", "test"]): 
                 Specify how to store the data.
             kwargs: 
-                Does nothing except ensuring compability with other load functions.
+                Ignored. Ensures compatibility with other load methods.
         '''
         path = path if isinstance(path, Path) else Path(path)
         dname = path.stem
@@ -126,11 +126,12 @@ class DataLoader():
         which last folder is choosen as dataset name.
         
         Parameters:
-            path (str, Path): Path where the x and y files live.
+            path (str, Path): 
+                Path to the directory containing the data files.
             load_as (Literal["generic", "train", "test"]): 
                 Specify how to store the data.
             kwargs: 
-                Does nothing except ensuring compability with other load functions.
+                Ignored. Ensures compatibility with other load methods.
         '''
         path = path if isinstance(path, Path) else Path(path)
         dname = path.stem
@@ -149,37 +150,51 @@ class DataLoader():
 
     def load_sets_mode(
         self,
-        path: str | Path, 
+        path: str | Path,
+        skip: str | list[str] | None = None,
         save_missing: bool | str | list[str] = False,
         **kwargs
     ) -> None:
         '''
         Loads X/y train/test sets (so no load_as capability). 
+        
         Assumes that the sets files are named following the convention:
         "X/y_train/test.txt".
         
         These files must be located at the path specificied in 'path',
-        which last folder is choosen as dataset name.
+        which last folder is stored as 'generic_dataset_name'.
 
         Parameters:
-            path (str | Path): Path where the sets files live.
-            save_missing (bool | list[str], optional): 
-                Either a boolean or a string or list of strings.
-                - If boolean indicates whether the function should not raise errors for missing sets.
-                If False, the default, the function will look for all x and y train and test sets and will 
-                raise an error if some are missing.
-                - If string or list of strings it saves the specified missing sets. This list should 
-                therefore contains the values: "X_train", "X_test", "y_train" and "y_test".
-            kwargs: Does nothing except ensuring compability with other load functions.
+            path (str | Path): 
+                Path to the directory containing the data files. 
+            
+            skip (str | list[str]) | None:
+                String or list of strings that specifies the sets that must not be loaded.
+                If None the function tries to load all sets.
+
+            save_missing (bool | str | list[str], optional): 
+                - If False (default), raise an error if a required file is missing.
+                - If True, silently skip any missing file.
+                - If a str or list of str (from "X_train", "X_test", "y_train", "y_test"), 
+                does not raise errors for the missingness of the specified sets,
+                which can be or cannot be loaded depending on their existence.
+            
+            kwargs: 
+                Ignored. Ensures compatibility with other load methods.
         '''
         path = Path(path) if isinstance(path, str) else path
         dname = path.stem
         setattr(self, "generic_dataset_name", dname)
 
-        sets_names = ["X_train", "X_test", "y_train", "y_test"]
         save_missing = [save_missing] if isinstance(save_missing, str) else save_missing
+        skip = [] if skip is None else skip
+        skip = skip if isinstance(skip, list) else [skip]
+        sets_names = ["X_train", "X_test", "y_train", "y_test"]
         
         for set_name in sets_names:
+            if set_name in skip:
+                continue
+            
             set_path = path / f"{set_name}.txt"
             
             if not set_path.exists():
@@ -191,11 +206,12 @@ class DataLoader():
                 else:
                     raise FileNotFoundError(f"The file '{set_path}' does not exist.")
             
-            set_value = pd.read_table(set_path, sep="\t")
-            if re.match("y_", set_name):
-                set_value = pd.Series(set_value.iloc[:, 0])
+            data = pd.read_table(set_path, sep="\t")
 
-            setattr(self, set_name, set_value)
+            if set_name.startswith("y_"):
+                data = pd.Series(data.iloc[:, 0])
+            
+            setattr(self, set_name, data)
 
 
 

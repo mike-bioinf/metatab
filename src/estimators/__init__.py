@@ -1,6 +1,6 @@
 from estimators.estimators import (
     MyRandomizedXGBClassifier, 
-    MyESRandomizedXGBClassifier,
+    MyRandomizedESXGBClassifier,
     MyXGBClassifier,
     MyESXGBClassifier,
     MyRandomSearchCV,
@@ -12,7 +12,7 @@ from estimators.estimators import (
 
 __all__ = [
     "MyRandomizedXGBClassifier", 
-    "MyESRandomizedXGBClassifier",
+    "MyRandomizedESXGBClassifier",
     "MyXGBClassifier",
     "MyESXGBClassifier",
     "MyRandomSearchCV",

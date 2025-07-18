@@ -14,7 +14,7 @@ def parse_args(args):
 
     p.add_argument("-e", "--estimator", required=True, 
                     choices=["random_forest", "xgb", "es_xgb", "tabpfn"], 
-                    help=""" ML 'estimator' to use. One of 'random_forest', 'xgb', 'es_xgb', 'tabpfn'.""")
+                    help="""ML 'estimator' to use. One of 'random_forest', 'xgb', 'es_xgb', 'tabpfn'.""")
     
     p.add_argument("-p", "--preprocessing", default="base", choices=["base", "density_filter", "pca"],
                     help= """Preprocessing to apply on the feature space. One of 'base', 'density_filter' and 'pca'.
@@ -35,8 +35,7 @@ def parse_args(args):
 
     p.add_argument("-s", "--seed", default=42, type=int, help="Seed used to control randomness.")
 
-    p.add_argument("--create-outdir", action="store_true",
-                   help="Create the output folder if does not exists.")
+    p.add_argument("--create-outdir", action="store_true", help="Create the output folder if does not exists.")
 
     return p.parse_args(args)
 
@@ -52,7 +51,7 @@ def check_args(pars: dict) -> None:
 ## TODO: complete with the tune-tabpfn estimator name
 def check_not_tunable_estimators(pars: dict) -> None:
     '''Check whether the tune flag is used with not tunable estimator'''
-    if pars["estimator"] == "tabpfn":
+    if pars["tune"] and pars["estimator"] == "tabpfn":
         raise ValueError(
             "The 'tabpfn' estimator cannot be tuned setting --tune. Use the '' estimator."
         )

@@ -4,7 +4,7 @@ from utils.logging import create_logger
 from utils.helper_params import adjust_io_paths_, manage_output_path
 from utils.general import check_y_is_integer_encoded
 from estimators.types import Estimator
-from fit.fit_helper import pick_estimator
+from fit.fit_helper import pick_estimator_class
 from fit.params import parse_args, check_args
 
 
@@ -24,7 +24,7 @@ def main():
         path=pars["input_data"],
         target_feature=pars["target_feature"],
         load_as="train",
-        save_missing=["X_test", "y_test"]
+        skip=["X_test", "y_test"]
     )
 
     X_train, y_train = dl.X_train, dl.y_train
@@ -34,7 +34,7 @@ def main():
     # here we consider all 3 load methods to retrieve the dataset_name
     fit_dataset_name = dl.train_dataset_name if dl.train_dataset_name else dl.generic_dataset_name
 
-    estimator_class = pick_estimator(pars)
+    estimator_class = pick_estimator_class(pars)
     
     estimator: Estimator = estimator_class(
         preprocessing=pars["preprocessing"],

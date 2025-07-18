@@ -20,12 +20,13 @@ from estimators.estimators.params import (
     RANDOMIZED_XGBCLASSIFIER_PARAMS_DISTRIBUTIONS, 
     ES_XGBCLASSIFIER_FIXED_PARAMS,
     XGBCLASSIFIER_FIXED_PARAMS,
-    SKLEARN_RANDOM_SEARCH_FIXED_PARAMS
+    SKLEARN_RANDOM_SEARCH_FIXED_PARAMS,
+    N_ITERATIONS_RANDOM_SEARCH
 )
 
 
 
-class MyESRandomizedXGBClassifier(AbstractEstimator):
+class MyRandomizedESXGBClassifier(AbstractEstimator):
     '''
     Class that uses a custom implementation of random search cv (MyRandomSearchCV)
     with the XGBClassifier. This custom implementation allows and enforces the 
@@ -44,7 +45,7 @@ class MyESRandomizedXGBClassifier(AbstractEstimator):
     ):
         super().__init__(preprocessing, seed, params_distributions, fixed_params)
 
-    def fit(self, X: pd.DataFrame, y: pd.Series, **kwargs) -> "MyESRandomizedXGBClassifier":
+    def fit(self, X: pd.DataFrame, y: pd.Series, **kwargs) -> "MyRandomizedESXGBClassifier":
         fixed_params = _adjust_xgb_objective(self.fixed_params, y)
         fixed_params = _adjust_logloss_es_metric(fixed_params, y)
 
@@ -59,7 +60,7 @@ class MyESRandomizedXGBClassifier(AbstractEstimator):
             preprocessing_pipeline=preprocessing_pipeline,
             splitter = splitter,
             scorer="logloss",
-            n_iter=200,
+            n_iter=N_ITERATIONS_RANDOM_SEARCH,
             refit=True,
             seed=self.seed
         )

@@ -2,9 +2,13 @@ import numpy as np
 from scipy.stats import randint, loguniform
 
 
+# This number is used for all the randomized searches that we do,
+# so both for the custom implementation and for sklearn searches.
+N_ITERATIONS_RANDOM_SEARCH = 200
+
 
 SKLEARN_RANDOM_SEARCH_FIXED_PARAMS = {
-    "n_iter": 200,
+    "n_iter": N_ITERATIONS_RANDOM_SEARCH,
     "scoring": "neg_log_loss",
     "n_jobs": 1,
     "refit": True

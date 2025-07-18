@@ -8,7 +8,7 @@ from estimators.types import Estimator
 
 from estimators import (
     MyRandomizedXGBClassifier, 
-    MyESRandomizedXGBClassifier,
+    MyRandomizedESXGBClassifier,
     MyXGBClassifier,
     MyESXGBClassifier,
     MyRandomForestClassifier,
@@ -52,9 +52,9 @@ run_estimator = partial(run_estimator, X=X, y=y)
 
 
 run_estimator(
-    estimator=MyESRandomizedXGBClassifier,
+    estimator=MyRandomizedESXGBClassifier,
     fixed_params=TEST_ES_XGBCLASSIFIER_FIXED_PARAMS,
-    file=model_folder / "my_es_randomized_xgb_classifier.pkl"
+    file=model_folder / "my_randomized_es_xgb_classifier.pkl"
 )
 
 run_estimator(

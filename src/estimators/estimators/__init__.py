@@ -1,7 +1,7 @@
 from estimators.estimators.random_search import MyRandomSearchCV
 
 from estimators.estimators.xgb import (
-    MyESRandomizedXGBClassifier, 
+    MyRandomizedESXGBClassifier, 
     MyRandomizedXGBClassifier,
     MyESXGBClassifier,
     MyXGBClassifier
@@ -18,7 +18,7 @@ from estimators.estimators.tabpfn import (
 
 
 __all__ = [
-    "MyESRandomizedXGBClassifier",
+    "MyRandomizedESXGBClassifier",
     "MyRandomizedXGBClassifier",
     "MyESXGBClassifier",
     "MyXGBClassifier",

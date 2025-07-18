@@ -4,7 +4,7 @@ from estimators import (
     MyXGBClassifier,
     MyESXGBClassifier,
     MyRandomizedXGBClassifier,
-    MyESRandomizedXGBClassifier,
+    MyRandomizedESXGBClassifier,
     MyRandomForestClassifier,
     MyRandomizedRandomForestClassifier,
     MyTabPFNClassifier
@@ -15,7 +15,7 @@ Estimator: TypeAlias = Union[
     MyXGBClassifier,
     MyESXGBClassifier,
     MyRandomizedXGBClassifier,
-    MyESRandomizedXGBClassifier,
+    MyRandomizedESXGBClassifier,
     MyRandomForestClassifier,
     MyRandomizedRandomForestClassifier,
     MyTabPFNClassifier

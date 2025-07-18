@@ -23,10 +23,10 @@ def parse_args(args):
                    "before doing predictions.")
 
     p.add_argument("-o", "--output-dir", default=".",        
-                   help="""Path of the folder on which create the output file.
-                   If not provided the folder on which the program is run is used.
-                   Note one must provide only the output folder filepath.
-                   The name of the created file must not be specified.""")
+                   help="""Path of the folder in which the output file is created.
+                   If not provided the folder in which the program is run is used.
+                   Note that one must provide only the output folder path without a filename.
+                   The name of the created file is automatically inferred and must not be specified.""")
     
     p.add_argument("--create-outdir", action="store_true",
                    help="Create the output directory if does not exists.")

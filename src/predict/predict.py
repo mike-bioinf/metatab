@@ -21,7 +21,7 @@ def main():
     check_args(pars)
 
     adjust_io_paths_(pars, "input_data", "output_dir")
-    manage_output_path(pars, "output_dir",True)
+    manage_output_path(pars, "output_dir", True)
     logger = create_logger(sys.stdout)
 
     # deserialize estimator
@@ -40,7 +40,7 @@ def main():
         path=pars["input_data"],
         target_feature=pars["target_feature"],
         load_as="test",
-        save_missing=["X_train", "y_train"]
+        skip=["X_train", "y_train"]
     )
 
     X_test, y_test = dl.X_test, dl.y_test
@@ -50,7 +50,6 @@ def main():
     # here we consider all 3 load methods to retrieve the predict dataset name
     predict_dataset_name = dl.test_dataset_name if dl.test_dataset_name else dl.generic_dataset_name
     fit_dataset_name = estimator._fit_dataset_name_
-    preprocessing = estimator.preprocessing
     fit_preprocessing_dict = estimator.collect_fit_preprocessing_info()
 
     # uniform feature space if requested
@@ -73,7 +72,7 @@ def main():
         pred_proba=pred_proba,
         save_path=None,
         predict_dataset=predict_dataset_name,
-        preprocessing=preprocessing,
+        preprocessing=estimator.preprocessing,
         **fit_preprocessing_dict
     )
     

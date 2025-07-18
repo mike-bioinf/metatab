@@ -6,13 +6,13 @@ from estimators import (
     MyXGBClassifier,
     MyESXGBClassifier,
     MyRandomizedXGBClassifier,
-    MyESRandomizedXGBClassifier,
+    MyRandomizedESXGBClassifier,
     MyTabPFNClassifier
 )
 
 
 
-def pick_estimator(pars: dict) -> Estimator:
+def pick_estimator_class(pars: dict) -> Estimator:
     match (pars["estimator"], pars["tune"]):
         case ("random_forest", False):
             return MyRandomForestClassifier
@@ -25,7 +25,7 @@ def pick_estimator(pars: dict) -> Estimator:
         case ("ex_xgb", False):
             return MyESXGBClassifier
         case ("ex_xgb", True):
-            return MyESRandomizedXGBClassifier
+            return MyRandomizedESXGBClassifier
         case ("tabpfn", _):
             return MyTabPFNClassifier
         case _:

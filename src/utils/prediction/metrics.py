@@ -19,7 +19,7 @@ def compute_metrics(
     '''
     Compute metrics supporting all classification scenarios.
 
-    The function automatically distinguish between binary and multiclass cases.
+    The function automatically distinguishes between binary and multiclass cases.
     Multiclass cases are further divided in straight one vs rest and averaged cases.
 
     Parameters:
@@ -29,6 +29,7 @@ def compute_metrics(
             Whether to compute and remain statistics in one vs rest format,
             or apply an averaging strategy on them/data (them/data because
             some strategy like "micro" does not pass by this ovr metrics).
+            Note this parameter is ignored in binary cases.
         
         average_strategy (Literal["micro", "macro", "weighted"]):
             Average strategy to use. Is ignored if multiclass is not "average".

@@ -1,5 +1,5 @@
 from estimators import (
-    MyESRandomizedXGBClassifier,
+    MyRandomizedESXGBClassifier,
     MyRandomizedXGBClassifier,
     MyXGBClassifier,
     MyESXGBClassifier,
@@ -15,7 +15,7 @@ def check_type_deserialized_object(obj) -> None:
     if not isinstance(
         obj, 
         (
-            MyESRandomizedXGBClassifier,
+            MyRandomizedESXGBClassifier,
             MyRandomizedXGBClassifier,
             MyXGBClassifier,
             MyESXGBClassifier,

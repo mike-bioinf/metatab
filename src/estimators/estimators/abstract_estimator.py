@@ -95,7 +95,7 @@ class AbstractEstimator(ABC):
     @abstractmethod
     def get_feature_names_in_(self) -> np.ndarray:
         '''
-        Returns the "feature_names_in" attribute learned duting the fit.
+        Returns the "feature_names_in" attribute learned at fit level.
         The attribute is retrieved from the preprocessing pipeline since 
         it is always applied before the classifier.
         '''
@@ -124,9 +124,9 @@ class AbstractEstimator(ABC):
         headed by the classifier (so estimator_ or estimator_.best_estimator_).
         '''
         if self.preprocessing == "pca":
-            self._collect_from_pca_preprocessing(preprocessing_pipeline)
+            return self._collect_from_pca_preprocessing(preprocessing_pipeline)
         elif self.preprocessing == "density_filter":
-            self._collect_from_density_preprocessing(preprocessing_pipeline)
+            return self._collect_from_density_preprocessing(preprocessing_pipeline)
         elif self.preprocessing == "base":
             return {}
 
@@ -134,9 +134,11 @@ class AbstractEstimator(ABC):
     def _collect_from_pca_preprocessing(self, preprocessing_pipeline: Pipeline) -> dict:
         '''Collect the pca related learned info'''
         pca: PCA = preprocessing_pipeline.named_steps["pca"]
+        # we wrap the container objects to avoid errors 
+        # in the building process of prediction dataframe object
         return {
             "n_pca_components": pca.n_components_,
-            "explained_variance_ratio_": pca.explained_variance_ratio_
+            "explained_variance_ratio": [pca.explained_variance_ratio_]
         }
     
     

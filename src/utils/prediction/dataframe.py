@@ -82,7 +82,7 @@ class PredictionDataframe():
             **add_columns: Additional columns to add to the DataFrame.
 
         Returns:
-            Self, fhe dataframe is stored in self.df.
+            Self, the dataframe is stored in self.df.
         '''
         partial_data = {
             "dataset": dataset,
@@ -160,7 +160,10 @@ class PredictionDataframe():
 
     @staticmethod
     def _save_partial_data(partial_data, save_path) -> str:
-        '''Saves the partial data object using the pickle module. Returns the filepath as string.'''
+        '''
+        Saves the partial data object using the pickle module. 
+        Returns the filepath as string.
+        '''
         save_path = str(save_path)
         date_stamp = time.strftime("%Y_%m_%d__%H_%M_%S")
         dump_file = os.path.join(save_path, f"partial_data__{date_stamp}.pkl")
