@@ -65,7 +65,7 @@ class MyRandomForestClassifier(AbstractEstimator):
     def _create_estimator(self) -> Pipeline:
         return _create_rf_preprocessing_pipeline(self.preprocessing, self.fixed_params)
     
-    def _get_preprocessing_pipeline(self) -> Pipeline:
+    def _get_fitted_preprocessing_pipeline_or_estimator(self) -> Pipeline:
         return self.estimator_
 
         
@@ -115,7 +115,7 @@ class MyRandomizedRandomForestClassifier(AbstractEstimator):
     def _create_estimator(self) -> Pipeline:
         return _create_rf_preprocessing_pipeline(self.preprocessing, self.fixed_params)
 
-    def _get_preprocessing_pipeline(self) -> Pipeline:
+    def _get_fitted_preprocessing_pipeline_or_estimator(self) -> Pipeline:
         return self.estimator_.best_estimator_
 
 

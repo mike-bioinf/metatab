@@ -83,7 +83,7 @@ class MyRandomizedESXGBClassifier(AbstractEstimator):
     def _create_preprocessing_pipeline(self) -> Pipeline:
         return create_default_pipeline(self.preprocessing, "oversample")
 
-    def _get_preprocessing_pipeline(self):
+    def _get_fitted_preprocessing_pipeline_or_estimator(self):
         return self.estimator_.preprocessing_pipeline_
 
 
@@ -140,7 +140,7 @@ class MyRandomizedXGBClassifier(AbstractEstimator):
             classifier_params=fixed_params
         )
     
-    def _get_preprocessing_pipeline(self) -> Pipeline:
+    def _get_fitted_preprocessing_pipeline_or_estimator(self) -> Pipeline:
         return self.estimator_.best_estimator_
         
 
@@ -208,7 +208,7 @@ class MyESXGBClassifier(AbstractEstimator):
     def _create_preprocessing_pipeline(self) -> Pipeline:
         return create_default_pipeline(self.preprocessing, "oversample")
     
-    def _get_preprocessing_pipeline(self) -> Pipeline:
+    def _get_fitted_preprocessing_pipeline_or_estimator(self) -> Pipeline:
         return self.preprocessing_pipeline_
 
 
@@ -258,7 +258,7 @@ class MyXGBClassifier(AbstractEstimator):
             classifier_params=fixed_params
         )
     
-    def _get_preprocessing_pipeline(self) -> Pipeline:
+    def _get_fitted_preprocessing_pipeline_or_estimator(self) -> Pipeline:
         return self.estimator_
 
 

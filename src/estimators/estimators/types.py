@@ -18,3 +18,8 @@ Classifier: TypeAlias = Union[
 BoostedClassifier: TypeAlias = Union[
     XGBClassifier
 ]
+
+
+TabPFNEstimators: TypeAlias = Union[
+    TabPFNClassifier
+]

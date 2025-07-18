@@ -89,11 +89,5 @@ class MyTabPFNClassifier(AbstractEstimator):
         else:
             raise ValueError("Unsupported preprocessing.")
     
-    def _get_preprocessing_pipeline(self) -> Pipeline | TabPFNClassifier:
-        '''
-        Here we return a tabpfn instance in case of preprocessing 
-        "base" and not a Pipeline object as expected by this method blueprint. 
-        This is not a problem for related downstream functionalities,
-        aka "get_features_names_in_" and "collect_fit_preprocessing_info" methods.
-        '''
+    def _get_fitted_preprocessing_pipeline_or_estimator(self) -> Pipeline | TabPFNClassifier:
         return self.estimator_

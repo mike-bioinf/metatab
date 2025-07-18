@@ -1,40 +1,42 @@
-import re
+import io
+import base64
 import numpy as np
-import pandas as pd
-from utils.prediction.constants import PERFORMANCE_METRICS
+from typing import Any
 
 
 
-def parse_pred_dataframe(df: pd.DataFrame) -> pd.DataFrame:
+def save_ndarray_to_str(value: Any):
+    '''ndarray_to_str function with conditional check on input type.'''
+    return ndarray_to_str(value) if isinstance(value, np.ndarray) else value
+
+
+def ndarray_to_str(a: np.ndarray) -> str:
     '''
-    Parse back from str to numpy arrays specific columns of the PredictionDataFrame.
-    Note that the function wants in input the underlying dataframe.
-    Return the parsed underlying dataframe.
+    Convert the nunmpy array to a string representation with full metadata (shape, dtype, ...).
+    Steps: array -> binary -> base64 -> str
     '''
-    return df.apply(_parse_row, axis=1)
+    buffer = io.BytesIO()
+    # we not allow pickle since we work with non object-dtyped arrays
+    np.save(buffer, a, allow_pickle=False)
+    buffer.seek(0)
+    return base64.b64encode(buffer.read()).decode('utf-8')
 
 
-def _parse_row(row: pd.Series):
-    '''Parse a single row of the PredictionDataFrame'''
-    # pred_proba is processed on its own
-    must_labels_to_parse = ["classes", "classes_counts", "test_labels", "pred_labels"]
-    metrics_labels_to_parse = PERFORMANCE_METRICS
-    all_labels = must_labels_to_parse + metrics_labels_to_parse
+def save_str_to_ndarray(value: Any):
+    '''
+    str_to_ndarray function with conditional check on str.
+    We check that the value is str before transforming it
+    since in our columns we can have pd.NA and floats other 
+    str representations of numpy arrays, but not "native" strings.
+    '''
+    return str_to_ndarray(value) if isinstance(value, str) else value
 
-    for label in all_labels:
-        dtype = np.float64 if label in metrics_labels_to_parse else np.int64
-        if label in row.index:
-            value = row[label]
-            # metrics can be NA, float or np arrays
-            row[label] = value \
-                if pd.isna(value) or isinstance(value, float) \
-                else np.fromstring(re.sub(r"[\[\]\n]", "", value), sep=" ", dtype=dtype) 
 
-    row["pred_proba"] = row["pred_proba"] \
-        if pd.isna(row["pred_proba"]) \
-        else np.reshape(
-            np.fromstring(re.sub(r"[\[\]\n]", "", row["pred_proba"]), sep=" ", dtype=np.float64), 
-            shape=(-1, row["classes"].size)
-        ) 
-    
-    return row
+def str_to_ndarray(b64_str: str) -> np.ndarray:
+    '''
+    Decode the string representation back to the numpy array.
+    Steps: str -> base64 -> binary -> array
+    '''
+    buffer = io.BytesIO(base64.b64decode(b64_str.encode('utf-8')))
+    # setting high header size with disabled pickle for better portability
+    return np.load(buffer, allow_pickle=False, max_header_size=10_000_000)

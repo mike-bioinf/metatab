@@ -13,6 +13,7 @@ if TYPE_CHECKING:
     from sklearn.pipeline import Pipeline
     from sklearn.decomposition import PCA
     from estimators.preprocessing.density_selector import DensityFeatureSelector
+    from estimators.estimators.types import TabPFNEstimators
 
 
 
@@ -87,41 +88,48 @@ class AbstractEstimator(ABC):
     
 
     @abstractmethod
-    def _get_preprocessing_pipeline(self) -> Pipeline:
-        '''Return the fitted preprocessing pipeline (with or without the classifier head).'''
+    def _get_fitted_preprocessing_pipeline_or_estimator(self) -> Pipeline | TabPFNEstimators:
+        '''
+        Return the fitted preprocessing pipeline 
+        with or without the classifier head, or the fitted estimator
+        in the absence of it. Tabpfn-derived estimators does 
+        not require/build a sklearn pipeline with base preprocessing. 
+        For these classes the estimator is returned.
+        '''
         pass
-    
+
     
     @abstractmethod
     def get_feature_names_in_(self) -> np.ndarray:
         '''
         Returns the "feature_names_in" attribute learned at fit level.
-        The attribute is retrieved from the preprocessing pipeline since 
-        it is always applied before the classifier.
+        The attribute is retrieved from the fitted preprocessing pipeline 
+        or from the estimator in absence of the first.
         '''
         check_is_fitted(self, "estimator_")
-        pp = self._get_preprocessing_pipeline()
-        return pp.feature_names_in_
+        fitted_obj = self._get_fitted_preprocessing_pipeline_or_estimator()
+        return fitted_obj.feature_names_in_
 
     
     @abstractmethod
     def collect_fit_preprocessing_info(self) -> dict:
         '''
         Collect the learned preprocessing attributes of interest in a dict.
-        The dict is empty in case of "base" preprocessing.
+        An empty dict is returned in case the estimator has no preprocessing pipeline.
         '''
         check_is_fitted(self, "estimator_")
-        pp = self._get_preprocessing_pipeline()
-        return self._collect_fit_preprocessing_info(pp)
+        fitted_obj = self._get_fitted_preprocessing_pipeline_or_estimator()
+        if not isinstance(fitted_obj, Pipeline):
+            return {}
+        return self._collect_fit_preprocessing_info(fitted_obj)
 
 
     def _collect_fit_preprocessing_info(self, preprocessing_pipeline: Pipeline) -> dict:
         '''
-        Internal to collect the preprocessing info
+        Internal to collect the preprocessing info.
         Wants in input the preprocessing pipeline.
-        This means either the sole and separated preprocessing 
-        pipeline like for ES-XGB versions, or the entire pipeline 
-        headed by the classifier (so estimator_ or estimator_.best_estimator_).
+        This means either the sole decoupled preprocessing pipeline, 
+        like for ESXGB estimators, or the pipeline headed by the classifier.
         '''
         if self.preprocessing == "pca":
             return self._collect_from_pca_preprocessing(preprocessing_pipeline)
@@ -135,10 +143,11 @@ class AbstractEstimator(ABC):
         '''Collect the pca related learned info'''
         pca: PCA = preprocessing_pipeline.named_steps["pca"]
         # we wrap the container objects to avoid errors 
-        # in the building process of prediction dataframe object
+        # in the building process of the prediction dataframe object
         return {
             "n_pca_components": pca.n_components_,
-            "explained_variance_ratio": [pca.explained_variance_ratio_]
+            "explained_variance_ratio": [pca.explained_variance_ratio_],
+            "total_explained_variance_ratio": pca.explained_variance_ratio_.sum()
         }
     
     

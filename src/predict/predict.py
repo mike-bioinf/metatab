@@ -56,7 +56,9 @@ def main():
     if pars["x_uniform"]:
         fit_features = estimator.get_feature_names_in_()
         if not np.isin(X_test.columns.to_numpy(), fit_features).any():
-            raise ValueError("X_test has no feature in common with X_train.")
+            raise ValueError(
+                "Test feature space has no feature in common with the training space."
+            )
         X_test = X_test.reindex(columns=fit_features, fill_value=0.0)
         logger.debug("Test feature space uniformed to training space.")
     
@@ -80,7 +82,7 @@ def main():
 
     filename = f"pred_df__{fit_dataset_name}__{predict_dataset_name}.txt"
     filepath = pars["output_dir"] / filename
-    pdf.to_csv(filepath, sep="\t")
+    pdf.to_csv(filepath, sep="\t", index=False)
     logger.debug(f"Output created to {filepath}")
 
 

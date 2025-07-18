@@ -8,12 +8,12 @@ from typing import Literal
 from pathlib import Path
 from copy import deepcopy
 from warnings import warn
-from utils.prediction.parser import parse_pred_dataframe
 from utils.prediction.metrics import compute_metrics
 
 from utils.prediction.constants import (
     PERFORMANCE_METRICS,
-    PARSE_COLUMNS,
+    MUST_COLUMNS_TO_PARSE,
+    OPTIONAL_COLUMNS_TO_PARSE,
     MANDATORY_COLUMNS
 )
 
@@ -21,6 +21,11 @@ from utils.prediction.utils import (
     wrap_into_list, 
     to_numpy_iterable, 
     are_same_length
+)
+
+from utils.prediction.parser import (
+    save_ndarray_to_str,
+    save_str_to_ndarray
 )
 
 
@@ -41,8 +46,14 @@ class PredictionDataframe():
     def __init__(self):
         self.df: pd.DataFrame = None
         self.must_columns = MANDATORY_COLUMNS
-        self.columns_to_parse = PARSE_COLUMNS
+        self.must_columns_to_parse = MUST_COLUMNS_TO_PARSE
+        self.optional_columns_to_parse = OPTIONAL_COLUMNS_TO_PARSE
         self.metrics_columns = PERFORMANCE_METRICS
+        self.all_columns_to_parse = (
+            MUST_COLUMNS_TO_PARSE + 
+            OPTIONAL_COLUMNS_TO_PARSE +
+            PERFORMANCE_METRICS
+        )
         self.has_recovered = None
 
 
@@ -176,27 +187,20 @@ class PredictionDataframe():
     def build_from_file(
         self, 
         file: str | Path, 
-        parse: bool = False, 
         **read_params
     ) -> "PredictionDataframe":
         '''
         Read the prediction DataFrame from a file using pandas read_csv function.
         Parameters:
             file (str | Path): filepath.
-            **read_params: 
-                Additonal kw args to pass to the pandas "read_csv" function.
-            parse (bool, optional): 
-                Whether to parse the "classes", "classes_counts", "test_labels", 
-                "pred_labels" and "pred_proba" columns from string to numpy arrays.
-                
+            **read_params: Additonal kwargs to pass to the pandas "read_csv" function.
         Returns: 
             Self.
         '''
         df = pd.read_csv(file, **read_params)
         self._check_must_columns_presence(df)
         self._warn_na_in_must_columns(df)
-        if parse: df = parse_pred_dataframe(df)
-        self.df = df
+        self.df = self._parse_str_to_numpy_arrays(df)
         return self
 
 
@@ -205,8 +209,7 @@ class PredictionDataframe():
         self, 
         folder: str | Path, 
         glob_pattern: str = "*", 
-        recursive: bool = False, 
-        parse: bool = False,  
+        recursive: bool = False,   
         **read_params
     ) -> "PredictionDataframe":
         '''
@@ -219,9 +222,6 @@ class PredictionDataframe():
                 Pattern used to select the prediction dataframe files. Defaults to "*".
             recursive (bool, optional): 
                 Whether to recursevely search in the folder specified in path.
-            parse (bool, optional): 
-                Whether to parse the "classes", "classes_counts", "test_labels", 
-                "pred_labels" and "pred_proba" columns from string to numpy arrays.
 
         Returns: 
             self.
@@ -233,20 +233,29 @@ class PredictionDataframe():
         if not folder.is_dir():
             raise FileNotFoundError(f"'{folder}' is not a folder.")
 
-        search_bound_method = folder.rglob if recursive else folder.glob
-
+        bound_search_method = folder.rglob if recursive else folder.glob
         dfs = []
-        for df_file in search_bound_method(glob_pattern):
+
+        for df_file in bound_search_method(glob_pattern):
             dfs.append(pd.read_csv(df_file, **read_params))
 
         df = pd.concat(dfs, axis=0, ignore_index=True)
         self._check_must_columns_presence(df)
         self._warn_na_in_must_columns(df)
-        if parse: df = parse_pred_dataframe(df)
+        df = self._parse_str_to_numpy_arrays(df)
         self.df = df
         return self
 
 
+
+    def _parse_str_to_numpy_arrays(self, df: pd.DataFrame) -> pd.DataFrame:
+        '''Parse the string representation of numpy arrays back to numpy arrays'''
+        for col in self.all_columns_to_parse:
+            if col in df.columns:
+                df[col] = df[col].apply(save_str_to_ndarray)
+        return df
+
+        
 
     def get_df(self) -> pd.DataFrame:
         '''Get the underlying DataFrame object.'''
@@ -300,13 +309,11 @@ class PredictionDataframe():
          
 
 
-    def to_csv(self, filepath: str | Path, precision: int = 16, **kwargs) -> None:
+    def to_csv(self, filepath: str | Path, **kwargs) -> None:
         '''
         Save the underlying DataFrame into a text file.
         Parameters:
             filepath (str | Path): Filepath.
-            precision (int, optional): 
-                Number of digits used to store numpy arrays values.
             **kwargs: 
                 Additional keywords args to pass to "to_csv" pandas 
                 method called on the underlying DataFrame
@@ -314,34 +321,32 @@ class PredictionDataframe():
         '''
         if self.df is None:
             raise ValueError(
-                "The PredictionDataFrame instance does not contain data. self.df is None."
+                "The PredictionDataframe does not contain data. The 'df' attribute is None."
             )
         
         df_copy = deepcopy(self.df)
 
-        for col in (self.columns_to_parse + self.metrics_columns):
+        for col in self.all_columns_to_parse:
             if col in df_copy.columns:
-                df_copy[col] = df_copy[col].apply(self._save_array2string, precision=precision)
+                df_copy[col] = df_copy[col].apply(save_ndarray_to_str)
 
         df_copy.to_csv(filepath, **kwargs)
 
 
-    @staticmethod
-    def _save_array2string(value, precision: int):
-        '''array2string numpy function with conditional checking on input type.'''
-        return value \
-            if not isinstance(value, np.ndarray) \
-            else np.array2string(value, precision=precision, floatmode="fixed", threshold=sys.maxsize)
-
 
     @staticmethod
-    def _check_ytest_predproba_shapes(y_test: list[np.ndarray], pred_proba: list[np.ndarray]) -> None:
+    def _check_ytest_predproba_shapes(
+        y_test: list[np.ndarray], 
+        pred_proba: list[np.ndarray]
+    ) -> None:
         '''Checks whether y_test and pred_proba shapes are compatible'''
         for y, proba in zip(y_test, pred_proba):
             if not isinstance(proba, np.ndarray) and pd.isna(proba): 
                 continue
             elif y.size != proba.shape[0]:
-                raise ValueError("Found discrepancies in the shapes of 'y_test' and 'pred_proba' arrays.")
+                raise ValueError(
+                    "Found discrepancies in the shapes of 'y_test' and 'pred_proba' arrays."
+                )
 
 
     @staticmethod
