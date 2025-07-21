@@ -1,17 +1,20 @@
 import sys
-from utils.data_loader import DataLoader
-from utils.logging import create_logger
-from utils.helper_params import adjust_io_paths_, manage_output_path
-from utils.general import check_y_is_integer_encoded
 from estimators.types import Estimator
+from utils.data_loader import DataLoader
+from utils.general import create_logger, check_y_is_integer_encoded
 from fit.fit_helper import pick_estimator_class
-from fit.params import parse_args, check_args
+from fit.params import parse_args
 
+from utils.helper_params import (
+    adjust_io_paths_, 
+    manage_output_path,
+    check_fit_args
+)
 
 
 def main():
     pars = vars(parse_args(sys.argv[1:]))
-    check_args(pars)
+    check_fit_args(pars)
 
     adjust_io_paths_(pars, "input_data", "output_path")
     manage_output_path(pars, "output_path", False)

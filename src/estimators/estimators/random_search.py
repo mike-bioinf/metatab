@@ -88,7 +88,8 @@ class MyRandomSearchCV:
             after the search process.
         
         seed (int):
-            Integer for reproducibility.
+            Integer for reproducibility. 
+            Affects the data splitting and HP space sampling procedures.
 
             
         Attributes
@@ -118,7 +119,6 @@ class MyRandomSearchCV:
         self.n_iter = n_iter
         self.refit = refit
         self.seed = seed
-        self.rng_sampling = np.random.default_rng(seed)
         self._check_preprocessing_pipeline()
 
 
@@ -130,11 +130,12 @@ class MyRandomSearchCV:
         '''
         self.classes_ = y.unique()
         self.n_classes_ = self.classes_.size
+        rng_sampling = np.random.default_rng(self.seed)
 
         best_score = -inf
         best_hps = None
 
-        for sample_tune_params in self._sample_from_distributions(self.n_iter):
+        for sample_tune_params in self._sample_from_distributions(self.n_iter, rng_sampling):
             # we use the same fresh RandomState for every cv classifier,
             # this maximize the internal cv entropy,
             # while preserving uniformity accross CVs
@@ -182,7 +183,7 @@ class MyRandomSearchCV:
         
         # set the best attrs
         self.best_score_ = best_score
-        self.best_params_ = best_hps
+        self.best_params_: dict = best_hps
 
         # refit with best hps
         if self.refit:
@@ -257,7 +258,11 @@ class MyRandomSearchCV:
         
 
 
-    def _sample_from_distributions(self, n_samples: int) -> Generator[dict, None, None]:
+    def _sample_from_distributions(
+        self, 
+        n_samples: int, 
+        rng: np.random.Generator
+    ) -> Generator[dict, None, None]:
         '''
         Utility to sample from a dict of distibutions like 
         the ones accepted by RandomizedSearchCV.
@@ -265,19 +270,20 @@ class MyRandomSearchCV:
         Parameters:
             dists (dict): RandomizedSearchCV-like distributions dict.
             n_samples (int): Number of returned samples.
+            rng (Generator): numpy rng. 
 
         Returns:
             A generator that yield sampled valued in a dict.
         '''
         n_sampled = 0
         while n_sampled < n_samples:
-            sample = self._sample_distribution()
+            sample = self._sample_distribution(rng)
             n_sampled += 1
             yield sample 
 
 
 
-    def _sample_distribution(self) -> dict:
+    def _sample_distribution(self, rng: np.random.Generator) -> dict:
         '''
         Utility to sample from the distribution dict.
         Returns the sample as a dict of param:sampled_value.
@@ -287,9 +293,9 @@ class MyRandomSearchCV:
             if isinstance(v, list) and len(v) == 1:
                 sample[k] = v[0]
             elif isinstance(v, list):
-                sample[k] = self.rng_sampling.choice(v)
+                sample[k] = rng.choice(v)
             elif isinstance(v, (rv_continuous_frozen, rv_discrete_frozen)):
-                sample[k] = self._to_number(v.rvs(random_state=self.rng_sampling))
+                sample[k] = self._to_number(v.rvs(random_state=rng))
             else:
                 raise ValueError(
                     "Unsupported distribution object used in param_distributions parameter."

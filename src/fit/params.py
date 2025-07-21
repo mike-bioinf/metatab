@@ -1,6 +1,4 @@
 import argparse
-from utils.helper_params import check_target_feature
-
 
 
 def parse_args(args):
@@ -10,7 +8,7 @@ def parse_args(args):
     p.add_argument("-o", "--output-path", required=True, help="Path of the pickle file created in output.")
 
     p.add_argument("-m", "--input-mode", required=True, choices=["sets", "xy", "df"],
-                    help="Define the data input format. One of 'sets', 'xy', or 'df'.")
+                    help="Defines the data input format. One of 'sets', 'xy', or 'df'.")
 
     p.add_argument("-e", "--estimator", required=True, 
                     choices=["random_forest", "xgb", "es_xgb", "tabpfn"], 
@@ -20,7 +18,7 @@ def parse_args(args):
                     help= """Preprocessing to apply on the feature space. One of 'base', 'density_filter' and 'pca'.
                     -base: a general minimal preprocessing is applied according to the used estimator.
                     -density_filter: The number of columns is reduced to 500 keeping only the most dense features.
-                    Note: according to the type of filtering applied the exact number of filtered features may be not exactly 500. 
+                    Note: according to the type of filtering applied the exact number of selected features may be not exactly 500. 
                     This strategy is automatically selected based on the estimator used (no user control over it).
                     -pca: PCA is applied and only the first N principal components retaining the 95 percent of the variance are kept.""")
     
@@ -39,19 +37,3 @@ def parse_args(args):
 
     return p.parse_args(args)
 
-
-
-
-def check_args(pars: dict) -> None:
-    '''General check on arguments'''
-    check_target_feature(pars)
-    check_not_tunable_estimators(pars)
-
-
-## TODO: complete with the tune-tabpfn estimator name
-def check_not_tunable_estimators(pars: dict) -> None:
-    '''Check whether the tune flag is used with not tunable estimator'''
-    if pars["tune"] and pars["estimator"] == "tabpfn":
-        raise ValueError(
-            "The 'tabpfn' estimator cannot be tuned setting --tune. Use the '' estimator."
-        )

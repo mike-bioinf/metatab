@@ -12,9 +12,15 @@ from sklearn.model_selection import (
     train_test_split
 )
 
+from sklearn.utils.validation import check_is_fitted
 from estimators.estimators.random_search import MyRandomSearchCV
 from estimators.estimators.abstract_estimator import AbstractEstimator
-from estimators.estimators.utils import add_string_to_params, create_default_pipeline
+
+from estimators.estimators.utils import (
+    add_string_to_params, 
+    create_default_pipeline,
+    remove_string_from_params
+)
 
 from estimators.estimators.params import (
     RANDOMIZED_XGBCLASSIFIER_PARAMS_DISTRIBUTIONS, 
@@ -46,7 +52,8 @@ class MyRandomizedESXGBClassifier(AbstractEstimator):
         super().__init__(preprocessing, seed, params_distributions, fixed_params)
 
     def fit(self, X: pd.DataFrame, y: pd.Series, **kwargs) -> "MyRandomizedESXGBClassifier":
-        fixed_params = _adjust_xgb_objective(self.fixed_params, y)
+        fixed_params = super().add_seed_to_fixed_params(copy=True)
+        fixed_params = _adjust_xgb_objective(fixed_params, y)
         fixed_params = _adjust_logloss_es_metric(fixed_params, y)
 
         # pass a seed here in splitter and NOT a RandomState
@@ -85,6 +92,11 @@ class MyRandomizedESXGBClassifier(AbstractEstimator):
 
     def _get_fitted_preprocessing_pipeline_or_estimator(self):
         return self.estimator_.preprocessing_pipeline_
+    
+    def get_best_hps(self) -> dict:
+        check_is_fitted(self, "estimator_")
+        return self.estimator_.best_params_
+
 
 
 
@@ -108,12 +120,14 @@ class MyRandomizedXGBClassifier(AbstractEstimator):
         super().__init__(preprocessing, seed, params_distributions, fixed_params)
 
     def fit(self, X: pd.DataFrame, y: pd.Series, **kwargs) -> "MyRandomizedXGBClassifier":
-        fixed_params = _adjust_xgb_objective(self.fixed_params, y)
+        fixed_params = super().add_seed_to_fixed_params(copy=True)
+        fixed_params = _adjust_xgb_objective(fixed_params, y)
         
         estimator = RandomizedSearchCV(
             estimator=self._create_estimator(fixed_params),
             param_distributions=add_string_to_params(self.params_distributions, "xgbclassifier__"),
             cv=RepeatedStratifiedKFold(n_repeats=5, n_splits=5, random_state=self.seed),
+            random_state=self.seed,
             **SKLEARN_RANDOM_SEARCH_FIXED_PARAMS,
         )
 
@@ -143,6 +157,10 @@ class MyRandomizedXGBClassifier(AbstractEstimator):
     def _get_fitted_preprocessing_pipeline_or_estimator(self) -> Pipeline:
         return self.estimator_.best_estimator_
         
+    def get_best_hps(self) -> dict:
+        check_is_fitted(self, "estimator_")
+        return remove_string_from_params(self.estimator_.best_params_, "xgbclassifier__")
+
 
 
 
@@ -176,11 +194,13 @@ class MyESXGBClassifier(AbstractEstimator):
             random_state=self.seed, 
             stratify=y
         )
+
         self.preprocessing_pipeline_ = self._create_preprocessing_pipeline()
         X_train_trans = self.preprocessing_pipeline_.fit_transform(X_train)
         X_val_trans = self.preprocessing_pipeline_.transform(X_val)
 
-        fixed_params = _adjust_xgb_objective(self.fixed_params, y)
+        fixed_params = super().add_seed_to_fixed_params(copy=True)
+        fixed_params = _adjust_xgb_objective(fixed_params, y)
         fixed_params = _adjust_logloss_es_metric(fixed_params, y)
         estimator = XGBClassifier(**fixed_params)
         
@@ -189,7 +209,8 @@ class MyESXGBClassifier(AbstractEstimator):
             y_train, 
             eval_set=[(X_val_trans, y_val)], 
             verbose=False
-        ) 
+        )
+
         return self
     
     def collect_fit_preprocessing_info(self) -> dict:
@@ -210,6 +231,9 @@ class MyESXGBClassifier(AbstractEstimator):
     
     def _get_fitted_preprocessing_pipeline_or_estimator(self) -> Pipeline:
         return self.preprocessing_pipeline_
+
+    def get_best_hps(self) -> None:
+        return None
 
 
 
@@ -233,7 +257,8 @@ class MyXGBClassifier(AbstractEstimator):
         super().__init__(preprocessing, seed, params_distributions, fixed_params)
 
     def fit(self, X: pd.DataFrame, y: pd.Series, **kwargs) -> "MyXGBClassifier":
-        fixed_params = _adjust_xgb_objective(self.fixed_params, y)
+        fixed_params = super().add_seed_to_fixed_params(copy=True)
+        fixed_params = _adjust_xgb_objective(fixed_params, y)
         estimator = self._create_estimator(fixed_params)
         self.estimator_ = estimator.fit(X, y)
         return self
@@ -261,35 +286,40 @@ class MyXGBClassifier(AbstractEstimator):
     def _get_fitted_preprocessing_pipeline_or_estimator(self) -> Pipeline:
         return self.estimator_
 
+    def get_best_hps(self) -> None:
+        return None
 
 
 
-def _adjust_xgb_objective(fixed_params: dict, y: pd.Series) -> dict:
+
+def _adjust_xgb_objective(fixed_params: dict, y: pd.Series, copy: bool = False) -> dict:
     '''
     Add the objective parameter since it is fit/data specific.
-    Returns a new dict.
+    Returns a new dict or the old updated one depending on copy parameter.
     '''
-    copy_fixed_params = deepcopy(fixed_params)
+    fixed_params = deepcopy(fixed_params) if copy else fixed_params
     n_classes = y.unique().size
     
     if n_classes == 2:
         # here we must NOT specify num_class otherwise strange behaviours
-        copy_fixed_params["objective"] = "binary:logistic"
+        fixed_params["objective"] = "binary:logistic"
     else:
-        copy_fixed_params["objective"] = "multi:softprob"
-        copy_fixed_params["num_class"] = n_classes
+        fixed_params["objective"] = "multi:softprob"
+        fixed_params["num_class"] = n_classes
     
-    return copy_fixed_params 
+    return fixed_params 
 
 
 
-def _adjust_logloss_es_metric(fixed_params: dict, y: pd.Series) -> dict:
+def _adjust_logloss_es_metric(fixed_params: dict, y: pd.Series, copy: bool = False) -> dict:
     '''
     The XGBboost package differentiate between binary "logloss"
     and multiclassification "mlogloss" for the early stopping metric.
-    Returns a new dict of fixed params with the correct logloss if used.
+    The function adjust the logloss according to the classification scenario,
+    if it used for early stop.
+    Returns a new dict or the old updated one depending on copy parameter.
     '''
-    fixed_params = deepcopy(fixed_params)
+    fixed_params = deepcopy(fixed_params) if copy else fixed_params
     is_log_loss = True if fixed_params["eval_metric"] in ["logloss", "mlogloss"] else False
 
     if not is_log_loss:

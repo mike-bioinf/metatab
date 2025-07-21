@@ -15,6 +15,23 @@ SKLEARN_RANDOM_SEARCH_FIXED_PARAMS = {
 }
 
 
+XGBCLASSIFIER_FIXED_PARAMS = {
+    "n_estimators": 700,
+    "n_jobs": -1,
+    "verbosity": 0
+}
+
+
+ES_XGBCLASSIFIER_FIXED_PARAMS = {
+    "n_estimators": 10000,
+    "eval_metric": "logloss",
+    "early_stopping_rounds": 30,
+    "verbose_eval": False,
+    "n_jobs": -1,
+    "verbosity": 0
+}
+
+
 RANDOMIZED_XGBCLASSIFIER_PARAMS_DISTRIBUTIONS = {
     "grow_policy": ["depthwise"],
     "tree_method": ["exact"],
@@ -29,28 +46,8 @@ RANDOMIZED_XGBCLASSIFIER_PARAMS_DISTRIBUTIONS = {
 }
 
 
-ES_XGBCLASSIFIER_FIXED_PARAMS = {
-    "n_estimators": 10000,
-    "eval_metric": "logloss",
-    "early_stopping_rounds": 30,
-    "verbose_eval": False,
-    "random_state": 0,
-    "n_jobs": -1,
-    "verbosity": 0
-}
-
-
-XGBCLASSIFIER_FIXED_PARAMS = {
-    "n_estimators": 700,
-    "random_state": 0,
-    "n_jobs": -1,
-    "verbosity": 0
-}
-
-
 RANDOM_FOREST_CLASSIFIER_FIXED_PARAMS = {
     "n_estimators": 1000,
-    "random_state": 0,
     "n_jobs": -1
 }
 
@@ -65,7 +62,6 @@ RANDOMIZED_RANDOM_FOREST_PARAMS_DISTRIBUTIONS = {
 
 TABPFN_CLASSIFIER_FIXED_PARAMS = {
     "ignore_pretraining_limits": True,
-    "random_state": 0,
     # suppressing categorical transformation 
     # that leads to testing data loss with sparse data
     "inference_config": {"MIN_UNIQUE_FOR_NUMERICAL_FEATURES": 0} 

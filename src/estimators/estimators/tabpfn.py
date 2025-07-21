@@ -59,7 +59,8 @@ class MyTabPFNClassifier(AbstractEstimator):
 
     @suppress_sklearn_and_tabpfn_warnings
     def fit(self, X: pd.DataFrame, y: pd.Series, **kwargs) -> "MyTabPFNClassifier":
-        self.estimator_ = self._create_estimator()
+        fixed_params = super().add_seed_to_fixed_params(copy=True)
+        self.estimator_ = self._create_estimator(fixed_params)
         self.estimator_.fit(X, y)
         return self
     
@@ -75,19 +76,22 @@ class MyTabPFNClassifier(AbstractEstimator):
     def save(self, filepath: str | Path) -> None:
         super().save(filepath)
 
-    def _create_estimator(self) -> TabPFNClassifier | Pipeline:
+    def _create_estimator(self, fixed_params: dict) -> TabPFNClassifier | Pipeline:
         if self.preprocessing == "base":
-            return TabPFNClassifier(**self.fixed_params)
+            return TabPFNClassifier(**fixed_params)
         elif self.preprocessing == "pca":
-            return create_pca_default_pipeline(TabPFNClassifier, self.fixed_params)
+            return create_pca_default_pipeline(TabPFNClassifier, fixed_params)
         elif self.preprocessing == "density_filter":
             return create_density_filter_default_pipeline(
                 "oversample", 
                 TabPFNClassifier, 
-                self.fixed_params
+                fixed_params
             )
         else:
             raise ValueError("Unsupported preprocessing.")
     
     def _get_fitted_preprocessing_pipeline_or_estimator(self) -> Pipeline | TabPFNClassifier:
         return self.estimator_
+    
+    def get_best_hps(self) -> None:
+        return None

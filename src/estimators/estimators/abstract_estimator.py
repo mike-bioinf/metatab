@@ -1,16 +1,17 @@
 from __future__ import annotations
 
 import pickle
+from copy import deepcopy
 from typing import Literal, TYPE_CHECKING
-from abc import ABC, abstractmethod
 from pathlib import Path
 from warnings import warn
+from abc import ABC, abstractmethod
 from sklearn.utils.validation import check_is_fitted
+from sklearn.pipeline import Pipeline
 
 if TYPE_CHECKING:
     import numpy as np
     import pandas as pd
-    from sklearn.pipeline import Pipeline
     from sklearn.decomposition import PCA
     from estimators.preprocessing.density_selector import DensityFeatureSelector
     from estimators.estimators.types import TabPFNEstimators
@@ -20,8 +21,29 @@ if TYPE_CHECKING:
 class AbstractEstimator(ABC):
     '''
     Blueprint for estimators classes.
+    
     The estimators classes must set the 'estimator_' attribute
     in the "fit" method, storing the model fitted on the input data.
+    
+    Note: the params_distributions and fixed_params must always be optional
+    (they must implement defaults).
+        
+    Parameters:
+        preprocessing (Literal["base", "density_filter", "pca"]): 
+            Preprocessing strategy to use.
+        
+        seed (int): 
+            Seed for reproducibility.
+            This seed is directly used to fit the model.
+            It is used also for eventual splitting and tune procedures. 
+
+        
+        params_distributions (dict | None, optional):
+            Dict of param:distributions from which to sample values in the tuning process.
+            Can be None.
+        
+        fixed_params (dict, optional):
+            Dict of param:value that are fixed i.e. not tuned in the search.
     '''
     @abstractmethod
     def __init__(
@@ -31,23 +53,6 @@ class AbstractEstimator(ABC):
         params_distributions: dict | None,
         fixed_params: dict
     ):
-        '''
-        Note: the params_distributions and fixed_params must always be optional
-        (they must implement defaults).
-        
-        Parameters:
-            preprocessing (Literal["base", "density_filter", "pca"]): 
-                Preprocessing strategy to use.
-            
-            seed (int): Seed for reproducibility.
-            
-            params_distributions (dict | None, optional):
-                Dict of param:distributions from which to sample values in the tuning process.
-                Can be None.
-            
-            fixed_params (dict, optional):
-                Dict of param:value that are fixed i.e. not tuned in the search.
-        '''
         self.preprocessing = preprocessing
         self.seed = seed
         self.params_distributions = params_distributions
@@ -58,10 +63,20 @@ class AbstractEstimator(ABC):
     def fit(*args, **kwargs):
         pass
     
-    
     @abstractmethod
     def predict_proba(*args, **kwargs):
         pass
+    
+    
+    def add_seed_to_fixed_params(self, name_attr: str = "random_state", copy: bool = False) -> dict:
+        '''
+        Add the seed to the estimator fixed params.
+        Allows to use estimator specific parameter name via 'name_attr'.
+        Returns a deepcopy  or the updated old dict depending on the copy parameter.
+        '''
+        fixed_params = deepcopy(self.fixed_params) if copy else self.fixed_params
+        fixed_params[name_attr] = self.seed
+        return fixed_params
 
 
     def _classic_predict_proba(self, X: pd.DataFrame) -> np.ndarray:
@@ -98,7 +113,16 @@ class AbstractEstimator(ABC):
         '''
         pass
 
-    
+
+    @abstractmethod
+    def get_best_hps(self) -> dict | None:
+        '''
+        Get the best HPs resulting from tuning.
+        Return None if the estimator does not tune HPs.
+        '''
+        pass
+
+
     @abstractmethod
     def get_feature_names_in_(self) -> np.ndarray:
         '''
@@ -110,7 +134,7 @@ class AbstractEstimator(ABC):
         fitted_obj = self._get_fitted_preprocessing_pipeline_or_estimator()
         return fitted_obj.feature_names_in_
 
-    
+
     @abstractmethod
     def collect_fit_preprocessing_info(self) -> dict:
         '''

@@ -1,13 +1,18 @@
 from __future__ import annotations
 
 from typing import Literal, TYPE_CHECKING
+from sklearn.utils.validation import check_is_fitted
 from sklearn.pipeline import make_pipeline, Pipeline
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.feature_selection import VarianceThreshold
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import RandomizedSearchCV, RepeatedStratifiedKFold
 from estimators.estimators.abstract_estimator import AbstractEstimator
-from estimators.estimators.utils import add_string_to_params
+
+from estimators.estimators.utils import (
+    add_string_to_params, 
+    remove_string_from_params
+)
 
 from estimators.estimators.utils import (
     create_density_filter_default_pipeline, 
@@ -46,7 +51,8 @@ class MyRandomForestClassifier(AbstractEstimator):
         super().__init__(preprocessing, seed, params_distributions, fixed_params)
 
     def fit(self, X: pd.DataFrame, y: pd.Series, **kwargs) -> "MyRandomForestClassifier":
-        self.estimator_ = self._create_estimator()
+        fixed_params = super().add_seed_to_fixed_params(copy=True)
+        self.estimator_ = self._create_estimator(fixed_params)
         self.estimator_.fit(X, y)
         return self
 
@@ -62,13 +68,16 @@ class MyRandomForestClassifier(AbstractEstimator):
     def save(self, filepath: str | Path) -> None:
         super().save(filepath)
 
-    def _create_estimator(self) -> Pipeline:
-        return _create_rf_preprocessing_pipeline(self.preprocessing, self.fixed_params)
+    def _create_estimator(self, fixed_params: dict) -> Pipeline:
+        return _create_rf_preprocessing_pipeline(self.preprocessing, fixed_params)
     
     def _get_fitted_preprocessing_pipeline_or_estimator(self) -> Pipeline:
         return self.estimator_
+    
+    def get_best_hps(self) -> None:
+        return None
 
-        
+       
 
 
 class MyRandomizedRandomForestClassifier(AbstractEstimator):
@@ -91,10 +100,12 @@ class MyRandomizedRandomForestClassifier(AbstractEstimator):
         super().__init__(preprocessing, seed, params_distributions, fixed_params)
  
     def fit(self, X: pd.DataFrame, y: pd.Series, **kwargs) -> "MyRandomizedRandomForestClassifier":
+        fixed_params = super().add_seed_to_fixed_params(copy=True)
         self.estimator_ = RandomizedSearchCV(
-            estimator=self._create_estimator(),
+            estimator=self._create_estimator(fixed_params),
             param_distributions=add_string_to_params(self.params_distributions, "randomforestclassifier__"),
             cv=RepeatedStratifiedKFold(n_repeats=5, n_splits=5, random_state=self.seed),
+            random_state=self.seed,
             **SKLEARN_RANDOM_SEARCH_FIXED_PARAMS
         )
         self.estimator_.fit(X, y)
@@ -112,12 +123,16 @@ class MyRandomizedRandomForestClassifier(AbstractEstimator):
     def save(self, filepath: str | Path) -> None:
         super().save(filepath)
         
-    def _create_estimator(self) -> Pipeline:
-        return _create_rf_preprocessing_pipeline(self.preprocessing, self.fixed_params)
+    def _create_estimator(self, fixed_params: dict) -> Pipeline:
+        return _create_rf_preprocessing_pipeline(self.preprocessing, fixed_params)
 
     def _get_fitted_preprocessing_pipeline_or_estimator(self) -> Pipeline:
         return self.estimator_.best_estimator_
-
+    
+    def get_best_hps(self) -> dict:
+        check_is_fitted(self, "estimator_")
+        return remove_string_from_params(self.estimator_.best_params_, "randomforestclassifier__")
+        
 
 
 

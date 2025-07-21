@@ -1,6 +1,6 @@
 from copy import deepcopy
 from numpy.random import RandomState
-from typing import Literal
+from typing import Literal, Any
 from scipy.stats import loguniform
 from sklearn.pipeline import Pipeline, make_pipeline
 from sklearn.feature_selection import VarianceThreshold
@@ -47,13 +47,28 @@ def get_fresh_random_state(random_state: None | int | RandomState) -> RandomStat
 
 
 
-def add_string_to_params(params_dict: dict, string: str):
+def add_string_to_params(params_dict: dict[str, Any], string: str) -> dict:
     '''
-    Utility to add at the beginning of the keys of the dict 
-    of parametersa string. This is helpful when using sklearn pipelines.
+    Utility to add at the beginning of dict keys a string.
+    This is helpful when using sklearn pipelines.
+    Notes that the function assumes that the keys are str.
     Returns a new dict.
     '''
     return {f"{string}{k}":v for k, v in params_dict.items()}
+
+
+
+def remove_string_from_params(params_dict: dict[str, Any], string: str) -> dict:
+    '''
+    Utility to remove at the beginning of the keys of a dict the string.
+    Notes that the function assumes that the keys are str.
+    Returns a new dict.
+    '''
+    new_params_dict = {}
+    for key, value in params_dict.items():
+        new_key = key.removeprefix(string)
+        new_params_dict[new_key] = value
+    return new_params_dict
 
 
 

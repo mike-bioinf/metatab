@@ -1,4 +1,3 @@
-import re
 import numpy as np
 import pandas as pd
 from pathlib import Path
@@ -24,7 +23,6 @@ class DataLoader():
     The class implements also generic/train/test_name attributes which 
     refer to the loaded dataset names. These are euristically determined.
     '''
-    
     def __init__(self):
         self.X: pd.DataFrame = None
         self.X_train: pd.DataFrame = None
@@ -37,26 +35,7 @@ class DataLoader():
         self.test_dataset_name: str = None
 
     
-
-    def return_train_test_xy_sets(
-        self, 
-        train_idx: np.ndarray = None, 
-        test_idx: np.ndarray = None
-    ) -> tuple[pd.DataFrame, pd.Series, pd.DataFrame, pd.Series]:
-        '''
-        Returns the instance train test sets if available (not None),
-        otherwise derive them from X, y using the input indexes.
-        Note: in case the train and test sets are available the input indexes
-        are ignored and therefore they can be None or any other value.
-        '''
-        X_train = self.X_train if self.X_train is not None else self.X.iloc[train_idx, :]
-        y_train = self.y_train if self.y_train is not None else self.y.iloc[train_idx]
-        X_test = self.X_test if self.X_test is not None else self.X.iloc[test_idx, :]
-        y_test = self.y_test if self.y_test is not None else self.y.iloc[test_idx]
-        return X_train, y_train, X_test, y_test
-
-
-
+    
     def load(self, mode: Literal["df", "xy", "sets"], **load_params) -> None:
         '''
         Allow to call a specific 'load' method using the mode parameter.
@@ -74,7 +53,6 @@ class DataLoader():
             )
 
 
-    
     def load_df_mode(
         self,
         path: str | Path, 

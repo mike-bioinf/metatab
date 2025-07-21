@@ -2,9 +2,8 @@ import sys
 import pickle
 import numpy as np
 from utils.data_loader import DataLoader
-from utils.logging import create_logger
 from utils.helper_params import adjust_io_paths_, manage_output_path
-from utils.general import check_y_is_integer_encoded
+from utils.general import check_y_is_integer_encoded, create_logger
 from utils.prediction import PredictionDataframe
 from predict.params import parse_args, check_args
 from estimators.types import Estimator
@@ -83,7 +82,7 @@ def main():
     filename = f"pred_df__{fit_dataset_name}__{predict_dataset_name}.txt"
     filepath = pars["output_dir"] / filename
     pdf.to_csv(filepath, sep="\t", index=False)
-    logger.debug(f"Output created to {filepath}")
+    logger.debug(f"Output created to {filepath}.")
 
 
 

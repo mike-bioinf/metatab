@@ -12,6 +12,7 @@ def adjust_io_paths_(pars: dict, input_arg: str, output_arg: str) -> None:
     pars[output_arg] = Path(pars[output_arg])
 
 
+
 def manage_output_path(pars: dict, output_arg: str, is_folder: bool) -> None:
     '''
     Control whether the output folder exists and whether to create it if not.
@@ -28,7 +29,33 @@ def manage_output_path(pars: dict, output_arg: str, is_folder: bool) -> None:
         os.makedirs(out_folder)
 
 
+
+def check_fit_args(pars: dict) -> None:
+    '''
+    General check on fitting arguments. 
+    Check used both for fit and resample programs
+    '''
+    check_target_feature(pars)
+    check_not_tunable_estimators(pars)
+
+
+
 def check_target_feature(pars: dict) -> None:
     '''Check that the target feature is set with df input-mode'''
     if pars["input_mode"] == "df" and pars["target_feature"] is None:
         raise ValueError("--target-feature must be specified with 'df' input mode.")
+
+
+
+## TODO: complete with the tune-tabpfn estimator name
+def check_not_tunable_estimators(pars: dict) -> None:
+    '''Check whether the tune flag is used with not tunable estimator'''
+    if pars["tune"] and pars["estimator"] == "tabpfn":
+        raise ValueError(
+            "The 'tabpfn' estimator cannot be tuned setting --tune. Use the '' estimator."
+        )
+
+
+def check_incompatible_estimator_preprocessing(pars: dict) -> None:
+    pass
+
