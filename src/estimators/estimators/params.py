@@ -5,7 +5,7 @@ from estimators.estimators.utils import int_loguniform
 
 # This number is used for all the randomized searches that we do,
 # so both for the custom implementation and for sklearn searches.
-N_ITERATIONS_RANDOM_SEARCH = 200
+N_ITERATIONS_RANDOM_SEARCH = 100
 
 
 SKLEARN_RANDOM_SEARCH_FIXED_PARAMS = {

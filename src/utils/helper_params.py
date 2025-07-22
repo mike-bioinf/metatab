@@ -56,6 +56,18 @@ def check_not_tunable_estimators(pars: dict) -> None:
         )
 
 
+## TODO: maybe to remove in production when a fixed conf is used for each estimator.
+def check_ambiguous_tune_setting(pars: dict) -> None:
+    '''
+    Check whether a configuration of HPs is passed 
+    to tunable estimators with the tune flag down.
+    '''
+    if not pars["tune"] and pars["hps_configuration"] is not None:
+        raise ValueError(
+            "A tuning configurations is passed but tuning is not requested."
+        )
+
+
 def check_incompatible_estimator_preprocessing(pars: dict) -> None:
     pass
 

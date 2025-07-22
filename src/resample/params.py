@@ -41,8 +41,7 @@ def parse_args(args):
 
     p.add_argument("-s", "--seed", default=42, type=int, 
                     help="""Seed used to control randomness.
-                    In particular it controls the randomness inherent to the splitting procedures.
-                    Important note: this seed does NOT control the randomness of the models.""")
+                    In particular it controls the randomness inherent to the estimators, splitting and tuning procedures.""")
 
     p.add_argument("-t", "--tune", action="store_true", 
                    help="""Tune the estimator hyperparameters. The tuning strategy as well as the HPs to tune and
@@ -50,12 +49,12 @@ def parse_args(args):
                    Not all estimators can be tuned. For tabpfn a separated estimator must be used for tuning.
                    In these cases setting this parameter will result in an error.""")
     
-    ## TODO: to remove in production once find good defaults
+    ## TODO: to remove in production once found good defaults?
     p.add_argument("-c", "--hps-configuration", default=None, 
-                   help="""Allow to specify which configurations of HPS to use for tuning.
-                   If None, the default, is specified and the estimator is tunable 
-                   and the --tune parameter is set, then the default hps configuration is used.
-                   These configurations are indicated following the schema 'c+number' (i.e, c1).""")
+                   help="""Allow to specify which configurations of HPs to use for tuning.
+                   If None, the default, and the estimator is tunable with the --tune parameter set,
+                   then the default hps configuration is used.
+                   These configurations are nominated following the schema 'c{number}' (i.e, c0).""")
     
     p.add_argument("-q", "--save-estimators", action="store_true",
                    help="""Option to save the fitted estimators. 
@@ -85,7 +84,7 @@ def adjust_splitting_specs_(pars: dict) -> None:
         _check_splitting_specs_keys(splitting_mode, splitting_specs)
     
     if splitting_mode == "cv" and splitting_specs is None:
-        splitting_specs = {"n_repeats": 10, "n_splits": 5}
+        splitting_specs = {"n_repeats": 5, "n_splits": 10}
 
     if splitting_mode == "holdout" and splitting_specs is None:
         splitting_specs = {"n_splits": 50, "train_size": 0.9}

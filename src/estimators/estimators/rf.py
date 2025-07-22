@@ -6,7 +6,7 @@ from sklearn.pipeline import make_pipeline, Pipeline
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.feature_selection import VarianceThreshold
 from sklearn.preprocessing import StandardScaler
-from sklearn.model_selection import RandomizedSearchCV, RepeatedStratifiedKFold
+from sklearn.model_selection import RandomizedSearchCV, StratifiedKFold
 from estimators.estimators.abstract_estimator import AbstractBaseEstimator
 
 from estimators.estimators.utils import (
@@ -87,7 +87,7 @@ class MyRandomizedRandomForestClassifier(AbstractBaseEstimator):
         self.estimator_ = RandomizedSearchCV(
             estimator=self._create_estimator(fixed_params),
             param_distributions=add_string_to_params(self.params_distributions, "randomforestclassifier__"),
-            cv=RepeatedStratifiedKFold(n_repeats=5, n_splits=5, random_state=self.seed),
+            cv=StratifiedKFold(n_splits=5, shuffle=True, random_state=self.seed),
             random_state=self.seed,
             **SKLEARN_RANDOM_SEARCH_FIXED_PARAMS
         )

@@ -31,7 +31,9 @@ def parse_args(args):
     p.add_argument("-y", "--target-feature", default=None, 
                     help="Name of the target feature column. Must be provided if --input-mode is equal to 'df'")
 
-    p.add_argument("-s", "--seed", default=42, type=int, help="Seed used to control randomness.")
+    p.add_argument("-s", "--seed", default=42, type=int, 
+                   help="""Seed used to control randomness.
+                   In particular it controls the randomness inherent to the estimators, splitting and tuning procedures.""")
 
     p.add_argument("--create-outdir", action="store_true", help="Create the output folder if does not exists.")
 

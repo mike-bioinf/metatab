@@ -15,21 +15,17 @@ Classifier: TypeAlias = Union[
 
 PRED_DATAFRAME_RESULTS_FIXED_COLUMNS = [
     "dataset", 
-    "estimator",
-    "splitting_mode",
-    "preprocessing",
-    "predict_dataset",
     "y_train", 
     "y_test", 
     "pred_proba",
     "repetition", 
-    "fold"
+    "fold",
+    "fit_time",
+    "predict_time"
 ]
 
 
 HPO_DICT_BASE_KEYS = [
-    "splitting_mode",
-    "preprocessing",
     "repetition",
     "fold"
 ]

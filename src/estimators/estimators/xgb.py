@@ -6,7 +6,7 @@ from xgboost import XGBClassifier
 from sklearn.pipeline import Pipeline
 
 from sklearn.model_selection import (
-    RepeatedStratifiedKFold, 
+    StratifiedKFold, 
     RandomizedSearchCV, 
     train_test_split
 )
@@ -56,7 +56,7 @@ class MyRandomizedESXGBClassifier(AbstractBaseEstimator):
         fixed_params = _adjust_logloss_es_metric(fixed_params, y)
 
         # pass a seed here in splitter and NOT a RandomState
-        splitter = RepeatedStratifiedKFold(n_repeats=5, n_splits=5, random_state=self.seed)
+        splitter = StratifiedKFold(n_splits=5, shuffle=True, random_state=self.seed)
         preprocessing_pipeline = self._create_preprocessing_pipeline()
 
         estimator = MyRandomSearchCV(
@@ -114,7 +114,7 @@ class MyRandomizedXGBClassifier(AbstractBaseEstimator):
         estimator = RandomizedSearchCV(
             estimator=self._create_estimator(fixed_params),
             param_distributions=add_string_to_params(self.params_distributions, "xgbclassifier__"),
-            cv=RepeatedStratifiedKFold(n_repeats=5, n_splits=5, random_state=self.seed),
+            cv=StratifiedKFold(n_splits=5, shuffle=True, random_state=self.seed),
             random_state=self.seed,
             **SKLEARN_RANDOM_SEARCH_FIXED_PARAMS,
         )

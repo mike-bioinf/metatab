@@ -28,9 +28,9 @@ def pick_estimator_class(pars: dict) -> Estimator:
             return MyXGBClassifier
         case ("xgb", True):
             return MyRandomizedXGBClassifier
-        case ("ex_xgb", False):
+        case ("es_xgb", False):
             return MyESXGBClassifier
-        case ("ex_xgb", True):
+        case ("es_xgb", True):
             return MyRandomizedESXGBClassifier
         case ("tabpfn", _):
             return MyTabPFNClassifier

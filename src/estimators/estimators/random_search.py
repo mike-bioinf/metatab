@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import sys
 import numpy as np
 import pandas as pd
 from math import inf
@@ -138,7 +137,7 @@ class MyRandomSearchCV:
         for sample_tune_params in self._sample_from_distributions(self.n_iter, rng_sampling):
             # we use the same fresh RandomState for every cv classifier,
             # this maximize the internal cv entropy,
-            # while preserving uniformity accross CVs
+            # while preserving uniformity accross cvs.
             fixed_params = deepcopy(self.fixed_params_classifier)
             fixed_params["random_state"] = get_fresh_random_state(fixed_params["random_state"])
 
@@ -175,10 +174,10 @@ class MyRandomSearchCV:
             
             # check if the HPs combination is the best among the tested ones 
             # in case of equality we take the current best one (is unlikely anyway)
-            dist_score = sum(cv_scores) / len(cv_scores)
+            sample_score = sum(cv_scores) / len(cv_scores)
         
-            if dist_score > best_score:
-                best_score = dist_score
+            if sample_score > best_score:
+                best_score = sample_score
                 best_hps = sample_tune_params
         
         # set the best attrs
@@ -200,9 +199,9 @@ class MyRandomSearchCV:
             # we crate a new reference for the refitted preprocessing pipeline 
             # to remark that is learned and must be used on test data
             self.preprocessing_pipeline_ = self.preprocessing_pipeline
-            best_clf: BoostedClassifier = self.classifier(**self.fixed_params_classifier, **best_hps)
-            best_clf.fit(X_train_trans, y_train, eval_set=[(X_val_trans, y_val)], verbose=False)
-            self.best_estimator_ = best_clf
+            best_estimator: BoostedClassifier = self.classifier(**self.fixed_params_classifier, **best_hps)
+            best_estimator.fit(X_train_trans, y_train, eval_set=[(X_val_trans, y_val)], verbose=False)
+            self.best_estimator_ = best_estimator
         
         return self
 

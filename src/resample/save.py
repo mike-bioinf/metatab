@@ -2,12 +2,18 @@ import json
 from copy import deepcopy
 from pathlib import Path
 from typing import Literal
-from resample.constants import HPO_DICT_BASE_KEYS
+
+from resample.constants import (
+    HPO_DICT_BASE_KEYS, 
+    PRED_DATAFRAME_RESULTS_FIXED_COLUMNS
+)
 
 from estimators.estimators.params import (
     RANDOMIZED_XGBCLASSIFIER_PARAMS_DISTRIBUTIONS,
     RANDOMIZED_RANDOM_FOREST_PARAMS_DISTRIBUTIONS
 )
+
+from fit.fit_helper import pick_hps_configuration
 
 
 
@@ -26,58 +32,74 @@ def get_estimator_filepath(pars: dict, repetition: int, fold: int) -> str:
 
 
 
-def create_dict_hpo(pars: dict, base_keys: list[str] = HPO_DICT_BASE_KEYS) -> dict[str, list]:
+def create_dict_hpo(pars: dict) -> dict[str, list]:
     '''
     Creates the dictionary used to store the best hyperparameters info.
-    The dict is created only when HP are tuned. 
-    In negative cases returns an empty dict.
+    The dict is empy when HP tuning is not requested.
     '''
     if not pars["tune"]:
         return {}
     hpo_specific_keys = get_hpo_names(pars)
-    return {key: [] for key in base_keys + hpo_specific_keys}
+    return {key: [] for key in HPO_DICT_BASE_KEYS + hpo_specific_keys}
 
 
 
+# version that uses the "pick_hps_configuration" function
+# that will probably be removed in production version.
+# In that case one must use the function commented below.
 def get_hpo_names(pars: dict) -> list[str]:
-    '''
-    Get the tunable HP names from the program input.
-    If no tuning is involved returns an empy list.
-    '''
-    match (pars["estimator"], pars["tune"]):
-        case ("random_forest", False):
-            return []
-        case ("random_forest", True):
-            return list(RANDOMIZED_RANDOM_FOREST_PARAMS_DISTRIBUTIONS.keys())
-        case ("xgb", False):
-            return []
-        case ("xgb", True):
-            return list(RANDOMIZED_XGBCLASSIFIER_PARAMS_DISTRIBUTIONS.keys())
-        case ("ex_xgb", False):
-            return []
-        case ("ex_xgb", True):
-            return list(RANDOMIZED_XGBCLASSIFIER_PARAMS_DISTRIBUTIONS.keys())
-        case ("tabpfn", _):
-            return []
-        case _:
-            raise ValueError("Unsupported estimator.")
+    conf = pick_hps_configuration(pars)
+    # here conf == None means no tuning is requested.
+    # So we can safely return None since the output will not be used.
+    if conf is not None:
+        return list(conf.keys())
+
+
+## TODO: collect the options returning a list into the 
+## fallback option. Remove raise error fallback.
+# def get_hpo_names(pars: dict) -> list[str]:
+#     '''
+#     Get the tunable HP names from the program input.
+#     If no tuning is involved returns an empy list.
+#     '''
+#     match (pars["estimator"], pars["tune"]):
+#         case ("random_forest", False):
+#             return []
+#         case ("random_forest", True):
+#             return list(RANDOMIZED_RANDOM_FOREST_PARAMS_DISTRIBUTIONS.keys())
+#         case ("xgb", False):
+#             return []
+#         case ("xgb", True):
+#             return list(RANDOMIZED_XGBCLASSIFIER_PARAMS_DISTRIBUTIONS.keys())
+#         case ("es_xgb", False):
+#             return []
+#         case ("es_xgb", True):
+#             return list(RANDOMIZED_XGBCLASSIFIER_PARAMS_DISTRIBUTIONS.keys())
+#         case ("tabpfn", _):
+#             return []
+#         case _:
+#             raise ValueError("Unsupported estimator.")
 
 
 
-def populate_dict_hpo_(dict_hpo: dict[str, list], **kwargs) -> None:
-    '''Utility to extend in place the "dict_hpo" internal lists.'''
-    for key, value in kwargs:
-        dict_hpo[key].append(value)
+def populate_dict_lists_(dictionary: dict[str, list], **kwargs) -> None:
+    '''Utility to extend in place the dictionary internal lists.'''
+    for key, value in kwargs.items():
+        dictionary[key].append(value)
         
 
 
-def create_dict_results(columns: list[str]) -> dict:
+def create_dict_results(pars: dict) -> dict:
     '''Utility to create the fillable dict result'''
+    columns = (
+        PRED_DATAFRAME_RESULTS_FIXED_COLUMNS + 
+        get_preprocessing_columns_results(pars["preprocessing"])
+    )
     return {key: [] for key in columns}
 
 
 
-def get_additional_columns_results(
+def get_preprocessing_columns_results(
         preprocessing: Literal["base", "density_filter", "pca"]
     ) -> list[str]:
     '''
@@ -104,13 +126,6 @@ def get_additional_columns_results(
         raise ValueError("Unsupported preprocessing.")
 
     return add_cols
-
-
-
-def populate_dict_result_(dict_results: dict[str, list], **kwargs) -> None:
-    '''Utility to extend in place the "dict_results" internal lists.'''
-    for key, value in kwargs.items():
-        dict_results[key].append(value)
 
 
 

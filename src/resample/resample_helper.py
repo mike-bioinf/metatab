@@ -52,13 +52,25 @@ def get_repetition_fold(iteration: int, pars: dict) -> tuple:
 
 
 
-def log_iteration(pars: dict, fold: int, repetition: int, logger: logging.Logger) -> None:
-    '''Utility that logs info about the current iteration'''
-    if pars["splitting_mode"] == "cv":
-        logger.debug(f'Running on fold number {fold} of repetition number {repetition}:')
-    elif pars["splitting_mode"] == "holdout":
-        logger.debug(f'Running holdout iteration {fold}, with train size {pars["splitting_specs"]["train_size"]}:')
+## TODO: remove configuration part when/if conf system is removed.
+def log_program_setting(pars: dict, logger: logging.Logger, name_dataset: str) -> None:
+    '''Logs info about the program input parameters/setting at debug level'''
+    if pars["tune"]:
+        conf_string = "c0" if pars["hps_configuration"] is None else pars["hps_configuration"]
+        logger.debug(f"\nLaunching tuned {conf_string} {pars["estimator"]} on {name_dataset}!")
+    else:
+       logger.debug(f"\nLaunching {pars["estimator"]} on {name_dataset}!")
 
+
+
+def log_iteration(pars: dict, fold: int, repetition: int, logger: logging.Logger) -> None:
+    '''Utility that logs info about the current iteration at debug level'''
+    if pars["splitting_mode"] == "cv":
+        logger.debug(f'Running on fold {fold} of repetition {repetition}:')
+    elif pars["splitting_mode"] == "holdout":
+        logger.debug(
+            f'Running holdout iteration {fold}, with train size {pars["splitting_specs"]["train_size"]}:'
+        )
 
 
 # def universal_predict_proba(
