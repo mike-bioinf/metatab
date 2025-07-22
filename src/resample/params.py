@@ -50,6 +50,13 @@ def parse_args(args):
                    Not all estimators can be tuned. For tabpfn a separated estimator must be used for tuning.
                    In these cases setting this parameter will result in an error.""")
     
+    ## TODO: to remove in production once find good defaults
+    p.add_argument("-c", "--hps-configuration", default=None, 
+                   help="""Allow to specify which configurations of HPS to use for tuning.
+                   If None, the default, is specified and the estimator is tunable 
+                   and the --tune parameter is set, then the default hps configuration is used.
+                   These configurations are indicated following the schema 'c+number' (i.e, c1).""")
+    
     p.add_argument("-q", "--save-estimators", action="store_true",
                    help="""Option to save the fitted estimators. 
                    The estimators object are saved via pickle in the 'estimators' folder.

@@ -1,5 +1,11 @@
 from estimators.types import Estimator
 
+from estimators.estimators.params import (
+    RANDOMIZED_RANDOM_FOREST_PARAMS_DISTRIBUTIONS,
+    RANDOMIZED_XGBCLASSIFIER_PARAMS_DISTRIBUTIONS,
+    RANDOMIZED_XGBCLASSIFIER_PARAMS_DISTRIBUTIONS_1
+)
+
 from estimators import (
     MyRandomForestClassifier,
     MyRandomizedRandomForestClassifier,
@@ -30,3 +36,20 @@ def pick_estimator_class(pars: dict) -> Estimator:
             return MyTabPFNClassifier
         case _:
             raise ValueError("Unsupported estimator.")
+
+
+
+def pick_hps_configuration(pars: dict) -> dict | None:
+    match (pars["estimator"], pars["tune"], pars["hps_configuration"]):
+        case ("random_forest", False, None):
+            return None
+        case ("random_forest", True, None | "c0"):
+            return RANDOMIZED_RANDOM_FOREST_PARAMS_DISTRIBUTIONS
+        case ("xgb" | "es_xgb", False, None):
+            return None
+        case ("xgb" | "es_xgb", True, None | "c0"):
+            return RANDOMIZED_XGBCLASSIFIER_PARAMS_DISTRIBUTIONS
+        case ("xgb" | "es_xgb", True, "c1"):
+            return RANDOMIZED_XGBCLASSIFIER_PARAMS_DISTRIBUTIONS_1 
+        case _:
+            raise ValueError("Unsupported hps tuning scenario.")

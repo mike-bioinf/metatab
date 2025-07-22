@@ -1,8 +1,7 @@
 import numpy as np
 import pandas as pd
-from typing import Literal
+from typing import Literal, override
 from copy import deepcopy
-from pathlib import Path
 from xgboost import XGBClassifier
 from sklearn.pipeline import Pipeline
 
@@ -14,7 +13,7 @@ from sklearn.model_selection import (
 
 from sklearn.utils.validation import check_is_fitted
 from estimators.estimators.random_search import MyRandomSearchCV
-from estimators.estimators.abstract_estimator import AbstractEstimator
+from estimators.estimators.abstract_estimator import AbstractBaseEstimator
 
 from estimators.estimators.utils import (
     add_string_to_params, 
@@ -32,7 +31,7 @@ from estimators.estimators.params import (
 
 
 
-class MyRandomizedESXGBClassifier(AbstractEstimator):
+class MyRandomizedESXGBClassifier(AbstractBaseEstimator):
     '''
     Class that uses a custom implementation of random search cv (MyRandomSearchCV)
     with the XGBClassifier. This custom implementation allows and enforces the 
@@ -73,19 +72,7 @@ class MyRandomizedESXGBClassifier(AbstractEstimator):
         )
 
         self.estimator_ = estimator.fit(X, y)
-        return self
-
-    def collect_fit_preprocessing_info(self) -> dict:
-        return super().collect_fit_preprocessing_info()
-
-    def get_feature_names_in_(self) -> np.ndarray:
-        return super().get_feature_names_in_()
-
-    def predict_proba(self, X, **kwargs) -> np.ndarray:
-        return super()._classic_predict_proba(X)
-    
-    def save(self, filepath: str | Path) -> None:
-        super().save(filepath)       
+        return self     
 
     def _create_preprocessing_pipeline(self) -> Pipeline:
         return create_default_pipeline(self.preprocessing, "oversample")
@@ -93,6 +80,7 @@ class MyRandomizedESXGBClassifier(AbstractEstimator):
     def _get_fitted_preprocessing_pipeline_or_estimator(self):
         return self.estimator_.preprocessing_pipeline_
     
+    @override
     def get_best_hps(self) -> dict:
         check_is_fitted(self, "estimator_")
         return self.estimator_.best_params_
@@ -100,7 +88,7 @@ class MyRandomizedESXGBClassifier(AbstractEstimator):
 
 
 
-class MyRandomizedXGBClassifier(AbstractEstimator):
+class MyRandomizedXGBClassifier(AbstractBaseEstimator):
     '''
     Class that implements the xgboost classifier in random search
     to tune the tunable HPs without early stopping.
@@ -133,18 +121,6 @@ class MyRandomizedXGBClassifier(AbstractEstimator):
 
         self.estimator_ = estimator.fit(X, y)
         return self
-    
-    def collect_fit_preprocessing_info(self) -> dict:
-        return super().collect_fit_preprocessing_info()
-
-    def get_feature_names_in_(self) -> np.ndarray:
-        return super().get_feature_names_in_()
-
-    def predict_proba(self, X: pd.DataFrame, **kwargs) -> np.ndarray:
-        return super()._classic_predict_proba(X)
-    
-    def save(self, filepath: str | Path) -> None:
-        super().save(filepath)
 
     def _create_estimator(self, fixed_params: dict) -> Pipeline:
         return create_default_pipeline(
@@ -156,7 +132,8 @@ class MyRandomizedXGBClassifier(AbstractEstimator):
     
     def _get_fitted_preprocessing_pipeline_or_estimator(self) -> Pipeline:
         return self.estimator_.best_estimator_
-        
+    
+    @override
     def get_best_hps(self) -> dict:
         check_is_fitted(self, "estimator_")
         return remove_string_from_params(self.estimator_.best_params_, "xgbclassifier__")
@@ -164,7 +141,7 @@ class MyRandomizedXGBClassifier(AbstractEstimator):
 
 
 
-class MyESXGBClassifier(AbstractEstimator):
+class MyESXGBClassifier(AbstractBaseEstimator):
     '''
     Class that wraps the XGBClassifier used with early stopping
     and without HPs tuning. We use the default xgboost parameters
@@ -213,18 +190,11 @@ class MyESXGBClassifier(AbstractEstimator):
 
         return self
     
-    def collect_fit_preprocessing_info(self) -> dict:
-        return super().collect_fit_preprocessing_info()
-
-    def get_feature_names_in_(self) -> np.ndarray:
-        return super().get_feature_names_in_()
-    
-    def predict_proba(self, X: pd.DataFrame, **kwargs) -> np.ndarray:
+    @override
+    def predict_proba(self, X: pd.DataFrame) -> np.ndarray:
+        check_is_fitted(self, "estimator_")
         X = self.preprocessing_pipeline_.transform(X)
-        return super()._classic_predict_proba(X)
-    
-    def save(self, filepath: str | Path) -> None:
-        super().save(filepath)
+        return self.estimator_.predict_proba(X)
     
     def _create_preprocessing_pipeline(self) -> Pipeline:
         return create_default_pipeline(self.preprocessing, "oversample")
@@ -232,13 +202,10 @@ class MyESXGBClassifier(AbstractEstimator):
     def _get_fitted_preprocessing_pipeline_or_estimator(self) -> Pipeline:
         return self.preprocessing_pipeline_
 
-    def get_best_hps(self) -> None:
-        return None
 
 
 
-
-class MyXGBClassifier(AbstractEstimator):
+class MyXGBClassifier(AbstractBaseEstimator):
     '''
     Class that wraps the XGBClassifier used without HPs tuning.
     We use the dafault xgboost parameters expect for the trees number.
@@ -262,18 +229,6 @@ class MyXGBClassifier(AbstractEstimator):
         estimator = self._create_estimator(fixed_params)
         self.estimator_ = estimator.fit(X, y)
         return self
-    
-    def collect_fit_preprocessing_info(self) -> dict:
-        return super().collect_fit_preprocessing_info()
-
-    def get_feature_names_in_(self) -> np.ndarray:
-        return super().get_feature_names_in_()
-
-    def predict_proba(self, X: pd.DataFrame, **kwargs) -> np.ndarray:
-        return super()._classic_predict_proba(X)
-    
-    def save(self, filepath: str | Path) -> None:
-        super().save(filepath)
 
     def _create_estimator(self, fixed_params: dict) -> Pipeline:
         return create_default_pipeline(
@@ -285,9 +240,6 @@ class MyXGBClassifier(AbstractEstimator):
     
     def _get_fitted_preprocessing_pipeline_or_estimator(self) -> Pipeline:
         return self.estimator_
-
-    def get_best_hps(self) -> None:
-        return None
 
 
 

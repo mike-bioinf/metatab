@@ -4,7 +4,7 @@ import warnings
 from typing import Literal, TYPE_CHECKING
 from sklearn.pipeline import Pipeline
 from tabpfn import TabPFNClassifier
-from estimators.estimators.abstract_estimator import AbstractEstimator
+from estimators.estimators.abstract_estimator import AbstractBaseEstimator
 from estimators.estimators.params import TABPFN_CLASSIFIER_FIXED_PARAMS
 
 from estimators.estimators.utils import (
@@ -13,8 +13,6 @@ from estimators.estimators.utils import (
 )
 
 if TYPE_CHECKING:
-    from pathlib import Path
-    import numpy as np
     import pandas as pd
 
 
@@ -38,7 +36,7 @@ def suppress_sklearn_and_tabpfn_warnings(func):
 
 
 
-class MyTabPFNClassifier(AbstractEstimator):
+class MyTabPFNClassifier(AbstractBaseEstimator):
     '''
     Class that wraps the base TabPFNClassifier.
 
@@ -63,18 +61,6 @@ class MyTabPFNClassifier(AbstractEstimator):
         self.estimator_ = self._create_estimator(fixed_params)
         self.estimator_.fit(X, y)
         return self
-    
-    def collect_fit_preprocessing_info(self) -> dict:
-        return super().collect_fit_preprocessing_info()
-    
-    def get_feature_names_in_(self) -> np.ndarray:
-        return super().get_feature_names_in_()
-
-    def predict_proba(self, X, **kwargs) -> np.ndarray:
-        return super()._classic_predict_proba(X)
-
-    def save(self, filepath: str | Path) -> None:
-        super().save(filepath)
 
     def _create_estimator(self, fixed_params: dict) -> TabPFNClassifier | Pipeline:
         if self.preprocessing == "base":
@@ -93,5 +79,3 @@ class MyTabPFNClassifier(AbstractEstimator):
     def _get_fitted_preprocessing_pipeline_or_estimator(self) -> Pipeline | TabPFNClassifier:
         return self.estimator_
     
-    def get_best_hps(self) -> None:
-        return None

@@ -18,15 +18,15 @@ if TYPE_CHECKING:
 
 
 
-class AbstractEstimator(ABC):
+class AbstractBaseEstimator(ABC):
     '''
-    Blueprint for estimators classes.
+    Abstract and Base class for estimators classes.
     
-    The estimators classes must set the 'estimator_' attribute
+    The estimators classes must implement the 'estimator_' attribute
     in the "fit" method, storing the model fitted on the input data.
     
-    Note: the params_distributions and fixed_params must always be optional
-    (they must implement defaults).
+    Note: the params_distributions and fixed_params must always be optional,
+    i.e. they must implement defaults.
         
     Parameters:
         preprocessing (Literal["base", "density_filter", "pca"]): 
@@ -37,7 +37,6 @@ class AbstractEstimator(ABC):
             This seed is directly used to fit the model.
             It is used also for eventual splitting and tune procedures. 
 
-        
         params_distributions (dict | None, optional):
             Dict of param:distributions from which to sample values in the tuning process.
             Can be None.
@@ -64,10 +63,28 @@ class AbstractEstimator(ABC):
         pass
     
     @abstractmethod
-    def predict_proba(*args, **kwargs):
+    def _get_fitted_preprocessing_pipeline_or_estimator(self) -> Pipeline | TabPFNEstimators:
+        '''
+        Return the fitted preprocessing pipeline 
+        with or without the classifier head, or the fitted estimator
+        in the absence of it. Tabpfn-derived estimators does 
+        not require/build a sklearn pipeline with base preprocessing. 
+        For these classes the estimator is returned.
+        '''
         pass
     
-    
+
+    def predict_proba(self, X: pd.DataFrame) -> np.ndarray:
+        '''
+        Executes the "classic" predict_proba framework and method, 
+        i.e. without external/decoupled test data preprocessing 
+        and with the classic method signature involving only the X parameter, 
+        plus good defaults for other eventual ones.
+        '''
+        check_is_fitted(self, "estimator_")
+        return self.estimator_.predict_proba(X)
+
+
     def add_seed_to_fixed_params(self, name_attr: str = "random_state", copy: bool = False) -> dict:
         '''
         Add the seed to the estimator fixed params.
@@ -79,18 +96,6 @@ class AbstractEstimator(ABC):
         return fixed_params
 
 
-    def _classic_predict_proba(self, X: pd.DataFrame) -> np.ndarray:
-        '''
-        Internal to execute the "classic" predict_proba framework 
-        and method, i.e. without external/decoupled test data preprocessing 
-        and with the classic method signature involving only the X parameter, 
-        plus good defaults for other eventual ones.
-        '''
-        check_is_fitted(self, "estimator_")
-        return self.estimator_.predict_proba(X)
-
-
-    @abstractmethod
     def save(self, filepath: str | Path):
         '''Seriealize the instance using pickle'''
         if not hasattr(self, "estimator_"):
@@ -102,28 +107,15 @@ class AbstractEstimator(ABC):
             pickle.dump(self, f)
     
 
-    @abstractmethod
-    def _get_fitted_preprocessing_pipeline_or_estimator(self) -> Pipeline | TabPFNEstimators:
-        '''
-        Return the fitted preprocessing pipeline 
-        with or without the classifier head, or the fitted estimator
-        in the absence of it. Tabpfn-derived estimators does 
-        not require/build a sklearn pipeline with base preprocessing. 
-        For these classes the estimator is returned.
-        '''
-        pass
-
-
-    @abstractmethod
-    def get_best_hps(self) -> dict | None:
+    def get_best_hps(self) -> None:
         '''
         Get the best HPs resulting from tuning.
-        Return None if the estimator does not tune HPs.
+        Returns None since this method is the one 
+        used by the estimators that does not tune HPs.
         '''
-        pass
+        return None
 
 
-    @abstractmethod
     def get_feature_names_in_(self) -> np.ndarray:
         '''
         Returns the "feature_names_in" attribute learned at fit level.
@@ -135,7 +127,6 @@ class AbstractEstimator(ABC):
         return fitted_obj.feature_names_in_
 
 
-    @abstractmethod
     def collect_fit_preprocessing_info(self) -> dict:
         '''
         Collect the learned preprocessing attributes of interest in a dict.

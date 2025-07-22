@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-from typing import Literal, TYPE_CHECKING
+from typing import Literal, TYPE_CHECKING, override
 from sklearn.utils.validation import check_is_fitted
 from sklearn.pipeline import make_pipeline, Pipeline
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.feature_selection import VarianceThreshold
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import RandomizedSearchCV, RepeatedStratifiedKFold
-from estimators.estimators.abstract_estimator import AbstractEstimator
+from estimators.estimators.abstract_estimator import AbstractBaseEstimator
 
 from estimators.estimators.utils import (
     add_string_to_params, 
@@ -27,12 +27,10 @@ from estimators.estimators.params import (
 
 if TYPE_CHECKING:
     import pandas as pd
-    import numpy as np
-    from pathlib import Path
 
 
 
-class MyRandomForestClassifier(AbstractEstimator):
+class MyRandomForestClassifier(AbstractBaseEstimator):
     '''
     Class that wraps the random forest classifier.
 
@@ -56,31 +54,16 @@ class MyRandomForestClassifier(AbstractEstimator):
         self.estimator_.fit(X, y)
         return self
 
-    def collect_fit_preprocessing_info(self) -> dict:
-        return super().collect_fit_preprocessing_info()
-
-    def get_feature_names_in_(self) -> np.ndarray:
-        return super().get_feature_names_in_()
-
-    def predict_proba(self, X, **kwargs) -> np.ndarray:
-        return super()._classic_predict_proba(X)
-
-    def save(self, filepath: str | Path) -> None:
-        super().save(filepath)
-
     def _create_estimator(self, fixed_params: dict) -> Pipeline:
         return _create_rf_preprocessing_pipeline(self.preprocessing, fixed_params)
     
     def _get_fitted_preprocessing_pipeline_or_estimator(self) -> Pipeline:
         return self.estimator_
-    
-    def get_best_hps(self) -> None:
-        return None
 
        
 
 
-class MyRandomizedRandomForestClassifier(AbstractEstimator):
+class MyRandomizedRandomForestClassifier(AbstractBaseEstimator):
     '''
     Class that implements a random search over the random forest.
 
@@ -99,7 +82,7 @@ class MyRandomizedRandomForestClassifier(AbstractEstimator):
     ):
         super().__init__(preprocessing, seed, params_distributions, fixed_params)
  
-    def fit(self, X: pd.DataFrame, y: pd.Series, **kwargs) -> "MyRandomizedRandomForestClassifier":
+    def fit(self, X: pd.DataFrame, y: pd.Series) -> "MyRandomizedRandomForestClassifier":
         fixed_params = super().add_seed_to_fixed_params(copy=True)
         self.estimator_ = RandomizedSearchCV(
             estimator=self._create_estimator(fixed_params),
@@ -110,18 +93,6 @@ class MyRandomizedRandomForestClassifier(AbstractEstimator):
         )
         self.estimator_.fit(X, y)
         return self
-
-    def collect_fit_preprocessing_info(self) -> dict:
-        return super().collect_fit_preprocessing_info()
-
-    def get_feature_names_in_(self) -> np.ndarray:
-        return super().get_feature_names_in_()
-
-    def predict_proba(self, X, **kwargs) -> np.ndarray:
-        return super()._classic_predict_proba(X)
-
-    def save(self, filepath: str | Path) -> None:
-        super().save(filepath)
         
     def _create_estimator(self, fixed_params: dict) -> Pipeline:
         return _create_rf_preprocessing_pipeline(self.preprocessing, fixed_params)
@@ -129,6 +100,7 @@ class MyRandomizedRandomForestClassifier(AbstractEstimator):
     def _get_fitted_preprocessing_pipeline_or_estimator(self) -> Pipeline:
         return self.estimator_.best_estimator_
     
+    @override
     def get_best_hps(self) -> dict:
         check_is_fitted(self, "estimator_")
         return remove_string_from_params(self.estimator_.best_params_, "randomforestclassifier__")

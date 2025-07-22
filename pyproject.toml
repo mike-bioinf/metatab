@@ -1,5 +1,5 @@
 [project]
-name = "runtabpfn"
+name = "metatab"
 version = "0.1"
 dependencies = [
     "tabpfn>=2.1.0",
@@ -17,7 +17,9 @@ dev = ["pytest"]
 
 
 [project.scripts]
-metatab = "runtabpfn:main.main"
+metatab-fit = "fit:fit.main"
+metatab-predict = "predict:predict.main"
+metatab-resample = "resample:resample.main"
 
 
 [build-system]

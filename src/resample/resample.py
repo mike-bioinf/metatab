@@ -32,8 +32,8 @@ from resample.save import (
     create_json_configuration_file
 )
 
-## TODO: change function file location?
-from fit.fit_helper import pick_estimator_class
+## TODO: change functions file location?
+from fit.fit_helper import pick_estimator_class, pick_hps_configuration
 
 
 
@@ -67,6 +67,7 @@ def main():
 
     splitter = pick_splitter(pars)
     estimator_class = pick_estimator_class(pars)
+    hps_configuration = pick_hps_configuration(pars)
     rng_estimator = np.random.default_rng(pars["seed"])
 
     results_columns = (
@@ -89,7 +90,8 @@ def main():
         # we pass a different seed to maximize resample entropy
         estimator: Estimator = estimator_class(
             preprocessing=pars["preprocessing"],
-            seed=rng_estimator.integers(0, 2**32, dtype=np.uint32)
+            seed=rng_estimator.integers(0, 2**32, dtype=np.uint32),
+            params_distributions=hps_configuration
         )
 
         ## TODO: here we must implement an universal fit adapter
