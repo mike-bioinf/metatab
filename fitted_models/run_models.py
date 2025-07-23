@@ -42,7 +42,12 @@ def run_estimator(
     file = Path(file) if isinstance(file, str) else file
     fixed_params = {} if fixed_params is None else fixed_params
     if not file.exists():
-        estimator = estimator(preprocessing="base", seed=0, fixed_params=fixed_params)
+        estimator = estimator(
+            preprocessing="base", 
+            seed=0,
+            n_cores=4,
+            fixed_params=fixed_params
+        )
         estimator.fit(X, y).save(file)
 
 

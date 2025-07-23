@@ -35,6 +35,7 @@ def parse_args(args):
                    help="""Seed used to control randomness.
                    In particular it controls the randomness inherent to the estimators, splitting and tuning procedures.""")
 
+    p.add_argument("--ncores", default=16, type=int, help="Number of CPU cores to use. Defaults to 16.")
     p.add_argument("--create-outdir", action="store_true", help="Create the output folder if does not exists.")
 
     return p.parse_args(args)

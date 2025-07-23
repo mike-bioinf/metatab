@@ -4,22 +4,27 @@ import pandas as pd
 import numpy as np
 from time import time
 from estimators.types import Estimator
-from utils.prediction import PredictionDataframe
-from utils.data_loader import DataLoader
-from utils.general import create_logger, check_y_is_integer_encoded
+from metatab_utils.prediction import PredictionDataframe
+from metatab_utils.data_loader import DataLoader
+from metatab_utils.general import create_logger, check_y_is_integer_encoded
 
-from utils.helper_params import (
+from metatab_utils.helper_params import (
     check_fit_args, 
     manage_output_path, 
     adjust_io_paths_,
     check_ambiguous_tune_setting
 )
 
-from resample.params import parse_args, adjust_splitting_specs_
+from resample.params import (
+    parse_args,
+    adjust_hps_configuration_name_,
+    adjust_splitting_specs_
+)
 
 from resample.resample_helper import (
     get_repetition_fold,
     pick_splitter,
+    pick_hps_configuration,
     log_iteration,
     log_program_setting
 )
@@ -32,8 +37,8 @@ from resample.save import (
     create_json_configuration_file
 )
 
-## TODO: change functions file location?
-from fit.fit_helper import pick_estimator_class, pick_hps_configuration
+## TODO: change function file location?
+from fit.fit_helper import pick_estimator_class
 
 
 
@@ -47,6 +52,7 @@ def main():
     adjust_io_paths_(pars, "input_data", "output_dir")
     manage_output_path(pars, "output_dir", True)
     adjust_splitting_specs_(pars)
+    adjust_hps_configuration_name_(pars)
 
     if pars["save_estimators"]:
         os.makedirs(pars["output_dir"] / "estimators", exist_ok=True)
@@ -74,7 +80,7 @@ def main():
     hps_configuration = pick_hps_configuration(pars)
 
     dict_results = create_dict_results(pars)
-    dict_hpo = create_dict_hpo(pars)
+    dict_hpo = create_dict_hpo(pars, hps_configuration)
 
 
     # run resampling
@@ -89,7 +95,8 @@ def main():
         estimator: Estimator = estimator_class(
             preprocessing=pars["preprocessing"],
             seed=int(rng_estimator.integers(0, 2**32)),
-            params_distributions=hps_configuration
+            params_distributions=hps_configuration,
+            n_cores = pars["ncores"]
         )
 
         ## TODO: here we must implement an universal fit adapter
@@ -105,7 +112,6 @@ def main():
 
         ## TODO: an universal adapter is requested due to estimators 
         # having a different predict_proba signature
-
         t = time()
         pred_proba = estimator.predict_proba(X_test)
         predict_time = time() - t
@@ -152,6 +158,9 @@ def main():
         predict_dataset=name_dataset,
         splitting_mode=pars["splitting_mode"],
         preprocessing = pars["preprocessing"],
+        tune = pars["tune"],
+        hps_configuration = pars["hps_configuration"],
+        n_cores = pars["ncores"]
     )
 
     if not df_pred_results.has_recovered:

@@ -1,11 +1,11 @@
 import sys
 from estimators.types import Estimator
-from utils.data_loader import DataLoader
-from utils.general import create_logger, check_y_is_integer_encoded
+from metatab_utils.data_loader import DataLoader
+from metatab_utils.general import create_logger, check_y_is_integer_encoded
 from fit.fit_helper import pick_estimator_class
 from fit.params import parse_args
 
-from utils.helper_params import (
+from metatab_utils.helper_params import (
     adjust_io_paths_, 
     manage_output_path,
     check_fit_args
@@ -36,12 +36,12 @@ def main():
 
     # here we consider all 3 load methods to retrieve the dataset_name
     fit_dataset_name = dl.train_dataset_name if dl.train_dataset_name else dl.generic_dataset_name
-
     estimator_class = pick_estimator_class(pars)
     
     estimator: Estimator = estimator_class(
         preprocessing=pars["preprocessing"],
-        seed=pars["seed"]
+        seed=pars["seed"],
+        n_cores=pars["ncores"]
     )
     
     ## TODO: here we must implement an universal fit adapter

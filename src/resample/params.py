@@ -64,10 +64,21 @@ def parse_args(args):
                    In case of 'holdout' splitting mode the "__{repetition}{fold}" part is replaced by
                    a sequential number.""")
 
+    p.add_argument("--ncores", default=16, type=int, help="Number of CPU cores to use. Defaults to 16.")
     p.add_argument("--create-outdir", action="store_true", help="Create the output directory if does not exists.")
 
     return p.parse_args(args)
 
+
+
+
+def adjust_hps_configuration_name_(pars: dict) -> None:
+    '''
+    Adjust the hps configuration name if the default one is used.
+    Modifies the dict in place.
+    '''
+    if pars["tune"] and pars["hps_configuration"] is None:
+        pars["hps_configuration"] = "c0"
 
 
 

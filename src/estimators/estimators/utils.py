@@ -72,6 +72,22 @@ def remove_string_from_params(params_dict: dict[str, Any], string: str) -> dict:
 
 
 
+def update_dict( 
+    dictionary: dict, 
+    name_key: str, 
+    value: Any, 
+    copy: bool = False
+) -> dict:
+    '''
+    Update the dict or a deepcopy of it with the name_key:value couple.
+    Returns the updated dict.
+    '''
+    dictionary = deepcopy(dictionary) if copy else dictionary
+    dictionary[name_key] = value
+    return dictionary
+
+
+
 def create_default_pipeline(
     preprocessing:  Literal["base", "density_filter", "pca"],
     density_feature_selector_strategy: Literal["exact", "oversample", "undersample"],

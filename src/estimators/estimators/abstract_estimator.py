@@ -37,23 +37,30 @@ class AbstractBaseEstimator(ABC):
             This seed is directly used to fit the model.
             It is used also for eventual splitting and tune procedures. 
 
+        n_cores (int):
+            Number of CPU cores used to fit the estimator. 
+            Is ignored by the unparallelizable estimators.
+
         params_distributions (dict | None, optional):
             Dict of param:distributions from which to sample values in the tuning process.
             Can be None.
         
         fixed_params (dict, optional):
             Dict of param:value that are fixed i.e. not tuned in the search.
+
     '''
     @abstractmethod
     def __init__(
         self, 
         preprocessing: Literal["base", "density_filter", "pca"],
         seed: int,
+        n_cores: int,
         params_distributions: dict | None,
         fixed_params: dict
     ):
         self.preprocessing = preprocessing
         self.seed = seed
+        self.n_cores = n_cores
         self.params_distributions = params_distributions
         self.fixed_params = fixed_params
         
@@ -62,6 +69,7 @@ class AbstractBaseEstimator(ABC):
     def fit(*args, **kwargs):
         pass
     
+
     @abstractmethod
     def _get_fitted_preprocessing_pipeline_or_estimator(self) -> Pipeline | TabPFNEstimators:
         '''
@@ -85,17 +93,6 @@ class AbstractBaseEstimator(ABC):
         return self.estimator_.predict_proba(X)
 
 
-    def add_seed_to_fixed_params(self, name_attr: str = "random_state", copy: bool = False) -> dict:
-        '''
-        Add the seed to the estimator fixed params.
-        Allows to use estimator specific parameter name via 'name_attr'.
-        Returns a deepcopy  or the updated old dict depending on the copy parameter.
-        '''
-        fixed_params = deepcopy(self.fixed_params) if copy else self.fixed_params
-        fixed_params[name_attr] = self.seed
-        return fixed_params
-
-
     def save(self, filepath: str | Path):
         '''Seriealize the instance using pickle'''
         if not hasattr(self, "estimator_"):
@@ -115,6 +112,26 @@ class AbstractBaseEstimator(ABC):
         '''
         return None
 
+
+    def update_fixed_params(
+        self,
+        *,
+        up_seed: bool, 
+        up_n_cores: bool, 
+        key_seed: str = "random_state", 
+        key_n_cores: str = "n_jobs", 
+        copy: bool = False
+    ) -> dict:
+        '''
+        Update the fixed params dict or a deepcopy of it 
+        with the seed and n_cores info.
+        Returns the updated dict.
+        '''
+        fixed_params = deepcopy(self.fixed_params) if copy else self.fixed_params
+        if up_seed: fixed_params[key_seed] = self.seed
+        if up_n_cores: fixed_params[key_n_cores] = self.n_cores
+        return fixed_params
+                
 
     def get_feature_names_in_(self) -> np.ndarray:
         '''

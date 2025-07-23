@@ -45,13 +45,14 @@ class MyRandomizedESXGBClassifier(AbstractBaseEstimator):
         self, 
         preprocessing: Literal["base", "density_filter", "pca"],
         seed: int,
+        n_cores: int, 
         params_distributions: dict = RANDOMIZED_XGBCLASSIFIER_PARAMS_DISTRIBUTIONS,
         fixed_params: dict = ES_XGBCLASSIFIER_FIXED_PARAMS
     ):
-        super().__init__(preprocessing, seed, params_distributions, fixed_params)
+        super().__init__(preprocessing, seed, n_cores, params_distributions, fixed_params)
 
     def fit(self, X: pd.DataFrame, y: pd.Series, **kwargs) -> "MyRandomizedESXGBClassifier":
-        fixed_params = super().add_seed_to_fixed_params(copy=True)
+        fixed_params = super().update_fixed_params(up_seed=True, up_n_cores=True, copy=True)
         fixed_params = _adjust_xgb_objective(fixed_params, y)
         fixed_params = _adjust_logloss_es_metric(fixed_params, y)
 
@@ -102,13 +103,14 @@ class MyRandomizedXGBClassifier(AbstractBaseEstimator):
         self,
         preprocessing: Literal["base", "density_filter", "pca"],
         seed: int,
+        n_cores: int,
         params_distributions: dict = RANDOMIZED_XGBCLASSIFIER_PARAMS_DISTRIBUTIONS,
         fixed_params: dict = XGBCLASSIFIER_FIXED_PARAMS  
     ):
-        super().__init__(preprocessing, seed, params_distributions, fixed_params)
+        super().__init__(preprocessing, seed, n_cores, params_distributions, fixed_params)
 
     def fit(self, X: pd.DataFrame, y: pd.Series, **kwargs) -> "MyRandomizedXGBClassifier":
-        fixed_params = super().add_seed_to_fixed_params(copy=True)
+        fixed_params = super().update_fixed_params(up_seed=True, up_n_cores=True, copy=True)
         fixed_params = _adjust_xgb_objective(fixed_params, y)
         
         estimator = RandomizedSearchCV(
@@ -145,7 +147,7 @@ class MyESXGBClassifier(AbstractBaseEstimator):
     '''
     Class that wraps the XGBClassifier used with early stopping
     and without HPs tuning. We use the default xgboost parameters
-    expect for the trees number.
+    exept for the trees number.
 
     Attributes
     ------------------    
@@ -158,10 +160,11 @@ class MyESXGBClassifier(AbstractBaseEstimator):
         self,
         preprocessing: Literal["base", "density_filter", "pca"],
         seed: int,
+        n_cores: int,
         params_distributions = None,
         fixed_params: dict = ES_XGBCLASSIFIER_FIXED_PARAMS   
     ):
-        super().__init__(preprocessing, seed, params_distributions, fixed_params)
+        super().__init__(preprocessing, seed, n_cores, params_distributions, fixed_params)
 
     def fit(self, X: pd.DataFrame, y: pd.Series, **kwargs) -> "MyESXGBClassifier":
         X_train, X_val, y_train, y_val = train_test_split(
@@ -176,7 +179,7 @@ class MyESXGBClassifier(AbstractBaseEstimator):
         X_train_trans = self.preprocessing_pipeline_.fit_transform(X_train)
         X_val_trans = self.preprocessing_pipeline_.transform(X_val)
 
-        fixed_params = super().add_seed_to_fixed_params(copy=True)
+        fixed_params = super().update_fixed_params(up_seed=True, up_n_cores=True, copy=True)
         fixed_params = _adjust_xgb_objective(fixed_params, y)
         fixed_params = _adjust_logloss_es_metric(fixed_params, y)
         estimator = XGBClassifier(**fixed_params)
@@ -208,7 +211,7 @@ class MyESXGBClassifier(AbstractBaseEstimator):
 class MyXGBClassifier(AbstractBaseEstimator):
     '''
     Class that wraps the XGBClassifier used without HPs tuning.
-    We use the dafault xgboost parameters expect for the trees number.
+    We use the dafault xgboost parameters exept for the trees number.
 
     Attributes
     ------------------    
@@ -218,13 +221,14 @@ class MyXGBClassifier(AbstractBaseEstimator):
         self,
         preprocessing: Literal["base", "density_filter", "pca"],
         seed: int,
+        n_cores: int,
         params_distributions = None,
         fixed_params: dict = XGBCLASSIFIER_FIXED_PARAMS   
     ):
-        super().__init__(preprocessing, seed, params_distributions, fixed_params)
+        super().__init__(preprocessing, seed, n_cores, params_distributions, fixed_params)
 
     def fit(self, X: pd.DataFrame, y: pd.Series, **kwargs) -> "MyXGBClassifier":
-        fixed_params = super().add_seed_to_fixed_params(copy=True)
+        fixed_params = super().update_fixed_params(up_seed=True, up_n_cores=True, copy=True)
         fixed_params = _adjust_xgb_objective(fixed_params, y)
         estimator = self._create_estimator(fixed_params)
         self.estimator_ = estimator.fit(X, y)
@@ -244,6 +248,7 @@ class MyXGBClassifier(AbstractBaseEstimator):
 
 
 
+## TODO: merge the 2 adapt funcs into one
 def _adjust_xgb_objective(fixed_params: dict, y: pd.Series, copy: bool = False) -> dict:
     '''
     Add the objective parameter since it is fit/data specific.

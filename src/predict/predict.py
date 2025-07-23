@@ -1,10 +1,10 @@
 import sys
 import pickle
 import numpy as np
-from utils.data_loader import DataLoader
-from utils.helper_params import adjust_io_paths_, manage_output_path
-from utils.general import check_y_is_integer_encoded, create_logger
-from utils.prediction import PredictionDataframe
+from metatab_utils.data_loader import DataLoader
+from metatab_utils.helper_params import adjust_io_paths_, manage_output_path
+from metatab_utils.general import check_y_is_integer_encoded, create_logger
+from metatab_utils.prediction import PredictionDataframe
 from predict.params import parse_args, check_args
 from estimators.types import Estimator
 

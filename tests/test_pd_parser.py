@@ -1,6 +1,6 @@
 import numpy as np
 from pathlib import Path
-from utils.prediction import PredictionDataframe
+from metatab_utils.prediction import PredictionDataframe
 
 
 

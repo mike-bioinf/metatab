@@ -18,7 +18,6 @@ SKLEARN_RANDOM_SEARCH_FIXED_PARAMS = {
 
 XGBCLASSIFIER_FIXED_PARAMS = {
     "n_estimators": 700,
-    "n_jobs": -1,
     "verbosity": 0
 }
 
@@ -28,7 +27,6 @@ ES_XGBCLASSIFIER_FIXED_PARAMS = {
     "eval_metric": "logloss",
     "early_stopping_rounds": 30,
     "verbose_eval": False,
-    "n_jobs": -1,
     "verbosity": 0
 }
 
@@ -63,8 +61,7 @@ RANDOMIZED_XGBCLASSIFIER_PARAMS_DISTRIBUTIONS_1 = {
 
 
 RANDOM_FOREST_CLASSIFIER_FIXED_PARAMS = {
-    "n_estimators": 1000,
-    "n_jobs": -1
+    "n_estimators": 1000
 }
 
 

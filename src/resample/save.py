@@ -13,8 +13,6 @@ from estimators.estimators.params import (
     RANDOMIZED_RANDOM_FOREST_PARAMS_DISTRIBUTIONS
 )
 
-from fit.fit_helper import pick_hps_configuration
-
 
 
 def get_estimator_filepath(pars: dict, repetition: int, fold: int) -> str:
@@ -32,27 +30,15 @@ def get_estimator_filepath(pars: dict, repetition: int, fold: int) -> str:
 
 
 
-def create_dict_hpo(pars: dict) -> dict[str, list]:
+def create_dict_hpo(pars: dict, hps_configuration: dict) -> dict[str, list]:
     '''
     Creates the dictionary used to store the best hyperparameters info.
     The dict is empy when HP tuning is not requested.
+    Note: Now it needs the hps dict in input.
     '''
-    if not pars["tune"]:
-        return {}
-    hpo_specific_keys = get_hpo_names(pars)
-    return {key: [] for key in HPO_DICT_BASE_KEYS + hpo_specific_keys}
+    if not pars["tune"]: return {}
+    return {key: [] for key in HPO_DICT_BASE_KEYS + list(hps_configuration.keys())}
 
-
-
-# version that uses the "pick_hps_configuration" function
-# that will probably be removed in production version.
-# In that case one must use the function commented below.
-def get_hpo_names(pars: dict) -> list[str]:
-    conf = pick_hps_configuration(pars)
-    # here conf == None means no tuning is requested.
-    # So we can safely return None since the output will not be used.
-    if conf is not None:
-        return list(conf.keys())
 
 
 ## TODO: collect the options returning a list into the 

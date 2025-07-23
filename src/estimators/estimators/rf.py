@@ -43,13 +43,14 @@ class MyRandomForestClassifier(AbstractBaseEstimator):
         self,
         preprocessing: Literal["base", "density_filter", "pca"],
         seed: int,
+        n_cores: int,
         params_distributions = None,
         fixed_params: dict = RANDOM_FOREST_CLASSIFIER_FIXED_PARAMS   
     ):
-        super().__init__(preprocessing, seed, params_distributions, fixed_params)
+        super().__init__(preprocessing, seed, n_cores, params_distributions, fixed_params)
 
     def fit(self, X: pd.DataFrame, y: pd.Series, **kwargs) -> "MyRandomForestClassifier":
-        fixed_params = super().add_seed_to_fixed_params(copy=True)
+        fixed_params = super().update_fixed_params(up_seed=True, up_n_cores=True, copy=True)
         self.estimator_ = self._create_estimator(fixed_params)
         self.estimator_.fit(X, y)
         return self
@@ -77,13 +78,14 @@ class MyRandomizedRandomForestClassifier(AbstractBaseEstimator):
         self,
         preprocessing: Literal["base", "density_filter", "pca"],
         seed: int,
+        n_cores: int,
         params_distributions = RANDOMIZED_RANDOM_FOREST_PARAMS_DISTRIBUTIONS,
         fixed_params: dict = RANDOM_FOREST_CLASSIFIER_FIXED_PARAMS   
     ):
-        super().__init__(preprocessing, seed, params_distributions, fixed_params)
+        super().__init__(preprocessing, seed, n_cores, params_distributions, fixed_params)
  
     def fit(self, X: pd.DataFrame, y: pd.Series) -> "MyRandomizedRandomForestClassifier":
-        fixed_params = super().add_seed_to_fixed_params(copy=True)
+        fixed_params = super().update_fixed_params(up_seed=True, up_n_cores=True, copy=True)
         self.estimator_ = RandomizedSearchCV(
             estimator=self._create_estimator(fixed_params),
             param_distributions=add_string_to_params(self.params_distributions, "randomforestclassifier__"),

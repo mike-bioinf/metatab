@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sys
 import numpy as np
 import pandas as pd
 from math import inf
@@ -139,7 +140,8 @@ class MyRandomSearchCV:
             # this maximize the internal cv entropy,
             # while preserving uniformity accross cvs.
             fixed_params = deepcopy(self.fixed_params_classifier)
-            fixed_params["random_state"] = get_fresh_random_state(fixed_params["random_state"])
+            random_state_cv = get_fresh_random_state(fixed_params["random_state"])
+            fixed_params["random_state"] = random_state_cv
 
             # build the classifier with fixed plus tuning params
             clf: BoostedClassifier = self.classifier(**fixed_params, **sample_tune_params)
@@ -155,7 +157,7 @@ class MyRandomSearchCV:
                     X_train_fold,
                     y_train_fold,
                     train_size=0.75,
-                    random_state=self.seed,
+                    random_state=int(random_state_cv.randint(0, 2**32, dtype=np.int64)),
                     stratify=y_train_fold
                 )
                 

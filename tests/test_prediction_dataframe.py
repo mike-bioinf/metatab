@@ -1,7 +1,7 @@
 import pytest
 import numpy as np
 from typing import Literal
-from utils.prediction import PredictionDataframe
+from metatab_utils.prediction import PredictionDataframe
 
 
 
