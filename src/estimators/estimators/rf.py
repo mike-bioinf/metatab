@@ -6,7 +6,7 @@ from sklearn.pipeline import make_pipeline, Pipeline
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.feature_selection import VarianceThreshold
 from sklearn.preprocessing import StandardScaler
-from sklearn.model_selection import RandomizedSearchCV, StratifiedKFold
+from sklearn.model_selection import RandomizedSearchCV
 from estimators.estimators.abstract_estimator import AbstractBaseEstimator
 
 from estimators.estimators.utils import (
@@ -21,7 +21,6 @@ from estimators.estimators.utils import (
 
 from estimators.estimators.params import (
     RANDOM_FOREST_CLASSIFIER_FIXED_PARAMS,
-    RANDOMIZED_RANDOM_FOREST_PARAMS_DISTRIBUTIONS,
     SKLEARN_RANDOM_SEARCH_FIXED_PARAMS
 )
 
@@ -44,10 +43,10 @@ class MyRandomForestClassifier(AbstractBaseEstimator):
         preprocessing: Literal["base", "density_filter", "pca"],
         seed: int,
         n_cores: int,
-        params_distributions = None,
+        tune_configuration = None,
         fixed_params: dict = RANDOM_FOREST_CLASSIFIER_FIXED_PARAMS   
     ):
-        super().__init__(preprocessing, seed, n_cores, params_distributions, fixed_params)
+        super().__init__(preprocessing, seed, n_cores, tune_configuration, fixed_params)
 
     def fit(self, X: pd.DataFrame, y: pd.Series, **kwargs) -> "MyRandomForestClassifier":
         fixed_params = super().update_fixed_params(up_seed=True, up_n_cores=True, copy=True)
@@ -79,23 +78,32 @@ class MyRandomizedRandomForestClassifier(AbstractBaseEstimator):
         preprocessing: Literal["base", "density_filter", "pca"],
         seed: int,
         n_cores: int,
-        params_distributions = RANDOMIZED_RANDOM_FOREST_PARAMS_DISTRIBUTIONS,
+        tune_configuration: dict,
         fixed_params: dict = RANDOM_FOREST_CLASSIFIER_FIXED_PARAMS   
     ):
-        super().__init__(preprocessing, seed, n_cores, params_distributions, fixed_params)
+        super().__init__(preprocessing, seed, n_cores, tune_configuration, fixed_params)
  
     def fit(self, X: pd.DataFrame, y: pd.Series) -> "MyRandomizedRandomForestClassifier":
         fixed_params = super().update_fixed_params(up_seed=True, up_n_cores=True, copy=True)
+        
+        params_distributions = add_string_to_params(
+            params_dict=self.tune_configuration["params_distributions"], 
+            string="randomforestclassifier__"
+        )
+
         self.estimator_ = RandomizedSearchCV(
             estimator=self._create_estimator(fixed_params),
-            param_distributions=add_string_to_params(self.params_distributions, "randomforestclassifier__"),
-            cv=StratifiedKFold(n_splits=5, shuffle=True, random_state=self.seed),
+            param_distributions=params_distributions,
+            n_iter=self.tune_configuration["n_iter"],
+            cv=super().build_tune_splitter(),
             random_state=self.seed,
             **SKLEARN_RANDOM_SEARCH_FIXED_PARAMS
         )
+
         self.estimator_.fit(X, y)
         return self
-        
+    
+
     def _create_estimator(self, fixed_params: dict) -> Pipeline:
         return _create_rf_preprocessing_pipeline(self.preprocessing, fixed_params)
 

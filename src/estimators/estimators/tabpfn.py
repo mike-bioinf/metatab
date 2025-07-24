@@ -51,10 +51,10 @@ class MyTabPFNClassifier(AbstractBaseEstimator):
         preprocessing: Literal["base", "density_filter", "pca"], 
         seed: int,
         n_cores: int,
-        params_distributions = None, 
+        tune_configuration = None, 
         fixed_params = TABPFN_CLASSIFIER_FIXED_PARAMS
     ):
-        super().__init__(preprocessing, seed, n_cores, params_distributions, fixed_params)
+        super().__init__(preprocessing, seed, n_cores, tune_configuration, fixed_params)
 
     @suppress_sklearn_and_tabpfn_warnings
     def fit(self, X: pd.DataFrame, y: pd.Series, **kwargs) -> "MyTabPFNClassifier":

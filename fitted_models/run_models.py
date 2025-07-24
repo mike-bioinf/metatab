@@ -22,6 +22,12 @@ from .test_constants import (
     TEST_RANDOM_FOREST_CLASSIFIER_FIXED_PARAMS
 )
 
+from estimators.estimators.params import (
+    RANDOMIZED_RANDOM_FOREST_PARAMS_DISTRIBUTIONS,
+    RANDOMIZED_XGBCLASSIFIER_PARAMS_DISTRIBUTIONS,
+    RANDOMIZED_XGBCLASSIFIER_PARAMS_DISTRIBUTIONS_1
+)
+
 if TYPE_CHECKING:
     import pandas as pd
 
@@ -31,6 +37,7 @@ def run_estimator(
     *,
     estimator: Estimator,
     fixed_params: dict | None,
+    params_distributions: dict | None,
     file: str | Path, 
     X: pd.DataFrame, 
     y: pd.Series
@@ -41,11 +48,21 @@ def run_estimator(
     '''
     file = Path(file) if isinstance(file, str) else file
     fixed_params = {} if fixed_params is None else fixed_params
+    
+    tune_configuration = {
+        "configuration": "c0",
+        "n_iter": 2,
+        "n_repeats": 1,
+        "n_splits": 5,
+        "params_distributions": params_distributions
+    }
+
     if not file.exists():
         estimator = estimator(
             preprocessing="base", 
             seed=0,
             n_cores=4,
+            tune_configuration=tune_configuration,
             fixed_params=fixed_params
         )
         estimator.fit(X, y).save(file)
@@ -59,41 +76,48 @@ run_estimator = partial(run_estimator, X=X, y=y)
 run_estimator(
     estimator=MyRandomizedESXGBClassifier,
     fixed_params=TEST_ES_XGBCLASSIFIER_FIXED_PARAMS,
+    params_distributions=RANDOMIZED_XGBCLASSIFIER_PARAMS_DISTRIBUTIONS,
     file=model_folder / "my_randomized_es_xgb_classifier.pkl"
 )
 
 run_estimator(
     estimator=MyRandomizedXGBClassifier,
     fixed_params=TEST_XGBCLASSIFIER_FIXED_PARAMS,
+    params_distributions=RANDOMIZED_XGBCLASSIFIER_PARAMS_DISTRIBUTIONS,
     file=model_folder / "my_randomized_xgb_classifier.pkl"
 )
 
 run_estimator(
     estimator=MyXGBClassifier,
     fixed_params=TEST_XGBCLASSIFIER_FIXED_PARAMS,
+    params_distributions=None,
     file=model_folder / "my_xgb_classifier.pkl"
 )
 
 run_estimator(
     estimator=MyESXGBClassifier,
     fixed_params=TEST_ES_XGBCLASSIFIER_FIXED_PARAMS,
+    params_distributions=None,
     file=model_folder / "my_es_xgb_classifier.pkl"
 )
 
 run_estimator(
     estimator=MyRandomForestClassifier,
     fixed_params=TEST_RANDOM_FOREST_CLASSIFIER_FIXED_PARAMS,
+    params_distributions=None,
     file=model_folder / "my_rf_classifier.pkl"
 )
 
 run_estimator(
     estimator=MyRandomizedRandomForestClassifier,
     fixed_params=TEST_RANDOM_FOREST_CLASSIFIER_FIXED_PARAMS,
+    params_distributions=RANDOMIZED_RANDOM_FOREST_PARAMS_DISTRIBUTIONS,
     file=model_folder / "my_randomized_rf_classifier.pkl"
 )
 
 run_estimator(
     estimator=MyTabPFNClassifier,
     fixed_params=None,
+    params_distributions=None,
     file=model_folder / "my_tabpfn_classifier.pkl"
 )

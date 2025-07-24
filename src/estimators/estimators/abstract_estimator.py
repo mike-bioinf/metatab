@@ -8,6 +8,7 @@ from warnings import warn
 from abc import ABC, abstractmethod
 from sklearn.utils.validation import check_is_fitted
 from sklearn.pipeline import Pipeline
+from sklearn.model_selection import RepeatedStratifiedKFold
 
 if TYPE_CHECKING:
     import numpy as np
@@ -24,10 +25,8 @@ class AbstractBaseEstimator(ABC):
     
     The estimators classes must implement the 'estimator_' attribute
     in the "fit" method, storing the model fitted on the input data.
+    Note: fixed_params must always be optional i.e. it must implement defaults.
     
-    Note: the params_distributions and fixed_params must always be optional,
-    i.e. they must implement defaults.
-        
     Parameters:
         preprocessing (Literal["base", "density_filter", "pca"]): 
             Preprocessing strategy to use.
@@ -41,13 +40,12 @@ class AbstractBaseEstimator(ABC):
             Number of CPU cores used to fit the estimator. 
             Is ignored by the unparallelizable estimators.
 
-        params_distributions (dict | None, optional):
-            Dict of param:distributions from which to sample values in the tuning process.
-            Can be None.
-        
+        tune_configuration (None | dict):
+            Dict with the tuning info. 
+            Is ignored by the not tunable estimators.
+            
         fixed_params (dict, optional):
             Dict of param:value that are fixed i.e. not tuned in the search.
-
     '''
     @abstractmethod
     def __init__(
@@ -55,13 +53,13 @@ class AbstractBaseEstimator(ABC):
         preprocessing: Literal["base", "density_filter", "pca"],
         seed: int,
         n_cores: int,
-        params_distributions: dict | None,
+        tune_configuration: None | dict,
         fixed_params: dict
     ):
         self.preprocessing = preprocessing
         self.seed = seed
         self.n_cores = n_cores
-        self.params_distributions = params_distributions
+        self.tune_configuration = tune_configuration
         self.fixed_params = fixed_params
         
     
@@ -132,6 +130,21 @@ class AbstractBaseEstimator(ABC):
         if up_n_cores: fixed_params[key_n_cores] = self.n_cores
         return fixed_params
                 
+    
+    def build_tune_splitter(self) -> RepeatedStratifiedKFold:
+        '''
+        Build the splitter to use in tuning based on 
+        the "tune_configuration" attribute specifications.
+        Raise an error if the "tune_configuration" attr is None.
+        '''
+        if self.tune_configuration is None:
+            raise ValueError("'tune_configuration' attribute is None.")
+        return RepeatedStratifiedKFold(
+            n_repeats=self.tune_configuration["n_repeats"],
+            n_splits=self.tune_configuration["n_splits"],
+            random_state=self.seed
+        )
+
 
     def get_feature_names_in_(self) -> np.ndarray:
         '''

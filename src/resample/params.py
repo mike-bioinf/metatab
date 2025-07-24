@@ -1,13 +1,11 @@
 import argparse
-from typing import Any
-from ast import literal_eval
+from metatab_utils.helper_params import try_parse_specs_into_dict
 
 
 
 def parse_args(args):
     p = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter)
 
-    # positional arguments
     p.add_argument("-i", "--input-data",  required=True, help="Path to the dataset folder/file.")
     
     p.add_argument("-o", "--output-dir", required=True, default=".",
@@ -44,17 +42,22 @@ def parse_args(args):
                     In particular it controls the randomness inherent to the estimators, splitting and tuning procedures.""")
 
     p.add_argument("-t", "--tune", action="store_true", 
-                   help="""Tune the estimator hyperparameters. The tuning strategy as well as the HPs to tune and
-                   the tested values/strategies are not customizable. They are picked according to the estimator used.
-                   Not all estimators can be tuned. For tabpfn a separated estimator must be used for tuning.
-                   In these cases setting this parameter will result in an error.""")
+                   help="""Tune the estimator hyperparameters. 
+                   We use random search as tuning strategy and a preset of HPs distributions from which draw values. 
+                   These HPs preset can be specified in the '--tune-configuration' parameter.
+                   Note that not all estimators can be tuned. For tabpfn a separated estimator must be used for HPs tuning.
+                   Setting this parameter for untunable estimators will result in an error.""")
     
     ## TODO: to remove in production once found good defaults?
-    p.add_argument("-c", "--hps-configuration", default=None, 
-                   help="""Allow to specify which configurations of HPs to use for tuning.
-                   If None, the default, and the estimator is tunable with the --tune parameter set,
-                   then the default hps configuration is used.
-                   These configurations are nominated following the schema 'c{number}' (i.e, c0).""")
+    p.add_argument("-c", "--tune-configuration", default=None,
+                   help="""Tune details. It is s string representation of a dict with the following keys-values couples:
+                   'configuration': Name of the configuration of HPs to use. They follow the schema 'c{number}' (i.e 'c0').
+                    Note that for some estimators only one configuration (c0) is available.
+                    'n_iter': Number of iterations tested for the selected configuration. Must be an integer.
+                    'n_repeats': Number of cv repeats used to test each sampled configuration. Must be an integer.
+                    'n_splits': Number of cv splits used to test each sampled configuration. Must be an integer.
+                    If None, the default, the default configuration is used if "--tune" is True.
+                    One can pass a partial dicts using the default values for the unspecified fields.""")
     
     p.add_argument("-q", "--save-estimators", action="store_true",
                    help="""Option to save the fitted estimators. 
@@ -72,16 +75,6 @@ def parse_args(args):
 
 
 
-def adjust_hps_configuration_name_(pars: dict) -> None:
-    '''
-    Adjust the hps configuration name if the default one is used.
-    Modifies the dict in place.
-    '''
-    if pars["tune"] and pars["hps_configuration"] is None:
-        pars["hps_configuration"] = "c0"
-
-
-
 def adjust_splitting_specs_(pars: dict) -> None:
     '''
     Adjustment of splitting_specs parameter.
@@ -91,7 +84,7 @@ def adjust_splitting_specs_(pars: dict) -> None:
     splitting_specs = pars["splitting_specs"]
     
     if splitting_specs is not None:
-        splitting_specs = _try_parse_specs_into_dict(pars["splitting_specs"], "--splitting-specs")
+        splitting_specs = try_parse_specs_into_dict(pars["splitting_specs"], "--splitting-specs")
         _check_splitting_specs_keys(splitting_mode, splitting_specs)
     
     if splitting_mode == "cv" and splitting_specs is None:
@@ -115,17 +108,3 @@ def _check_splitting_specs_keys(splitting_mode: str, splitting_specs: dict) -> N
             raise ValueError(
                 f"With '{splitting_mode}' --splitting-mode you must pass the {expected_specs} keys in --splitting-specs."
             )
-        
-
-
-def _try_parse_specs_into_dict(specs: str, error_message_specs: str) -> dict[str, Any]:
-    '''Utility to parse the string dict representation to a dict'''
-    try:
-        specs = literal_eval(specs)
-    except Exception:
-        raise ValueError(
-            f"{error_message_specs} " + "cannot be correctly parsed into a dict. \
-            It should be passed following the syntax '{'key': value, ...}'.\
-            Remember to enclose the keys in ticks ('') if they are python strings."
-        )
-    return specs

@@ -4,33 +4,10 @@ import pandas as pd
 from typing import TYPE_CHECKING
 from sklearn.model_selection import RepeatedStratifiedKFold, StratifiedShuffleSplit
 
-from estimators.estimators.params import (
-    RANDOMIZED_RANDOM_FOREST_PARAMS_DISTRIBUTIONS,
-    RANDOMIZED_XGBCLASSIFIER_PARAMS_DISTRIBUTIONS,
-    RANDOMIZED_XGBCLASSIFIER_PARAMS_DISTRIBUTIONS_1
-)
-
 if TYPE_CHECKING:
     import logging
 
-
-
-def pick_hps_configuration(pars: dict) -> dict | None:
-    match (pars["estimator"], pars["tune"], pars["hps_configuration"]):
-        case ("random_forest", False, None):
-            return None
-        case ("random_forest", True, None | "c0"):
-            return RANDOMIZED_RANDOM_FOREST_PARAMS_DISTRIBUTIONS
-        case ("xgb" | "es_xgb", False, None):
-            return None
-        case ("xgb" | "es_xgb", True, None | "c0"):
-            return RANDOMIZED_XGBCLASSIFIER_PARAMS_DISTRIBUTIONS
-        case ("xgb" | "es_xgb", True, "c1"):
-            return RANDOMIZED_XGBCLASSIFIER_PARAMS_DISTRIBUTIONS_1 
-        case _:
-            raise ValueError("Unsupported HPs tuning scenario.")
         
-
 
 def pick_splitter(pars: dict):
     '''Utility to pick and create the right splitter depending on splitting_mode'''
@@ -79,7 +56,9 @@ def get_repetition_fold(iteration: int, pars: dict) -> tuple:
 def log_program_setting(pars: dict, logger: logging.Logger, name_dataset: str) -> None:
     '''Logs info about the program input parameters/setting at debug level'''
     if pars["tune"]:
-        logger.debug(f"\nLaunching tuned {pars["hps_configuration"]} {pars["estimator"]} on {name_dataset}!")
+        logger.debug(
+            f"\nLaunching tuned {pars["tune_configuration"]["configuration"]} {pars["estimator"]} on {name_dataset}!"
+        )
     else:
        logger.debug(f"\nLaunching {pars["estimator"]} on {name_dataset}!")
 
@@ -93,6 +72,7 @@ def log_iteration(pars: dict, fold: int, repetition: int, logger: logging.Logger
         logger.debug(
             f'Running holdout iteration {fold}, with train size {pars["splitting_specs"]["train_size"]}:'
         )
+
 
 
 # def universal_predict_proba(

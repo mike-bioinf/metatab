@@ -8,11 +8,6 @@ from resample.constants import (
     PRED_DATAFRAME_RESULTS_FIXED_COLUMNS
 )
 
-from estimators.estimators.params import (
-    RANDOMIZED_XGBCLASSIFIER_PARAMS_DISTRIBUTIONS,
-    RANDOMIZED_RANDOM_FOREST_PARAMS_DISTRIBUTIONS
-)
-
 
 
 def get_estimator_filepath(pars: dict, repetition: int, fold: int) -> str:
@@ -30,41 +25,17 @@ def get_estimator_filepath(pars: dict, repetition: int, fold: int) -> str:
 
 
 
-def create_dict_hpo(pars: dict, hps_configuration: dict) -> dict[str, list]:
+def create_dict_hpo(pars: dict) -> dict[str, list]:
     '''
     Creates the dictionary used to store the best hyperparameters info.
     The dict is empy when HP tuning is not requested.
     Note: Now it needs the hps dict in input.
     '''
     if not pars["tune"]: return {}
-    return {key: [] for key in HPO_DICT_BASE_KEYS + list(hps_configuration.keys())}
-
-
-
-## TODO: collect the options returning a list into the 
-## fallback option. Remove raise error fallback.
-# def get_hpo_names(pars: dict) -> list[str]:
-#     '''
-#     Get the tunable HP names from the program input.
-#     If no tuning is involved returns an empy list.
-#     '''
-#     match (pars["estimator"], pars["tune"]):
-#         case ("random_forest", False):
-#             return []
-#         case ("random_forest", True):
-#             return list(RANDOMIZED_RANDOM_FOREST_PARAMS_DISTRIBUTIONS.keys())
-#         case ("xgb", False):
-#             return []
-#         case ("xgb", True):
-#             return list(RANDOMIZED_XGBCLASSIFIER_PARAMS_DISTRIBUTIONS.keys())
-#         case ("es_xgb", False):
-#             return []
-#         case ("es_xgb", True):
-#             return list(RANDOMIZED_XGBCLASSIFIER_PARAMS_DISTRIBUTIONS.keys())
-#         case ("tabpfn", _):
-#             return []
-#         case _:
-#             raise ValueError("Unsupported estimator.")
+    return {
+        key: [] 
+        for key in HPO_DICT_BASE_KEYS + list(pars["tune_configuration"]["params_distributions"].keys())
+    }
 
 
 

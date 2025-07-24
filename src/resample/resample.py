@@ -9,22 +9,20 @@ from metatab_utils.data_loader import DataLoader
 from metatab_utils.general import create_logger, check_y_is_integer_encoded
 
 from metatab_utils.helper_params import (
-    check_fit_args, 
+    check_fit_resample_args, 
     manage_output_path, 
     adjust_io_paths_,
-    check_ambiguous_tune_setting
+    adjust_tune_configuration_arg_
 )
 
 from resample.params import (
     parse_args,
-    adjust_hps_configuration_name_,
     adjust_splitting_specs_
 )
 
 from resample.resample_helper import (
     get_repetition_fold,
     pick_splitter,
-    pick_hps_configuration,
     log_iteration,
     log_program_setting
 )
@@ -44,15 +42,13 @@ from fit.fit_helper import pick_estimator_class
 
 
 def main():
-
     pars = vars(parse_args(sys.argv[1:]))
-    check_fit_args(pars)
-    check_ambiguous_tune_setting(pars)
+    check_fit_resample_args(pars)
 
     adjust_io_paths_(pars, "input_data", "output_dir")
     manage_output_path(pars, "output_dir", True)
     adjust_splitting_specs_(pars)
-    adjust_hps_configuration_name_(pars)
+    adjust_tune_configuration_arg_(pars)
 
     if pars["save_estimators"]:
         os.makedirs(pars["output_dir"] / "estimators", exist_ok=True)
@@ -77,10 +73,9 @@ def main():
     splitter = pick_splitter(pars)
     estimator_class = pick_estimator_class(pars)
     rng_estimator = np.random.default_rng(pars["seed"])
-    hps_configuration = pick_hps_configuration(pars)
 
     dict_results = create_dict_results(pars)
-    dict_hpo = create_dict_hpo(pars, hps_configuration)
+    dict_hpo = create_dict_hpo(pars)
 
 
     # run resampling
@@ -95,8 +90,8 @@ def main():
         estimator: Estimator = estimator_class(
             preprocessing=pars["preprocessing"],
             seed=int(rng_estimator.integers(0, 2**32)),
-            params_distributions=hps_configuration,
-            n_cores = pars["ncores"]
+            n_cores=pars["ncores"],
+            tune_configuration=pars["tune_configuration"]
         )
 
         ## TODO: here we must implement an universal fit adapter
@@ -151,6 +146,10 @@ def main():
     
     df_pred_results = PredictionDataframe()
     
+    tune_hps_configuration = None \
+        if pars["tune_configuration"] is None \
+        else pars["tune_configuration"]["configuration"]
+
     df_pred_results.build_from_data(
         **dict_results, 
         save_path=output_dir,
@@ -159,7 +158,7 @@ def main():
         splitting_mode=pars["splitting_mode"],
         preprocessing = pars["preprocessing"],
         tune = pars["tune"],
-        hps_configuration = pars["hps_configuration"],
+        tune_hps_configuration = tune_hps_configuration,
         n_cores = pars["ncores"]
     )
 
@@ -167,10 +166,14 @@ def main():
         df_pred_results.compute_metrics(multiclass="average", average_strategy="macro")
         df_pred_results.to_csv(results_filepath, sep="\t", index=False)
 
+    # remove params_distributions from pars to save results
+    del pars["tune_configuration"]["params_distributions"]
+
     if pars["tune"]:
         dict_hpo = {
             "splitting_mode": pars["splitting_mode"], 
             "preprocessing": pars["preprocessing"],
+            **pars["tune_configuration"],
             **dict_hpo
         }
         pd.DataFrame(dict_hpo).to_csv(hpo_filepath, sep="\t", index=False)

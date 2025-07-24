@@ -14,6 +14,9 @@ def parse_args(args):
                     choices=["random_forest", "xgb", "es_xgb", "tabpfn"], 
                     help="""ML 'estimator' to use. One of 'random_forest', 'xgb', 'es_xgb', 'tabpfn'.""")
     
+    p.add_argument("-y", "--target-feature", default=None, 
+                    help="Name of the target feature column. Must be provided if --input-mode is equal to 'df'")
+    
     p.add_argument("-p", "--preprocessing", default="base", choices=["base", "density_filter", "pca"],
                     help= """Preprocessing to apply on the feature space. One of 'base', 'density_filter' and 'pca'.
                     -base: a general minimal preprocessing is applied according to the used estimator.
@@ -23,13 +26,22 @@ def parse_args(args):
                     -pca: PCA is applied and only the first N principal components retaining the 95 percent of the variance are kept.""")
     
     p.add_argument("-t", "--tune", action="store_true", 
-                   help="""Tune the estimator hyperparameters. The tuning strategy as well as the HPs to tune and
-                   the tested values/strategies are not customizable. They are picked according to the estimator used.
-                   Not all estimators can be tuned. For tabpfn a separated estimator must be used for tuning.
-                   In these cases setting this parameter will result in an error.""")
-
-    p.add_argument("-y", "--target-feature", default=None, 
-                    help="Name of the target feature column. Must be provided if --input-mode is equal to 'df'")
+                   help="""Tune the estimator hyperparameters. 
+                   We use random search as tuning strategy and a preset of HPs distributions from which draw values. 
+                   These HPs preset can be specified in the '--tune-configuration' parameter. 
+                   Note that not all estimators can be tuned. For tabpfn a separated estimator must be used for HPs tuning.
+                   Setting this parameter for untunable estimators will result in an error.""")
+    
+    ## TODO: to remove in production once found good defaults?
+    p.add_argument("-c", "--tune-configuration", default=None,
+                   help="""Str representation of a dict with the following keys-values couples:
+                   'configuration': Name of the configuration of HPs to use. They follow the schema 'c{number}' (i.e 'c0').
+                    Note that for some estimators only one configuration (c0) is available.
+                    'n_iter': Number of iterations tested for the selected configuration. Must be an integer.
+                    'n_repeats': Number of cv repeats used to test each sampled configuration. Must be an integer.
+                    'n_splits': Number of cv splits used to test each sampled configuration. Must be an integer.
+                    If None, the default, the default configuration is used if "--tune" is True.
+                    One can pass a partial dicts using the default values for the unspecified fields.""")
 
     p.add_argument("-s", "--seed", default=42, type=int, 
                    help="""Seed used to control randomness.

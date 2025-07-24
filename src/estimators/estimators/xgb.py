@@ -5,8 +5,7 @@ from copy import deepcopy
 from xgboost import XGBClassifier
 from sklearn.pipeline import Pipeline
 
-from sklearn.model_selection import (
-    StratifiedKFold, 
+from sklearn.model_selection import ( 
     RandomizedSearchCV, 
     train_test_split
 )
@@ -21,12 +20,10 @@ from estimators.estimators.utils import (
     remove_string_from_params
 )
 
-from estimators.estimators.params import (
-    RANDOMIZED_XGBCLASSIFIER_PARAMS_DISTRIBUTIONS, 
+from estimators.estimators.params import ( 
     ES_XGBCLASSIFIER_FIXED_PARAMS,
     XGBCLASSIFIER_FIXED_PARAMS,
-    SKLEARN_RANDOM_SEARCH_FIXED_PARAMS,
-    N_ITERATIONS_RANDOM_SEARCH
+    SKLEARN_RANDOM_SEARCH_FIXED_PARAMS
 )
 
 
@@ -46,28 +43,24 @@ class MyRandomizedESXGBClassifier(AbstractBaseEstimator):
         preprocessing: Literal["base", "density_filter", "pca"],
         seed: int,
         n_cores: int, 
-        params_distributions: dict = RANDOMIZED_XGBCLASSIFIER_PARAMS_DISTRIBUTIONS,
+        tune_configuration: dict,
         fixed_params: dict = ES_XGBCLASSIFIER_FIXED_PARAMS
     ):
-        super().__init__(preprocessing, seed, n_cores, params_distributions, fixed_params)
+        super().__init__(preprocessing, seed, n_cores, tune_configuration, fixed_params)
 
     def fit(self, X: pd.DataFrame, y: pd.Series, **kwargs) -> "MyRandomizedESXGBClassifier":
         fixed_params = super().update_fixed_params(up_seed=True, up_n_cores=True, copy=True)
         fixed_params = _adjust_xgb_objective(fixed_params, y)
         fixed_params = _adjust_logloss_es_metric(fixed_params, y)
-
-        # pass a seed here in splitter and NOT a RandomState
-        splitter = StratifiedKFold(n_splits=5, shuffle=True, random_state=self.seed)
-        preprocessing_pipeline = self._create_preprocessing_pipeline()
-
+       
         estimator = MyRandomSearchCV(
             classifier=XGBClassifier,
             fixed_params_classifier=fixed_params,
-            param_distributions=self.params_distributions,
-            preprocessing_pipeline=preprocessing_pipeline,
-            splitter = splitter,
+            param_distributions=self.tune_configuration["params_distributions"],
+            preprocessing_pipeline=self._create_preprocessing_pipeline(),
+            splitter=super().build_tune_splitter(),
             scorer="logloss",
-            n_iter=N_ITERATIONS_RANDOM_SEARCH,
+            n_iter=self.tune_configuration["n_iter"],
             refit=True,
             seed=self.seed
         )
@@ -92,7 +85,7 @@ class MyRandomizedESXGBClassifier(AbstractBaseEstimator):
 class MyRandomizedXGBClassifier(AbstractBaseEstimator):
     '''
     Class that implements the xgboost classifier in random search
-    to tune the tunable HPs without early stopping.
+    to tune the HPs without early stopping.
     
     Attributes
     ------------------    
@@ -104,19 +97,25 @@ class MyRandomizedXGBClassifier(AbstractBaseEstimator):
         preprocessing: Literal["base", "density_filter", "pca"],
         seed: int,
         n_cores: int,
-        params_distributions: dict = RANDOMIZED_XGBCLASSIFIER_PARAMS_DISTRIBUTIONS,
+        tune_configuration: dict,
         fixed_params: dict = XGBCLASSIFIER_FIXED_PARAMS  
     ):
-        super().__init__(preprocessing, seed, n_cores, params_distributions, fixed_params)
+        super().__init__(preprocessing, seed, n_cores, tune_configuration, fixed_params)
 
     def fit(self, X: pd.DataFrame, y: pd.Series, **kwargs) -> "MyRandomizedXGBClassifier":
         fixed_params = super().update_fixed_params(up_seed=True, up_n_cores=True, copy=True)
         fixed_params = _adjust_xgb_objective(fixed_params, y)
         
+        params_distributions = add_string_to_params(
+            self.tune_configuration["params_distributions"], 
+            "xgbclassifier__"
+        )
+
         estimator = RandomizedSearchCV(
             estimator=self._create_estimator(fixed_params),
-            param_distributions=add_string_to_params(self.params_distributions, "xgbclassifier__"),
-            cv=StratifiedKFold(n_splits=5, shuffle=True, random_state=self.seed),
+            param_distributions=params_distributions,
+            n_iter=self.tune_configuration["n_iter"],
+            cv=super().build_tune_splitter(),
             random_state=self.seed,
             **SKLEARN_RANDOM_SEARCH_FIXED_PARAMS,
         )
@@ -161,10 +160,10 @@ class MyESXGBClassifier(AbstractBaseEstimator):
         preprocessing: Literal["base", "density_filter", "pca"],
         seed: int,
         n_cores: int,
-        params_distributions = None,
+        tune_configuration = None,
         fixed_params: dict = ES_XGBCLASSIFIER_FIXED_PARAMS   
     ):
-        super().__init__(preprocessing, seed, n_cores, params_distributions, fixed_params)
+        super().__init__(preprocessing, seed, n_cores, tune_configuration, fixed_params)
 
     def fit(self, X: pd.DataFrame, y: pd.Series, **kwargs) -> "MyESXGBClassifier":
         X_train, X_val, y_train, y_val = train_test_split(
@@ -222,10 +221,10 @@ class MyXGBClassifier(AbstractBaseEstimator):
         preprocessing: Literal["base", "density_filter", "pca"],
         seed: int,
         n_cores: int,
-        params_distributions = None,
+        tune_configuration = None,
         fixed_params: dict = XGBCLASSIFIER_FIXED_PARAMS   
     ):
-        super().__init__(preprocessing, seed, n_cores, params_distributions, fixed_params)
+        super().__init__(preprocessing, seed, n_cores, tune_configuration, fixed_params)
 
     def fit(self, X: pd.DataFrame, y: pd.Series, **kwargs) -> "MyXGBClassifier":
         fixed_params = super().update_fixed_params(up_seed=True, up_n_cores=True, copy=True)
