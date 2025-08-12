@@ -171,6 +171,8 @@ def main():
 
     if pars["tune"]:
         dict_hpo = {
+            "dataset": name_dataset,
+            "estimator": pars["estimator"],
             "splitting_mode": pars["splitting_mode"], 
             "preprocessing": pars["preprocessing"],
             **pars["tune_configuration"],

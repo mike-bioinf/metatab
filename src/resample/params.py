@@ -50,14 +50,14 @@ def parse_args(args):
     
     ## TODO: to remove in production once found good defaults?
     p.add_argument("-c", "--tune-configuration", default=None,
-                   help="""Tune details. It is s string representation of a dict with the following keys-values couples:
+                   help="""Tune details. It is a string representation of a dict with the following keys-values couples:
                    'configuration': Name of the configuration of HPs to use. They follow the schema 'c{number}' (i.e 'c0').
                     Note that for some estimators only one configuration (c0) is available.
                     'n_iter': Number of iterations tested for the selected configuration. Must be an integer.
                     'n_repeats': Number of cv repeats used to test each sampled configuration. Must be an integer.
                     'n_splits': Number of cv splits used to test each sampled configuration. Must be an integer.
-                    If None, the default, the default configuration is used if "--tune" is True.
-                    One can pass a partial dicts using the default values for the unspecified fields.""")
+                    If None, the default, the default c0 configuration is used if "--tune" is True.
+                    One can pass a partial dict using the default values for the unspecified fields.""")
     
     p.add_argument("-q", "--save-estimators", action="store_true",
                    help="""Option to save the fitted estimators. 

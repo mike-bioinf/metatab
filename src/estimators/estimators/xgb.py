@@ -51,7 +51,7 @@ class MyRandomizedESXGBClassifier(AbstractBaseEstimator):
     def fit(self, X: pd.DataFrame, y: pd.Series, **kwargs) -> "MyRandomizedESXGBClassifier":
         fixed_params = super().update_fixed_params(up_seed=True, up_n_cores=True, copy=True)
         fixed_params = _adjust_xgb_objective(fixed_params, y)
-        fixed_params = _adjust_logloss_es_metric(fixed_params, y)
+        fixed_params = _adjust_esxgb_logloss_metric(fixed_params, y)
        
         estimator = MyRandomSearchCV(
             classifier=XGBClassifier,
@@ -180,7 +180,7 @@ class MyESXGBClassifier(AbstractBaseEstimator):
 
         fixed_params = super().update_fixed_params(up_seed=True, up_n_cores=True, copy=True)
         fixed_params = _adjust_xgb_objective(fixed_params, y)
-        fixed_params = _adjust_logloss_es_metric(fixed_params, y)
+        fixed_params = _adjust_esxgb_logloss_metric(fixed_params, y)
         estimator = XGBClassifier(**fixed_params)
         
         self.estimator_ = estimator.fit(
@@ -267,7 +267,7 @@ def _adjust_xgb_objective(fixed_params: dict, y: pd.Series, copy: bool = False) 
 
 
 
-def _adjust_logloss_es_metric(fixed_params: dict, y: pd.Series, copy: bool = False) -> dict:
+def _adjust_esxgb_logloss_metric(fixed_params: dict, y: pd.Series, copy: bool = False) -> dict:
     '''
     The XGBboost package differentiate between binary "logloss"
     and multiclassification "mlogloss" for the early stopping metric.
@@ -276,7 +276,7 @@ def _adjust_logloss_es_metric(fixed_params: dict, y: pd.Series, copy: bool = Fal
     Returns a new dict or the old updated one depending on copy parameter.
     '''
     fixed_params = deepcopy(fixed_params) if copy else fixed_params
-    is_log_loss = True if fixed_params["eval_metric"] in ["logloss", "mlogloss"] else False
+    is_log_loss = True if fixed_params["eval_metric"] == "logloss_to_adjust" else False
 
     if not is_log_loss:
         return fixed_params
