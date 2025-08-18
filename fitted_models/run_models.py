@@ -7,12 +7,12 @@ from functools import partial
 from estimators.types import Estimator
 
 from estimators import (
-    MyRandomizedXGBClassifier, 
-    MyRandomizedESXGBClassifier,
+    MyTunedXGBClassifier, 
+    MyTunedESXGBClassifier,
     MyXGBClassifier,
     MyESXGBClassifier,
     MyRandomForestClassifier,
-    MyRandomizedRandomForestClassifier,
+    MyTunedRandomForestClassifier,
     MyTabPFNClassifier
 )
 
@@ -22,11 +22,7 @@ from .test_constants import (
     TEST_RANDOM_FOREST_CLASSIFIER_FIXED_PARAMS
 )
 
-from estimators.estimators.params import (
-    RANDOMIZED_RANDOM_FOREST_PARAMS_DISTRIBUTIONS,
-    RANDOMIZED_XGBCLASSIFIER_PARAMS_DISTRIBUTIONS,
-    RANDOMIZED_XGBCLASSIFIER_PARAMS_DISTRIBUTIONS_1
-)
+from estimators.estimators.params import TuningParams
 
 if TYPE_CHECKING:
     import pandas as pd
@@ -61,7 +57,7 @@ def run_estimator(
         estimator = estimator(
             preprocessing="base", 
             seed=0,
-            n_cores=4,
+            n_threads=4,
             tune_configuration=tune_configuration,
             fixed_params=fixed_params
         )
@@ -74,14 +70,14 @@ run_estimator = partial(run_estimator, X=X, y=y)
 
 
 run_estimator(
-    estimator=MyRandomizedESXGBClassifier,
+    estimator=MyTunedESXGBClassifier,
     fixed_params=TEST_ES_XGBCLASSIFIER_FIXED_PARAMS,
     params_distributions=RANDOMIZED_XGBCLASSIFIER_PARAMS_DISTRIBUTIONS,
     file=model_folder / "my_randomized_es_xgb_classifier.pkl"
 )
 
 run_estimator(
-    estimator=MyRandomizedXGBClassifier,
+    estimator=MyTunedXGBClassifier,
     fixed_params=TEST_XGBCLASSIFIER_FIXED_PARAMS,
     params_distributions=RANDOMIZED_XGBCLASSIFIER_PARAMS_DISTRIBUTIONS,
     file=model_folder / "my_randomized_xgb_classifier.pkl"
@@ -109,9 +105,9 @@ run_estimator(
 )
 
 run_estimator(
-    estimator=MyRandomizedRandomForestClassifier,
+    estimator=MyTunedRandomForestClassifier,
     fixed_params=TEST_RANDOM_FOREST_CLASSIFIER_FIXED_PARAMS,
-    params_distributions=RANDOMIZED_RANDOM_FOREST_PARAMS_DISTRIBUTIONS,
+    params_distributions=RF_C0,
     file=model_folder / "my_randomized_rf_classifier.pkl"
 )
 

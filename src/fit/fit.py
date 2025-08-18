@@ -9,8 +9,11 @@ from metatab_utils.helper_params import (
     adjust_io_paths_, 
     manage_output_path,
     check_fit_resample_args,
+    check_tune_algo,
     adjust_tune_configuration_arg_
 )
+
+
 
 
 def main():
@@ -20,6 +23,7 @@ def main():
     adjust_io_paths_(pars, "input_data", "output_path")
     manage_output_path(pars, "output_path", False)
     adjust_tune_configuration_arg_(pars)
+    check_tune_algo(pars)
     
     logger = create_logger(sys.stdout)
     dl = DataLoader()
@@ -43,7 +47,7 @@ def main():
     estimator: Estimator = estimator_class(
         preprocessing=pars["preprocessing"],
         seed=pars["seed"],
-        n_cores=pars["ncores"],
+        n_threads=pars["nthreads"],
         tune_configuration=pars["tune_configuration"]
     )
     

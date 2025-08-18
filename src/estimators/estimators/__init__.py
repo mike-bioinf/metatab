@@ -1,15 +1,13 @@
-from estimators.estimators.random_search import MyRandomSearchCV
-
 from estimators.estimators.xgb import (
-    MyRandomizedESXGBClassifier, 
-    MyRandomizedXGBClassifier,
+    MyTunedESXGBClassifier, 
+    MyTunedXGBClassifier,
     MyESXGBClassifier,
     MyXGBClassifier
 )
 
 from estimators.estimators.rf import (
     MyRandomForestClassifier,
-    MyRandomizedRandomForestClassifier
+    MyTunedRandomForestClassifier
 )
 
 from estimators.estimators.tabpfn import (
@@ -18,12 +16,11 @@ from estimators.estimators.tabpfn import (
 
 
 __all__ = [
-    "MyRandomizedESXGBClassifier",
-    "MyRandomizedXGBClassifier",
+    "MyTunedESXGBClassifier",
+    "MyTunedXGBClassifier",
     "MyESXGBClassifier",
     "MyXGBClassifier",
-    "MyRandomSearchCV",
     "MyRandomForestClassifier",
-    "MyRandomizedRandomForestClassifier",
+    "MyTunedRandomForestClassifier",
     "MyTabPFNClassifier"
 ]

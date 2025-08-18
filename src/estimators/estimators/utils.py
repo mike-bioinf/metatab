@@ -1,31 +1,14 @@
+import pandas as pd
 from copy import deepcopy
 from numpy.random import RandomState
 from typing import Literal, Any
-from scipy.stats import loguniform
 from sklearn.pipeline import Pipeline, make_pipeline
 from sklearn.feature_selection import VarianceThreshold
+from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 from estimators.estimators.types import Classifier
 from estimators.preprocessing import DensityFeatureSelector
-
-
-
-def float_to_int(rvs):
-    def rvs_wrapper(*args, **kwargs):
-        return rvs(*args, **kwargs).round().astype(int)
-    return rvs_wrapper
-
-
-
-def int_loguniform(low, high):
-    '''
-    Function to create a loguniform scipy object 
-    that returns integers via the "rsv" method.
-    '''
-    lu = loguniform(low, high)
-    lu.rvs = float_to_int(lu.rvs)
-    return lu
 
 
 
@@ -95,7 +78,7 @@ def create_default_pipeline(
     classifier_params: dict | None = None,
 ) -> Pipeline:
     '''
-    Creates the standard/most-used pipeline configurations for each preprocessing strategy.
+    Creates the standard pipelines for each preprocessing strategy.
     Allows to adapt the dinamic strategy parameter of the DenistyFeatureSelector.
     Allows to use the classifier as final step or not. 
     If used one must specify also the parameters to pass in it.
@@ -181,7 +164,7 @@ def add_classifier_head_to_steps(
     steps: tuple,
     classifier: Classifier | None, 
     classifier_params: dict | None
-) -> tuple:
+) -> list:
     '''
     Add the classifier to the steps if not None.
     If it is None return steps.
@@ -189,5 +172,68 @@ def add_classifier_head_to_steps(
     if classifier is not None:
         steps = [step for step in steps]
         steps.append(classifier(**classifier_params))
-        steps = tuple(steps)
     return steps
+
+
+
+def fit_with_early_stop_on_validation_set(
+    *,
+    clf_or_pipe: Classifier | Pipeline,
+    X: pd.DataFrame,
+    y: pd.Series,
+    seed: int,
+    validation_set_size: float,
+    eval_set_parameter: str
+ ) -> Classifier | Pipeline:
+    '''
+    Utility to fit an estimator using early stop on a validation set.
+    The estimator must implement the early stop capability at its 
+    fit interface, following a gbdt like API ("eval_set-like" parameter).
+
+    Parameters:
+        clf_or_pipe (Classifier | Pipeline):
+            The classifier or pipeline to fit. 
+            If a pipeline it must ends with a classifier.
+        
+        X (pd.DataFrame): Training feature space.
+        
+        y (pd.Series): Training labels.
+        
+        seed (int): Seed for reproducibility used ONLY in the train/val splitting.
+        
+        validation_set_size (float): 
+            Ratio of training data to use as validation.
+            Must be a number in (0, 1).
+        
+        eval_set_parameter (str): Name of the parameter accepting the validation sets.
+
+    Returns:
+        Classifier|Pipeline: The fitted estimator.
+    '''
+    X_train, X_val, y_train, y_val = train_test_split(
+        X, 
+        y, 
+        test_size=validation_set_size,
+        random_state=seed,
+        stratify=y
+    )
+    
+    if isinstance(clf_or_pipe, Pipeline):
+        # we split the classifier from the preprocessing pipeline 
+        # to avoid to repeat the preprocessing 2 times.
+        # we fit in place the two components separately.
+        clf: Classifier = clf_or_pipe[-1]
+        preprocessing_pipeline: Pipeline = clf_or_pipe[:-1]
+        X_train_transformed = preprocessing_pipeline.fit_transform(X_train)
+        X_val_transformed = preprocessing_pipeline.transform(X_val)
+        clf.fit(
+            X_train_transformed, y_train, 
+            **{eval_set_parameter: [(X_val_transformed, y_val)]}
+        )
+    else:
+        clf_or_pipe.fit(
+            X_train, y_train,
+            **{eval_set_parameter: [(X_val, y_val)]}
+        )
+    
+    return clf_or_pipe

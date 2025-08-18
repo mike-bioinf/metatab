@@ -12,8 +12,10 @@ def parse_args(args):
                    help="""Path of the folder storing the results.
                    If not provided the folder in which the program is run is used.""")
     
-    p.add_argument("-e", "--estimator", required=True, choices=["random_forest", "xgb", "es_xgb", "tabpfn"], 
-                    help="""ML 'estimator' to use. One of 'random_forest', 'xgb', 'es_xgb', 'tabpfn'.""")
+    p.add_argument("-e", "--estimator", required=True, choices=["random_forest", "xgb", "es_xgb", "catboost", "es_catboost",
+                    "tabpfn"], 
+                    help="""ML estimator to use. One of 'random_forest', 'xgb', 'es_xgb', 'catboost', 'es_catboost', 
+                    'tabpfn'.""")
 
     p.add_argument("-m", "--input-mode", required=True, choices=["xy", "df"],
                     help="Defines the data input format. One between 'xy' and 'df'.")
@@ -48,11 +50,11 @@ def parse_args(args):
                    Note that not all estimators can be tuned. For tabpfn a separated estimator must be used for HPs tuning.
                    Setting this parameter for untunable estimators will result in an error.""")
     
-    ## TODO: to remove in production once found good defaults?
     p.add_argument("-c", "--tune-configuration", default=None,
-                   help="""Tune details. It is a string representation of a dict with the following keys-values couples:
+                   help="""Tune details. It is a string representation of a dict with the following key-value couples:
                    'configuration': Name of the configuration of HPs to use. They follow the schema 'c{number}' (i.e 'c0').
                     Note that for some estimators only one configuration (c0) is available.
+                    'algo': Search algorithm to use. One of 'random' and 'tpe' (default).
                     'n_iter': Number of iterations tested for the selected configuration. Must be an integer.
                     'n_repeats': Number of cv repeats used to test each sampled configuration. Must be an integer.
                     'n_splits': Number of cv splits used to test each sampled configuration. Must be an integer.
@@ -67,7 +69,9 @@ def parse_args(args):
                    In case of 'holdout' splitting mode the "__{repetition}{fold}" part is replaced by
                    a sequential number.""")
 
-    p.add_argument("--ncores", default=16, type=int, help="Number of CPU cores to use. Defaults to 16.")
+    p.add_argument("--nthreads", default=16, type=int, 
+                   help="Number of CPU threads to use to fit the estimators. Defaults to 16.")
+    
     p.add_argument("--create-outdir", action="store_true", help="Create the output directory if does not exists.")
 
     return p.parse_args(args)

@@ -10,9 +10,10 @@ def parse_args(args):
     p.add_argument("-m", "--input-mode", required=True, choices=["sets", "xy", "df"],
                     help="Defines the data input format. One of 'sets', 'xy', or 'df'.")
 
-    p.add_argument("-e", "--estimator", required=True, 
-                    choices=["random_forest", "xgb", "es_xgb", "tabpfn"], 
-                    help="""ML 'estimator' to use. One of 'random_forest', 'xgb', 'es_xgb', 'tabpfn'.""")
+    p.add_argument("-e", "--estimator", required=True, choices=["random_forest", "xgb", "es_xgb", "catboost", "es_catboost",
+                    "tabpfn"], 
+                    help="""ML 'estimator' to use. One of 'random_forest', 'xgb', 'es_xgb', 'catboost', 'es_catboost', 
+                    'tabpfn'.""")
     
     p.add_argument("-y", "--target-feature", default=None, 
                     help="Name of the target feature column. Must be provided if --input-mode is equal to 'df'")
@@ -32,11 +33,11 @@ def parse_args(args):
                    Note that not all estimators can be tuned. For tabpfn a separated estimator must be used for HPs tuning.
                    Setting this parameter for untunable estimators will result in an error.""")
     
-    ## TODO: to remove in production once found good defaults?
     p.add_argument("-c", "--tune-configuration", default=None,
                    help="""Tune details. It is a string representation of a dict with the following keys-values couples:
                    'configuration': Name of the configuration of HPs to use. They follow the schema 'c{number}' (i.e 'c0').
                     Note that for some estimators only one configuration (c0) is available.
+                    'algo': Search algorithm to use. One of 'random' and 'tpe' (default).
                     'n_iter': Number of iterations tested for the selected configuration. Must be an integer.
                     'n_repeats': Number of cv repeats used to test each sampled configuration. Must be an integer.
                     'n_splits': Number of cv splits used to test each sampled configuration. Must be an integer.
@@ -47,7 +48,9 @@ def parse_args(args):
                    help="""Seed used to control randomness.
                    In particular it controls the randomness inherent to the estimators, splitting and tuning procedures.""")
 
-    p.add_argument("--ncores", default=16, type=int, help="Number of CPU cores to use. Defaults to 16.")
+    p.add_argument("--nthreads", default=16, type=int, 
+                   help="Number of CPU threads to use to fit the estimator. Defaults to 16.")
+    
     p.add_argument("--create-outdir", action="store_true", help="Create the output folder if does not exists.")
 
     return p.parse_args(args)

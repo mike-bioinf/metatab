@@ -4,10 +4,8 @@ from typing import Any
 from ast import literal_eval
 
 from estimators.estimators.params import (
-    DEFAULT_TUNE_CONFIGURATION, 
-    RANDOMIZED_RANDOM_FOREST_PARAMS_DISTRIBUTIONS,
-    RANDOMIZED_XGBCLASSIFIER_PARAMS_DISTRIBUTIONS,
-    RANDOMIZED_XGBCLASSIFIER_PARAMS_DISTRIBUTIONS_1
+    DEFAULT_TUNE_CONFIGURATION,
+    TuningParams
 )
 
 
@@ -40,11 +38,10 @@ def manage_output_path(pars: dict, output_arg: str, is_folder: bool) -> None:
 
 
 def check_fit_resample_args(pars: dict) -> None:
-    '''General check on fit and resample program arguments'''
+    '''General check for fit and resample program arguments'''
     check_target_feature(pars)
     check_not_tunable_estimators(pars)
     check_ambiguous_tune_setting(pars)
-
 
 
 def check_target_feature(pars: dict) -> None:
@@ -63,15 +60,26 @@ def check_not_tunable_estimators(pars: dict) -> None:
         )
 
 
-## TODO: maybe to remove in production when a fixed conf is used for each estimator.
 def check_ambiguous_tune_setting(pars: dict) -> None:
     '''Check whether a tune configuration is passed with the tune flag down.'''
     if not pars["tune"] and pars["tune_configuration"] is not None:
         raise ValueError(
-            "A tuning configurations is passed but tuning is not requested."
+            "A tuning configurations is passed (tune_configuration is not None)" +
+            " but tuning is not requested (tune flag down)."
         )
 
 
+def check_tune_algo(pars: dict) -> None:
+    '''Check on the validity of the tuning algo'''
+    if not pars["tune"] or pars["tune_configuration"] is None:
+        return None
+    else:
+        input_tune_algo = pars["tune_configuration"]["algo"]
+        if input_tune_algo not in ["random", "tpe"]:
+            raise ValueError(
+                f"The tuning search algorithm must be one of 'random' or 'tpe'. Currently {input_tune_algo}."
+            )
+    
 
 def adjust_tune_configuration_arg_(pars: dict) -> None:
     '''
@@ -94,14 +102,14 @@ def adjust_tune_configuration_arg_(pars: dict) -> None:
             "tune_configuration"
         )
     
-    # fill the missing keys with defaults
     if do_actions:
+        # fill the missing keys with defaults
+        actual_keys = pars["tune_configuration"].keys()
         for key, value in DEFAULT_TUNE_CONFIGURATION.items():
-            if not key in pars["tune_configuration"].keys():
+            if not key in actual_keys:
                 pars["tune_configuration"][key] = value
 
-    # check for unsupported keys
-    if do_actions:
+        # check for unsupported keys
         if len(pars["tune_configuration"]) > len(DEFAULT_TUNE_CONFIGURATION):
             raise ValueError(
                 "Passed unsupported keys in 'tune_configuration' argument."
@@ -109,24 +117,6 @@ def adjust_tune_configuration_arg_(pars: dict) -> None:
 
     # add the parameters distributions
     pars["tune_configuration"]["params_distributions"] = _pick_params_distributions_configuration(pars)
-
-
-
-def _pick_params_distributions_configuration(pars: dict) -> dict | None:
-    conf = pars["tune_configuration"]["configuration"]
-    estimator = pars["estimator"]
-
-    match (estimator, conf):
-        case ("random_forest", "c0"):
-            return RANDOMIZED_RANDOM_FOREST_PARAMS_DISTRIBUTIONS
-        case ("xgb" | "es_xgb", "c0"):
-            return RANDOMIZED_XGBCLASSIFIER_PARAMS_DISTRIBUTIONS
-        case ("xgb" | "es_xgb", "c1"):
-            return RANDOMIZED_XGBCLASSIFIER_PARAMS_DISTRIBUTIONS_1 
-        case _:
-            raise ValueError(
-                f"Unsupported configuration '{conf}' for '{estimator}' estimator."
-            )
 
 
 
@@ -141,6 +131,47 @@ def try_parse_specs_into_dict(specs: str, error_message_specs: str) -> dict[str,
             Remember to enclose the keys in ticks ('') if they are python strings."
         )
     return specs
+
+
+
+def _pick_params_distributions_configuration(pars: dict) -> dict | None:
+    conf = pars["tune_configuration"]["configuration"]
+    estimator = pars["estimator"]
+
+    match (estimator, conf):
+        case ("random_forest", "c0"):
+            return TuningParams.RF_C0
+        case ("random_forest", "c1"):
+            return TuningParams.RF_C1
+        
+        case ("xgb" | "es_xgb", "c0"):
+            return TuningParams.XGB_C0
+        case ("xgb" | "es_xgb", "c1"):
+            return TuningParams.XGB_C1
+        case ("xgb" | "es_xgb", "c2"):
+            return TuningParams.XGB_C2
+        case ("xgb" | "es_xgb", "c3"):
+            return TuningParams.XGB_C3
+        case ("xgb" | "es_xgb", "c4"):
+            return TuningParams.XGB_C4
+        
+        case ("catboost" | "es_catboost", "c0"):
+            return TuningParams.CATBOOST_C0
+        case ("catboost" | "es_catboost", "c1"):
+            return TuningParams.CATBOOST_C1
+        case ("catboost" | "es_catboost", "c2"):
+            return TuningParams.CATBOOST_C2
+        case ("catboost" | "es_catboost", "c3"):
+            return TuningParams.CATBOOST_C3
+        case ("catboost" | "es_catboost", "c4"):
+            return TuningParams.CATBOOST_C4
+        case ("catboost" | "es_catboost", "c5"):
+            return TuningParams.CATBOOST_C5
+
+        case _:
+            raise ValueError(
+                f"Unsupported configuration '{conf}' for '{estimator}' estimator."
+            )
 
 
 

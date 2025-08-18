@@ -9,7 +9,8 @@ from metatab_utils.data_loader import DataLoader
 from metatab_utils.general import create_logger, check_y_is_integer_encoded
 
 from metatab_utils.helper_params import (
-    check_fit_resample_args, 
+    check_fit_resample_args,
+    check_tune_algo,
     manage_output_path, 
     adjust_io_paths_,
     adjust_tune_configuration_arg_
@@ -49,6 +50,7 @@ def main():
     manage_output_path(pars, "output_dir", True)
     adjust_splitting_specs_(pars)
     adjust_tune_configuration_arg_(pars)
+    check_tune_algo(pars)
 
     if pars["save_estimators"]:
         os.makedirs(pars["output_dir"] / "estimators", exist_ok=True)
@@ -90,7 +92,7 @@ def main():
         estimator: Estimator = estimator_class(
             preprocessing=pars["preprocessing"],
             seed=int(rng_estimator.integers(0, 2**32)),
-            n_cores=pars["ncores"],
+            n_threads=pars["nthreads"],
             tune_configuration=pars["tune_configuration"]
         )
 
@@ -159,7 +161,7 @@ def main():
         preprocessing = pars["preprocessing"],
         tune = pars["tune"],
         tune_hps_configuration = tune_hps_configuration,
-        n_cores = pars["ncores"]
+        n_threads = pars["nthreads"]
     )
 
     if not df_pred_results.has_recovered:

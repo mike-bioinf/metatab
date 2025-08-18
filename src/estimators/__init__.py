@@ -1,22 +1,20 @@
 from estimators.estimators import (
-    MyRandomizedXGBClassifier, 
-    MyRandomizedESXGBClassifier,
+    MyTunedXGBClassifier, 
+    MyTunedESXGBClassifier,
     MyXGBClassifier,
     MyESXGBClassifier,
-    MyRandomSearchCV,
     MyRandomForestClassifier,
-    MyRandomizedRandomForestClassifier,
+    MyTunedRandomForestClassifier,
     MyTabPFNClassifier
 )
 
 
 __all__ = [
-    "MyRandomizedXGBClassifier", 
-    "MyRandomizedESXGBClassifier",
+    "MyTunedXGBClassifier", 
+    "MyTunedESXGBClassifier",
     "MyXGBClassifier",
     "MyESXGBClassifier",
-    "MyRandomSearchCV",
     "MyRandomForestClassifier",
-    "MyRandomizedRandomForestClassifier",
+    "MyTunedRandomForestClassifier",
     "MyTabPFNClassifier"
 ]

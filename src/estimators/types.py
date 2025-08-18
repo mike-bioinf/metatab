@@ -3,10 +3,10 @@ from typing import TypeAlias, Union
 from estimators import (
     MyXGBClassifier,
     MyESXGBClassifier,
-    MyRandomizedXGBClassifier,
-    MyRandomizedESXGBClassifier,
+    MyTunedXGBClassifier,
+    MyTunedESXGBClassifier,
     MyRandomForestClassifier,
-    MyRandomizedRandomForestClassifier,
+    MyTunedRandomForestClassifier,
     MyTabPFNClassifier
 )
 
@@ -14,9 +14,9 @@ from estimators import (
 Estimator: TypeAlias = Union[
     MyXGBClassifier,
     MyESXGBClassifier,
-    MyRandomizedXGBClassifier,
-    MyRandomizedESXGBClassifier,
+    MyTunedXGBClassifier,
+    MyTunedESXGBClassifier,
     MyRandomForestClassifier,
-    MyRandomizedRandomForestClassifier,
+    MyTunedRandomForestClassifier,
     MyTabPFNClassifier
 ]

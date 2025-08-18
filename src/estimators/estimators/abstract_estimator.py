@@ -8,14 +8,15 @@ from warnings import warn
 from abc import ABC, abstractmethod
 from sklearn.utils.validation import check_is_fitted
 from sklearn.pipeline import Pipeline
-from sklearn.model_selection import RepeatedStratifiedKFold
 
 if TYPE_CHECKING:
     import numpy as np
     import pandas as pd
+    from estimators.estimators.searchcv import SearchCV
     from sklearn.decomposition import PCA
     from estimators.preprocessing.density_selector import DensityFeatureSelector
     from estimators.estimators.types import TabPFNEstimators
+    from estimators.estimators.types import Classifier
 
 
 
@@ -24,8 +25,10 @@ class AbstractBaseEstimator(ABC):
     Abstract and Base class for estimators classes.
     
     The estimators classes must implement the 'estimator_' attribute
-    in the "fit" method, storing the model fitted on the input data.
-    Note: fixed_params must always be optional i.e. it must implement defaults.
+    learned in the 'fit' method, storing the model fitted on the input data.
+    This can be a Classifier, Pipeline or SearchCV object.
+    
+    Note: fixed_params must always be optional i.e. it must have a default.
     
     Parameters:
         preprocessing (Literal["base", "density_filter", "pca"]): 
@@ -36,29 +39,29 @@ class AbstractBaseEstimator(ABC):
             This seed is directly used to fit the model.
             It is used also for eventual splitting and tune procedures. 
 
-        n_cores (int):
-            Number of CPU cores used to fit the estimator. 
-            Is ignored by the unparallelizable estimators.
+        n_threads (int):
+            Number of CPU threads used to fit the estimator. 
+            Is ignored by not parallelizable estimators.
 
         tune_configuration (None | dict):
             Dict with the tuning info. 
             Is ignored by the not tunable estimators.
             
         fixed_params (dict, optional):
-            Dict of param:value that are fixed i.e. not tuned in the search.
+            Dict of param:value that are fixed, i.e. not tuned in the search.
     '''
     @abstractmethod
     def __init__(
         self, 
         preprocessing: Literal["base", "density_filter", "pca"],
         seed: int,
-        n_cores: int,
+        n_threads: int,
         tune_configuration: None | dict,
         fixed_params: dict
     ):
         self.preprocessing = preprocessing
         self.seed = seed
-        self.n_cores = n_cores
+        self.n_threads = n_threads
         self.tune_configuration = tune_configuration
         self.fixed_params = fixed_params
         
@@ -68,24 +71,12 @@ class AbstractBaseEstimator(ABC):
         pass
     
 
-    @abstractmethod
-    def _get_fitted_preprocessing_pipeline_or_estimator(self) -> Pipeline | TabPFNEstimators:
-        '''
-        Return the fitted preprocessing pipeline 
-        with or without the classifier head, or the fitted estimator
-        in the absence of it. Tabpfn-derived estimators does 
-        not require/build a sklearn pipeline with base preprocessing. 
-        For these classes the estimator is returned.
-        '''
-        pass
-    
-
     def predict_proba(self, X: pd.DataFrame) -> np.ndarray:
         '''
         Executes the "classic" predict_proba framework and method, 
         i.e. without external/decoupled test data preprocessing 
         and with the classic method signature involving only the X parameter, 
-        plus good defaults for other eventual ones.
+        plus good defaults for the other ones.
         '''
         check_is_fitted(self, "estimator_")
         return self.estimator_.predict_proba(X)
@@ -106,7 +97,7 @@ class AbstractBaseEstimator(ABC):
         '''
         Get the best HPs resulting from tuning.
         Returns None since this method is the one 
-        used by the estimators that does not tune HPs.
+        used by the estimators that do not tune HPs.
         '''
         return None
 
@@ -115,78 +106,62 @@ class AbstractBaseEstimator(ABC):
         self,
         *,
         up_seed: bool, 
-        up_n_cores: bool, 
+        up_n_threads: bool, 
         key_seed: str = "random_state", 
-        key_n_cores: str = "n_jobs", 
+        key_n_threads: str = "n_jobs", 
         copy: bool = False
     ) -> dict:
         '''
-        Update the fixed params dict or a deepcopy of it 
-        with the seed and n_cores info.
+        Update the fixed params dict or a deepcopy of it with the seed and n_threads info.
         Returns the updated dict.
         '''
         fixed_params = deepcopy(self.fixed_params) if copy else self.fixed_params
         if up_seed: fixed_params[key_seed] = self.seed
-        if up_n_cores: fixed_params[key_n_cores] = self.n_cores
+        if up_n_threads: fixed_params[key_n_threads] = self.n_threads
         return fixed_params
                 
-    
-    def build_tune_splitter(self) -> RepeatedStratifiedKFold:
-        '''
-        Build the splitter to use in tuning based on 
-        the "tune_configuration" attribute specifications.
-        Raise an error if the "tune_configuration" attr is None.
-        '''
-        if self.tune_configuration is None:
-            raise ValueError("'tune_configuration' attribute is None.")
-        return RepeatedStratifiedKFold(
-            n_repeats=self.tune_configuration["n_repeats"],
-            n_splits=self.tune_configuration["n_splits"],
-            random_state=self.seed
-        )
-
 
     def get_feature_names_in_(self) -> np.ndarray:
-        '''
-        Returns the "feature_names_in" attribute learned at fit level.
-        The attribute is retrieved from the fitted preprocessing pipeline 
-        or from the estimator in absence of the first.
-        '''
+        '''Returns the "feature_names_in_" attribute learned at fit level'''
         check_is_fitted(self, "estimator_")
-        fitted_obj = self._get_fitted_preprocessing_pipeline_or_estimator()
+        fitted_obj = self._retrieve_fitted_obj()
         return fitted_obj.feature_names_in_
 
 
     def collect_fit_preprocessing_info(self) -> dict:
         '''
         Collect the learned preprocessing attributes of interest in a dict.
-        An empty dict is returned in case the estimator has no preprocessing pipeline.
+        An empty dict is returned in case no preprocessing is done.
         '''
         check_is_fitted(self, "estimator_")
-        fitted_obj = self._get_fitted_preprocessing_pipeline_or_estimator()
-        if not isinstance(fitted_obj, Pipeline):
+        fitted_obj = self._retrieve_fitted_obj()
+        if isinstance(fitted_obj, Pipeline): 
+            return self._collect_fit_preprocessing_info(fitted_obj)
+        else:
             return {}
-        return self._collect_fit_preprocessing_info(fitted_obj)
 
 
-    def _collect_fit_preprocessing_info(self, preprocessing_pipeline: Pipeline) -> dict:
-        '''
-        Internal to collect the preprocessing info.
-        Wants in input the preprocessing pipeline.
-        This means either the sole decoupled preprocessing pipeline, 
-        like for ESXGB estimators, or the pipeline headed by the classifier.
-        '''
+    def _retrieve_fitted_obj(self) -> Classifier | Pipeline:
+        '''Retrieve the fitted object, i.e. the classifier or the pipeline.'''
+        fitted_obj = self.estimator_.best_estimator_ \
+            if isinstance(self.estimator_, SearchCV)\
+            else self.estimator_
+        return fitted_obj
+
+
+    def _collect_fit_preprocessing_info(self, pipeline: Pipeline) -> dict:
+        '''Internal to collect the preprocessing info from the fitted Pipeline'''
         if self.preprocessing == "pca":
-            return self._collect_from_pca_preprocessing(preprocessing_pipeline)
+            return self._collect_from_pca_preprocessing(pipeline)
         elif self.preprocessing == "density_filter":
-            return self._collect_from_density_preprocessing(preprocessing_pipeline)
+            return self._collect_from_density_preprocessing(pipeline)
         elif self.preprocessing == "base":
             return {}
 
     
-    def _collect_from_pca_preprocessing(self, preprocessing_pipeline: Pipeline) -> dict:
+    def _collect_from_pca_preprocessing(self, pipeline: Pipeline) -> dict:
         '''Collect the pca related learned info'''
-        pca: PCA = preprocessing_pipeline.named_steps["pca"]
+        pca: PCA = pipeline.named_steps["pca"]
         # we wrap the container objects to avoid errors 
         # in the building process of the prediction dataframe object
         return {
@@ -196,9 +171,9 @@ class AbstractBaseEstimator(ABC):
         }
     
     
-    def _collect_from_density_preprocessing(self, preprocessing_pipeline: Pipeline) -> dict:
+    def _collect_from_density_preprocessing(self, pipeline: Pipeline) -> dict:
         '''Collect the density related learned info'''
-        density_selector: DensityFeatureSelector = preprocessing_pipeline.named_steps["densityfeatureselector"]
+        density_selector: DensityFeatureSelector = pipeline.named_steps["densityfeatureselector"]
         return {
             "density_selection_strategy": density_selector.strategy_,
             "n_target_features": density_selector.n_target_features_,

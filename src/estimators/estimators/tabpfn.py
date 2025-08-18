@@ -5,7 +5,7 @@ from typing import Literal, TYPE_CHECKING
 from sklearn.pipeline import Pipeline
 from tabpfn import TabPFNClassifier
 from estimators.estimators.abstract_estimator import AbstractBaseEstimator
-from estimators.estimators.params import TABPFN_CLASSIFIER_FIXED_PARAMS
+from estimators.estimators.params import DefaultParams
 
 from estimators.estimators.utils import (
     create_pca_default_pipeline, 
@@ -50,15 +50,15 @@ class MyTabPFNClassifier(AbstractBaseEstimator):
         self, 
         preprocessing: Literal["base", "density_filter", "pca"], 
         seed: int,
-        n_cores: int,
+        n_threads: int,
         tune_configuration = None, 
-        fixed_params = TABPFN_CLASSIFIER_FIXED_PARAMS
+        fixed_params = DefaultParams.TABPFN_DEFAULT_PARAMS
     ):
-        super().__init__(preprocessing, seed, n_cores, tune_configuration, fixed_params)
+        super().__init__(preprocessing, seed, n_threads, tune_configuration, fixed_params)
 
     @suppress_sklearn_and_tabpfn_warnings
     def fit(self, X: pd.DataFrame, y: pd.Series, **kwargs) -> "MyTabPFNClassifier":
-        fixed_params = super().update_fixed_params(up_seed=True, up_n_cores=True, copy=True)
+        fixed_params = super().update_fixed_params(up_seed=True, up_n_threads=True, copy=True)
         self.estimator_ = self._create_estimator(fixed_params)
         self.estimator_.fit(X, y)
         return self
@@ -76,7 +76,3 @@ class MyTabPFNClassifier(AbstractBaseEstimator):
             )
         else:
             raise ValueError("Unsupported preprocessing.")
-    
-    def _get_fitted_preprocessing_pipeline_or_estimator(self) -> Pipeline | TabPFNClassifier:
-        return self.estimator_
-    

@@ -2,11 +2,11 @@ from estimators.types import Estimator
 
 from estimators import (
     MyRandomForestClassifier,
-    MyRandomizedRandomForestClassifier,
+    MyTunedRandomForestClassifier,
     MyXGBClassifier,
     MyESXGBClassifier,
-    MyRandomizedXGBClassifier,
-    MyRandomizedESXGBClassifier,
+    MyTunedXGBClassifier,
+    MyTunedESXGBClassifier,
     MyTabPFNClassifier
 )
 
@@ -17,15 +17,15 @@ def pick_estimator_class(pars: dict) -> Estimator:
         case ("random_forest", False):
             return MyRandomForestClassifier
         case ("random_forest", True):
-            return MyRandomizedRandomForestClassifier
+            return MyTunedRandomForestClassifier
         case ("xgb", False):
             return MyXGBClassifier
         case ("xgb", True):
-            return MyRandomizedXGBClassifier
+            return MyTunedXGBClassifier
         case ("es_xgb", False):
             return MyESXGBClassifier
         case ("es_xgb", True):
-            return MyRandomizedESXGBClassifier
+            return MyTunedESXGBClassifier
         case ("tabpfn", _):
             return MyTabPFNClassifier
         case _:
