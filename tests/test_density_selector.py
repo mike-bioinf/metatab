@@ -1,4 +1,4 @@
-from estimators.preprocessing import DensityFeatureSelector
+from preprocessing import DensityFeatureSelector
 from tests.utils_density import create_mock_data_for_density_selection
 
 

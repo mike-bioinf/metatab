@@ -26,3 +26,11 @@ metatab-resample = "resample:resample.main"
 [build-system]
 requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
+
+
+[tool.pytest.ini_options]
+# filter hyperopt warnings
+filterwarnings = [
+    'ignore:.*pkg_resources is deprecated as an API.*',
+    'ignore:.*datetime.datetime.utcnow\(\) is deprecated and scheduled for removal.*'
+]

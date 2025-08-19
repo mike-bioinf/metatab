@@ -2,12 +2,25 @@ import os
 from pathlib import Path
 from typing import Any
 from ast import literal_eval
+from estimators import Estimator
 
-from estimators.estimators.params import (
+from estimators.params import (
     DEFAULT_TUNE_CONFIGURATION,
     TuningParams
 )
-
+from estimators import (
+    MyRandomForestClassifier,
+    MyTunedRandomForestClassifier,
+    MyXGBClassifier,
+    MyESXGBClassifier,
+    MyTunedXGBClassifier,
+    MyTunedESXGBClassifier,
+    MyCatBoostClassifier,
+    MyESCatBoostClassifier,
+    MyTunedCatBoostClassifier,
+    MyTunedESCatBoostClassifier,
+    MyTabPFNClassifier
+)
 
 
 def adjust_io_paths_(pars: dict, input_arg: str, output_arg: str) -> None:
@@ -177,3 +190,36 @@ def _pick_params_distributions_configuration(pars: dict) -> dict | None:
 
 def check_incompatible_estimator_preprocessing(pars: dict) -> None:
     pass
+
+
+
+def pick_estimator_class(pars: dict) -> Estimator:
+    match (pars["estimator"], pars["tune"]):
+        case ("random_forest", False):
+            return MyRandomForestClassifier
+        case ("random_forest", True):
+            return MyTunedRandomForestClassifier
+        
+        case ("xgb", False):
+            return MyXGBClassifier
+        case ("xgb", True):
+            return MyTunedXGBClassifier
+        case ("es_xgb", False):
+            return MyESXGBClassifier
+        case ("es_xgb", True):
+            return MyTunedESXGBClassifier
+        
+        case("catboost", False):
+            return MyCatBoostClassifier
+        case("catboost", True):
+            return MyTunedCatBoostClassifier
+        case ("es_catboost", False):
+            return MyESCatBoostClassifier
+        case("es_catboost", True):
+            return MyTunedESCatBoostClassifier
+        
+        case ("tabpfn", _):
+            return MyTabPFNClassifier
+        
+        case _:
+            raise ValueError("Unsupported estimator.")

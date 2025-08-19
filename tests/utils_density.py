@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from estimators.preprocessing.utils import get_density_scores
+from preprocessing.utils import get_density_scores
 
 
 

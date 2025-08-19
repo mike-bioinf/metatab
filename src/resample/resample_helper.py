@@ -52,7 +52,6 @@ def get_repetition_fold(iteration: int, pars: dict) -> tuple:
 
 
 
-## TODO: remove configuration part when/if conf system is removed.
 def log_program_setting(pars: dict, logger: logging.Logger, name_dataset: str) -> None:
     '''Logs info about the program input parameters/setting at debug level'''
     if pars["tune"]:

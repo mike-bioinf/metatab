@@ -1,4 +1,4 @@
-from estimators.preprocessing.utils import get_indexes_to_retain
+from preprocessing.utils import get_indexes_to_retain
 from tests.utils_density import get_mock_data_densities
 
 
