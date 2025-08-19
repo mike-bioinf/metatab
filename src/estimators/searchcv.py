@@ -26,10 +26,10 @@ class SearchCV:
         clf_or_pipe: Classifier | Pipeline,
         algo: Literal["random", "tpe"], 
         params_distributions: dict,
-        random_state_parameter: str,
         n_iter: int,
         n_cv_repeats: int,
         n_cv_splits: int,
+        random_state_parameter: str,
         seed: int,
         metric_to_minimize: Literal["logloss"],
         early_stop_on_validation_set: bool,
@@ -43,8 +43,8 @@ class SearchCV:
         Allows early stop on validation set at fit time, only if the classifier
         implements this feature in its API via the "eval_set interface".
 
-        It always refit the classifier (in pipeline or not) with the best hyperparameters.
-        Exposes the "predict_proba" method of the refitted classifier/pipeline.
+        It always refit the classifier/pipeline with the best hyperparameters.
+        Exposes the "predict_proba" method of the refitted object.
 
         The search is not parallelizable even when the "random" algo is selected. 
         
@@ -72,6 +72,9 @@ class SearchCV:
             seed (int):
                 Seed for reproducibility.
             
+            random_state_parameter (str):
+                Name of the estimator random state parameter.
+            
             metric_to_minimize (Literal["logloss"]):
                 The metric to minimize in the search.
             
@@ -94,7 +97,8 @@ class SearchCV:
                 Best HPs configuration obtained from the tuning procedure.
 
             best_estimator_ (Classifier | Pipeline):
-                Refitted classifier/pipeline.
+                Refitted classifier/pipeline with the best hps configuration
+                coming from the search.
 
             trials_ (Trials):
                 Trials object with search info.
@@ -176,7 +180,7 @@ class SearchCV:
     ) -> float:
         '''
         Custom implementation of cross_val_score allowing 3-sets ripartitions.
-        Returns the cv loss as sum or mean of internal round losses.
+        Returns the total cv loss as sum or mean of internal round losses.
         '''
         skf = RepeatedStratifiedKFold(
             n_splits=self.n_cv_splits, 
@@ -188,10 +192,10 @@ class SearchCV:
         loss_scores = []
         
         for train_idx, test_idx in skf.split(self.X, self.y):
-            # we fit a copy of the clf/pipe at each round of cv
+            # we create a copy of the clf/pipe at each cv round
             # to avoid specific classifier implementation problems
-            # like for catboost for which is not possible to reset
-            # the parameters on a fitted instance
+            # related to fitting multiple times the same instance.
+            # (for example for catboost is not possible to set the parameters on a fitted instance)
             clf_or_pipe = deepcopy(self.clf_or_pipe)
             self._set_params_into_clf(clf_or_pipe, params)
             # we overwrite the classifier seed 
@@ -228,8 +232,8 @@ class SearchCV:
 
     def _get_add_string_to_params_func(self, clf_or_pipe: Classifier | Pipeline) -> Callable:
         '''
-        Derives and returns the function that manage the addiction 
-        of the classifier name to the parameters.
+        Derives and returns the function that manages 
+        the addiction of the classifier name to the dict of parameters.
         '''
         if isinstance(clf_or_pipe, Pipeline):
             name_classifier = f"{clf_or_pipe.steps[-1][0]}__"

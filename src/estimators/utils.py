@@ -205,7 +205,8 @@ def fit_with_early_stop_on_validation_set(
             Ratio of training data to use as validation.
             Must be a number in (0, 1).
         
-        eval_set_parameter (str): Name of the parameter accepting the validation sets.
+        eval_set_parameter (str): 
+            Name of the parameter accepting the validation sets.
 
     Returns:
         Classifier|Pipeline: The fitted estimator.

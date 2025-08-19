@@ -8,13 +8,12 @@ from sklearn.feature_selection import VarianceThreshold
 from sklearn.preprocessing import StandardScaler
 from estimators.abstract_estimator import AbstractBaseEstimator
 from estimators.searchcv import SearchCV
+from estimators.params import TuningParams, DefaultParams
 
 from estimators.utils import (
     create_density_filter_default_pipeline, 
     create_pca_default_pipeline
 )
-
-from estimators.params import TuningParams, DefaultParams
 
 if TYPE_CHECKING:
     import pandas as pd

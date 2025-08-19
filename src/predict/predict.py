@@ -6,7 +6,7 @@ from metatab_utils.helper_params import adjust_io_paths_, manage_output_path
 from metatab_utils.general import check_y_is_integer_encoded, create_logger
 from metatab_utils.prediction import PredictionDataframe
 from predict.params import parse_args, check_args
-from estimators.types import Estimator
+from estimators import Estimator
 
 from predict.predict_helper import (
     check_type_deserialized_object,

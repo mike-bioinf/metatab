@@ -129,8 +129,9 @@ def adjust_tune_configuration_arg_(pars: dict) -> None:
             )
 
     # add the parameters distributions
-    pars["tune_configuration"]["params_distributions"] = _pick_params_distributions_configuration(pars)
-
+    pars["tune_configuration"]["params_distributions"] = (
+        _pick_params_distributions_configuration(pars)
+    )
 
 
 def try_parse_specs_into_dict(specs: str, error_message_specs: str) -> dict[str, Any]:

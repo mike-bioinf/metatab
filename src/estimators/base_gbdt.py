@@ -15,8 +15,11 @@ if TYPE_CHECKING:
 
 class GBDTBaseEstimator(AbstractBaseEstimator):
     '''
-    Base class for GBDT estimators.
-    Manage the inner estimator creation and its fitting.
+    Base class for GBDT estimators. 
+    Centralizes and standardizes the interface for the GBDT estimators.
+    In detail it manages/abstracts the creation of the gbdt estimator and the fitting process.
+    The fitting process is delegated to "SearchCV", "fit_with_early_stop_on_validation_set"
+    and estimators "fit" methods depending on whether tuning and early stop are enabled. 
 
     Parameters:
         classifier_cls (Classifier): Classifier class.

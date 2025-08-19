@@ -21,10 +21,10 @@ if TYPE_CHECKING:
 
 class AbstractBaseEstimator(ABC):
     '''
-    Abstract and Base class for estimators classes.
+    Abstract base class for estimators classes.
     
     The estimators classes must implement the 'estimator_' attribute
-    learned in the 'fit' method, storing the model fitted on the input data.
+    learned in the 'fit' method, storing the object fitted on the input data.
     This can be a Classifier, Pipeline or SearchCV object.
     
     Note: fixed_params must always be optional i.e. it must have a default.
@@ -35,8 +35,8 @@ class AbstractBaseEstimator(ABC):
         
         seed (int): 
             Seed for reproducibility.
-            This seed is directly used to fit the model.
-            It is used also for eventual splitting and tune procedures. 
+            It is used to fit the estimator and for
+            eventual splitting and tuning procedures. 
 
         n_threads (int):
             Number of CPU threads used to fit the estimator. 
@@ -44,10 +44,10 @@ class AbstractBaseEstimator(ABC):
 
         tune_configuration (None | dict):
             Dict with the tuning info. 
-            Is ignored by the not tunable estimators.
+            Must be ignored by the not tunable estimators.
             
         fixed_params (dict, optional):
-            Dict of param:value that are fixed, i.e. not tuned in the search.
+            Dict of param:value that are fixed.
     '''
     @abstractmethod
     def __init__(
@@ -72,9 +72,8 @@ class AbstractBaseEstimator(ABC):
 
     def predict_proba(self, X: pd.DataFrame) -> np.ndarray:
         '''
-        Executes the "classic" predict_proba framework and method, 
-        i.e. without external/decoupled test data preprocessing 
-        and with the classic method signature involving only the X parameter, 
+        Executes the "classic" predict_proba method 
+        involving only the X parameter, 
         plus good defaults for the other ones.
         '''
         check_is_fitted(self, "estimator_")
@@ -92,6 +91,7 @@ class AbstractBaseEstimator(ABC):
             pickle.dump(self, f)
     
 
+    # to override by concrete classes
     def get_best_hps(self) -> None:
         '''
         Get the best HPs resulting from tuning.
