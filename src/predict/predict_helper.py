@@ -9,6 +9,10 @@ from estimators import (
     MyESCatBoostClassifier,
     MyTunedCatBoostClassifier,
     MyTunedESCatBoostClassifier,
+    MyLGBMClassifier,
+    MyESLGBMClassifier,
+    MyTunedLGBMClassifier,
+    MyTunedESLGBMClassifier,
     MyTabPFNClassifier
 )
 
@@ -29,6 +33,10 @@ def check_type_deserialized_object(obj) -> None:
             MyESCatBoostClassifier,
             MyTunedCatBoostClassifier,
             MyTunedESCatBoostClassifier,
+            MyLGBMClassifier,
+            MyESLGBMClassifier,
+            MyTunedLGBMClassifier,
+            MyTunedESLGBMClassifier,
             MyTabPFNClassifier
         )
     ):

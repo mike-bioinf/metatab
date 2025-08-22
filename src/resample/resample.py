@@ -166,10 +166,10 @@ def main():
         df_pred_results.compute_metrics(multiclass="average", average_strategy="macro")
         df_pred_results.to_csv(results_filepath, sep="\t", index=False)
 
-    # remove params_distributions from pars to save results
-    del pars["tune_configuration"]["params_distributions"]
 
     if pars["tune"]:
+        # remove params_distributions from the tune conf to store it in a df
+        del pars["tune_configuration"]["params_distributions"]
         dict_hpo = {
             "dataset": name_dataset,
             "estimator": pars["estimator"],

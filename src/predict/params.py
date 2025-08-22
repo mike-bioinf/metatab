@@ -16,7 +16,7 @@ def parse_args(args):
                    help="Defines the data input format. One of 'sets', 'xy', or 'df'.")
     
     p.add_argument("-y", "--target-feature", default=None,
-                    help="Name of the target feature column. Must be provided if --input-mode is equal to 'df'")
+                    help="Name of the target feature column. Must be provided if --input-mode is equal to 'df'.")
     
     p.add_argument("-x", "--x-uniform", action="store_true",
                    help="Uniform the test data feature space to the one seen by the estimator at fit level," \

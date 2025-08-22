@@ -19,6 +19,15 @@ def try_test_model_on_iris(estimator_path: Path):
         assert False, f"Problem when loading and/or using the '{estimator_filename}' model."
 
 
+
+## Random forest
+def test_my_rf_classifier(fit_estimators_on_iris):
+    try_test_model_on_iris(fit_estimators_on_iris / "my_rf_classifier.pkl")
+
+def test_my_tuned_rf_classifier(fit_estimators_on_iris):
+    try_test_model_on_iris(fit_estimators_on_iris / "my_tuned_rf_classifier.pkl")
+
+
 ## XGB
 def test_my_xgb_classifier(fit_estimators_on_iris):
     try_test_model_on_iris(fit_estimators_on_iris / "my_xgb_classifier.pkl")
@@ -47,12 +56,18 @@ def test_my_tuned_es_catboost_classifier(fit_estimators_on_iris):
     try_test_model_on_iris(fit_estimators_on_iris / "my_tuned_es_catboost_classifier.pkl")
 
 
-## Random forest
-def test_my_rf_classifier(fit_estimators_on_iris):
-    try_test_model_on_iris(fit_estimators_on_iris / "my_rf_classifier.pkl")
+## LGBM
+def test_my_lgbm_classifier(fit_estimators_on_iris):
+     try_test_model_on_iris(fit_estimators_on_iris / "my_lgbm_classifier.pkl")
 
-def test_my_tuned_rf_classifier(fit_estimators_on_iris):
-    try_test_model_on_iris(fit_estimators_on_iris / "my_tuned_rf_classifier.pkl")
+def test_my_es_lgbm_classifier(fit_estimators_on_iris):
+    try_test_model_on_iris(fit_estimators_on_iris / "my_es_lgbm_classifier.pkl")
+
+def test_my_tuned_lgbm_classifier(fit_estimators_on_iris):
+    try_test_model_on_iris(fit_estimators_on_iris / "my_tuned_lgbm_classifier.pkl")
+
+def test_my_tuned_es_lgbm_classifier(fit_estimators_on_iris):
+    try_test_model_on_iris(fit_estimators_on_iris / "my_tuned_es_lgbm_classifier.pkl")
 
 
 ## tabpfn

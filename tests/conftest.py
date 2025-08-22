@@ -23,6 +23,10 @@ from estimators import (
     MyESCatBoostClassifier,
     MyTunedCatBoostClassifier,
     MyTunedESCatBoostClassifier,
+    MyLGBMClassifier,
+    MyESLGBMClassifier,
+    MyTunedLGBMClassifier,
+    MyTunedESLGBMClassifier,
     MyTabPFNClassifier
 )
 
@@ -31,7 +35,7 @@ if TYPE_CHECKING:
 
 
 
-def _fit_estimator_on_iris(
+def _fit_estimator(
     *,
     estimator: Estimator,
     fixed_params: dict | None,
@@ -55,11 +59,12 @@ def _fit_estimator_on_iris(
         tune_configuration=tune_configuration,
         fixed_params=fixed_params
     )
-    
+
     estimator.fit(X, y).save(file)
 
+
 X, y = load_iris(return_X_y=True, as_frame=True)
-_fit_estimator_on_iris = partial(_fit_estimator_on_iris, X=X, y=y)
+_fit_estimator_on_iris = partial(_fit_estimator, X=X, y=y)
 
 
 
@@ -105,6 +110,20 @@ TEST_ES_CATBOOST_FIXED_PARAMS = {
     "allow_writing_files": False
 }
 
+TEST_LGBM_FIXED_PARAMS = {
+    "n_estimators": 10,
+    "min_child_samples": 1,
+    "verbose": -1
+}
+
+TEST_ES_LGBM_FIXED_PARAMS = {
+    "n_estimators": 10,
+    "early_stopping_rounds": 4,
+    "metric": "logloss_to_adjust",
+    "min_child_samples": 1,
+    "verbose": -1
+}
+
 TEST_TABPFN_FIXED_PARAMS = {
     "ignore_pretraining_limits": True,
     "inference_config": {"MIN_UNIQUE_FOR_NUMERICAL_FEATURES": 0}
@@ -119,6 +138,22 @@ def fit_estimators_on_iris(tmp_path_factory) -> Path:
     Return the tmp folder Path object to the test function.
     '''
     tmp_estimators_folder = tmp_path_factory.mktemp("estimators")
+    
+    _fit_estimator_on_iris(
+        estimator=MyRandomForestClassifier,
+        fixed_params=TEST_RANDOM_FOREST_FIXED_PARAMS,
+        tune_configuration=None,
+        params_distributions=None,
+        file=tmp_estimators_folder / "my_rf_classifier.pkl"
+    )
+
+    _fit_estimator_on_iris(
+        estimator=MyTunedRandomForestClassifier,
+        fixed_params=TEST_RANDOM_FOREST_FIXED_PARAMS,
+        tune_configuration=TEST_TUNE_CONFIGURATION,
+        params_distributions=TuningParams.RF_C0,
+        file=tmp_estimators_folder / "my_tuned_rf_classifier.pkl"
+    )
     
     _fit_estimator_on_iris(
         estimator=MyXGBClassifier,
@@ -185,19 +220,35 @@ def fit_estimators_on_iris(tmp_path_factory) -> Path:
     )
 
     _fit_estimator_on_iris(
-        estimator=MyRandomForestClassifier,
-        fixed_params=TEST_RANDOM_FOREST_FIXED_PARAMS,
+        estimator=MyLGBMClassifier,
+        fixed_params=TEST_LGBM_FIXED_PARAMS,
         tune_configuration=None,
         params_distributions=None,
-        file=tmp_estimators_folder / "my_rf_classifier.pkl"
+        file=tmp_estimators_folder / "my_lgbm_classifier.pkl"
     )
 
     _fit_estimator_on_iris(
-        estimator=MyTunedRandomForestClassifier,
-        fixed_params=TEST_RANDOM_FOREST_FIXED_PARAMS,
+        estimator=MyESLGBMClassifier,
+        fixed_params=TEST_ES_LGBM_FIXED_PARAMS,
+        tune_configuration=None,
+        params_distributions=None,
+        file=tmp_estimators_folder / "my_es_lgbm_classifier.pkl"
+    )
+
+    _fit_estimator_on_iris(
+        estimator=MyTunedLGBMClassifier,
+        fixed_params=TEST_LGBM_FIXED_PARAMS,
         tune_configuration=TEST_TUNE_CONFIGURATION,
-        params_distributions=TuningParams.RF_C0,
-        file=tmp_estimators_folder / "my_tuned_rf_classifier.pkl"
+        params_distributions=TuningParams.LGMB_C0,
+        file=tmp_estimators_folder / "my_tuned_lgbm_classifier.pkl"
+    )
+
+    _fit_estimator_on_iris(
+        estimator=MyTunedESLGBMClassifier,
+        fixed_params=TEST_ES_LGBM_FIXED_PARAMS,
+        tune_configuration=TEST_TUNE_CONFIGURATION,
+        params_distributions=TuningParams.LGMB_C0,
+        file=tmp_estimators_folder / "my_tuned_es_lgbm_classifier.pkl"
     )
 
     _fit_estimator_on_iris(

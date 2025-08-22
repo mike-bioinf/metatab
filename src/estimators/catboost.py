@@ -1,13 +1,17 @@
 import pandas as pd
-from copy import deepcopy
 from catboost import CatBoostClassifier
 from estimators.params import TuningParams, DefaultParams
-from estimators.base_gbdt import GBDTBaseEstimator
+
+from estimators.base_gbdt import (
+    GBDTBaseEstimator,
+    adjust_es_logloss_metric,
+    adjust_objective_logloss_and_num_classes
+)
 
 
 
 class MyCatBoostClassifier(GBDTBaseEstimator):
-    '''Implementation of library default catboost without early stop'''
+    '''Implementation of library default catboost classifier without early stop'''
     def __init__(
         self, preprocessing, seed, n_threads, tune_configuration, 
         fixed_params=DefaultParams.CATBOOST_DEFAULT_PARAMS
@@ -15,7 +19,7 @@ class MyCatBoostClassifier(GBDTBaseEstimator):
         super().__init__(
             preprocessing, seed, n_threads, tune_configuration, fixed_params,
             classifier_cls=CatBoostClassifier,
-            callbacks_on_fixed_params=[_adjust_catboost_loss_function],
+            callbacks_on_fixed_params=[_adjust_catboost_loss_function_and_num_classes],
             n_threads_parameter="thread_count",
             early_stopping=False
         )
@@ -32,7 +36,7 @@ class MyESCatBoostClassifier(GBDTBaseEstimator):
             preprocessing, seed, n_threads, tune_configuration, fixed_params,
             classifier_cls=CatBoostClassifier,
             callbacks_on_fixed_params=[
-                _adjust_catboost_loss_function, 
+                _adjust_catboost_loss_function_and_num_classes, 
                 _adjust_es_catboost_logloss_metric
             ],
             n_threads_parameter="thread_count",
@@ -50,7 +54,7 @@ class MyTunedCatBoostClassifier(GBDTBaseEstimator):
         super().__init__(
             preprocessing, seed, n_threads, tune_configuration, fixed_params,
             classifier_cls=CatBoostClassifier,
-            callbacks_on_fixed_params=[_adjust_catboost_loss_function],
+            callbacks_on_fixed_params=[_adjust_catboost_loss_function_and_num_classes],
             n_threads_parameter="thread_count",
             early_stopping=False
         )
@@ -67,7 +71,7 @@ class MyTunedESCatBoostClassifier(GBDTBaseEstimator):
             preprocessing, seed, n_threads, tune_configuration, fixed_params,
             classifier_cls=CatBoostClassifier,
             callbacks_on_fixed_params=[
-                _adjust_catboost_loss_function, 
+                _adjust_catboost_loss_function_and_num_classes, 
                 _adjust_es_catboost_logloss_metric
             ],
             n_threads_parameter="thread_count",
@@ -76,41 +80,18 @@ class MyTunedESCatBoostClassifier(GBDTBaseEstimator):
 
 
 
-def _adjust_catboost_loss_function(params: dict, y: pd.Series, copy: bool = False) -> dict:
+def _adjust_catboost_loss_function_and_num_classes(params: dict, y: pd.Series, copy: bool = False) -> dict:
     '''
-    Set the loss function in the dict of parameters for the catboost classifier
-    according to the classification scenario (binary or multi).
-    Returns the modified/new dict.
+    Set the classification logloss objective according to the classification scenario.
+    Returns a new dict or the old updated one depending on copy parameter.
     '''
-    params = deepcopy(params) if copy else params
-    n_classes = y.unique().size
-
-    if n_classes == 2:
-        params["loss_function"] = "Logloss"
-        params["target_border"] = 0.5
-    else:
-        params["loss_function"] = "MultiClass"
-        params["classes_count"] = n_classes
-
-    return params
+    return adjust_objective_logloss_and_num_classes(params, y, "catboost", copy)
 
 
 
 def _adjust_es_catboost_logloss_metric(params: dict, y: pd.Series, copy: bool = False) -> dict:
     '''
-    Adjust the logloss validation metric in the dict of params.
+    Adjust the logloss validation metric according to the classification scenario.
     Returns the modified/new dict.
     '''
-    params = deepcopy(params) if copy else params
-
-    if params["eval_metric"] != "logloss_to_adjust":
-        return params
-    
-    n_classes = y.unique().size
-
-    if n_classes == 2:
-        params["eval_metric"] = "Logloss"
-    else:
-        params["eval_metric"] = "MultiClass"
-
-    return params
+    return adjust_es_logloss_metric(params, y, "catboost", copy)

@@ -13,9 +13,9 @@ def parse_args(args):
                    If not provided the folder in which the program is run is used.""")
     
     p.add_argument("-e", "--estimator", required=True, choices=["random_forest", "xgb", "es_xgb", "catboost", "es_catboost",
-                    "tabpfn"], 
+                    "lgbm", "es_lgbm", "tabpfn"], 
                     help="""ML estimator to use. One of 'random_forest', 'xgb', 'es_xgb', 'catboost', 'es_catboost', 
-                    'tabpfn'.""")
+                    'lgbm', 'es_lgbm', 'tabpfn'.""")
 
     p.add_argument("-m", "--input-mode", required=True, choices=["xy", "df"],
                     help="Defines the data input format. One between 'xy' and 'df'.")

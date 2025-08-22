@@ -11,9 +11,9 @@ def parse_args(args):
                     help="Defines the data input format. One of 'sets', 'xy', or 'df'.")
 
     p.add_argument("-e", "--estimator", required=True, choices=["random_forest", "xgb", "es_xgb", "catboost", "es_catboost",
-                    "tabpfn"], 
-                    help="""ML 'estimator' to use. One of 'random_forest', 'xgb', 'es_xgb', 'catboost', 'es_catboost', 
-                    'tabpfn'.""")
+                    "lgbm", "es_lgbm", "tabpfn"], 
+                    help="""ML estimator to use. One of 'random_forest', 'xgb', 'es_xgb', 'catboost', 'es_catboost', 
+                    'lgbm', 'es_lgbm', 'tabpfn'.""")
     
     p.add_argument("-y", "--target-feature", default=None, 
                     help="Name of the target feature column. Must be provided if --input-mode is equal to 'df'")

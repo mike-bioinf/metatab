@@ -188,7 +188,7 @@ def fit_with_early_stop_on_validation_set(
     '''
     Utility to fit an estimator using early stop on a validation set.
     The estimator must implement the early stop capability at its 
-    fit interface, following a gbdt like API ("eval_set-like" parameter).
+    fit interface, following a GBDT-like API ("eval_set-like" parameter).
 
     Parameters:
         clf_or_pipe (Classifier | Pipeline):

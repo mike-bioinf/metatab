@@ -19,6 +19,10 @@ from estimators import (
     MyESCatBoostClassifier,
     MyTunedCatBoostClassifier,
     MyTunedESCatBoostClassifier,
+    MyLGBMClassifier,
+    MyESLGBMClassifier,
+    MyTunedLGBMClassifier,
+    MyTunedESLGBMClassifier,
     MyTabPFNClassifier
 )
 
@@ -134,6 +138,7 @@ def adjust_tune_configuration_arg_(pars: dict) -> None:
     )
 
 
+
 def try_parse_specs_into_dict(specs: str, error_message_specs: str) -> dict[str, Any]:
     '''Utility to parse the string dict representation to a dict'''
     try:
@@ -182,6 +187,11 @@ def _pick_params_distributions_configuration(pars: dict) -> dict | None:
         case ("catboost" | "es_catboost", "c5"):
             return TuningParams.CATBOOST_C5
 
+        case ("lgbm" | "es_lgbm", "c0"):
+            return TuningParams.LGMB_C0
+        case ("lgbm" | "es_lgbm", "c1"):
+            return TuningParams.LGMB_C1
+
         case _:
             raise ValueError(
                 f"Unsupported configuration '{conf}' for '{estimator}' estimator."
@@ -219,6 +229,15 @@ def pick_estimator_class(pars: dict) -> Estimator:
         case("es_catboost", True):
             return MyTunedESCatBoostClassifier
         
+        case ("lgbm", False):
+            return MyLGBMClassifier
+        case("lgbm", True):
+            return MyTunedLGBMClassifier
+        case ("es_lgbm", False):
+            return MyESLGBMClassifier
+        case ("es_lgbm", True):
+            return MyTunedESLGBMClassifier
+
         case ("tabpfn", _):
             return MyTabPFNClassifier
         

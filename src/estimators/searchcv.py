@@ -198,10 +198,11 @@ class SearchCV:
             # (for example for catboost is not possible to set the parameters on a fitted instance)
             clf_or_pipe = deepcopy(self.clf_or_pipe)
             self._set_params_into_clf(clf_or_pipe, params)
+            
             # we overwrite the classifier seed 
             # in order to maximize model entropy inside cv, 
             # while assuring uniformity between different cv runs.
-            round_cv_seed = {self.random_state_parameter: rng_cv.integers(0, 2**32)}
+            round_cv_seed = {self.random_state_parameter: int(rng_cv.integers(0, 2**32))}
             self._set_params_into_clf(clf_or_pipe, round_cv_seed)
             
             X_train, y_train = self.X.iloc[train_idx, :], self.y.iloc[train_idx]
@@ -235,6 +236,7 @@ class SearchCV:
         Derives and returns the function that manages 
         the addiction of the classifier name to the dict of parameters.
         '''
+        # we not use lambdas since they are not serializable with pickle
         if isinstance(clf_or_pipe, Pipeline):
             name_classifier = f"{clf_or_pipe.steps[-1][0]}__"
             return partial(add_string_to_params, string=name_classifier)
