@@ -3,11 +3,14 @@ from pathlib import Path
 from typing import Any
 from ast import literal_eval
 from estimators import Estimator
+from estimators.constants import EARLY_STOPPED_ESTIMATORS
 
 from estimators.params import (
     DEFAULT_TUNE_CONFIGURATION,
+    DEFAULT_ESTIMATORS_TUNE_SPACES,
     TuningParams
 )
+
 from estimators import (
     MyRandomForestClassifier,
     MyTunedRandomForestClassifier,
@@ -25,6 +28,7 @@ from estimators import (
     MyTunedESLGBMClassifier,
     MyTabPFNClassifier
 )
+
 
 
 def adjust_io_paths_(pars: dict, input_arg: str, output_arg: str) -> None:
@@ -67,7 +71,6 @@ def check_target_feature(pars: dict) -> None:
         raise ValueError("--target-feature must be specified with 'df' input mode.")
 
 
-
 ## TODO: complete with the tune-tabpfn estimator name
 def check_not_tunable_estimators(pars: dict) -> None:
     '''Check whether the tune flag is used with not tunable estimators'''
@@ -84,7 +87,7 @@ def check_ambiguous_tune_setting(pars: dict) -> None:
             "A tuning configurations is passed (tune_configuration is not None)" +
             " but tuning is not requested (tune flag down)."
         )
-
+    
 
 def check_tune_algo(pars: dict) -> None:
     '''Check on the validity of the tuning algo'''
@@ -96,7 +99,22 @@ def check_tune_algo(pars: dict) -> None:
             raise ValueError(
                 f"The tuning search algorithm must be one of 'random' or 'tpe'. Currently {input_tune_algo}."
             )
+
+
+def adjust_early_stopping_rounds_(pars: dict) -> None:
+    estimator = pars["estimator"]
+    early_stopping_rounds = pars["early_stopping_rounds"]
+
+    if early_stopping_rounds != -1 and estimator not in EARLY_STOPPED_ESTIMATORS:
+        return ValueError(
+            "'early_stopping_rounds' must be -1 when using a non-early stopped estimator."
+        )
     
+    # set the default
+    if early_stopping_rounds < 0 and estimator in EARLY_STOPPED_ESTIMATORS:
+        pars["early_stopping_rounds"] = 100
+    
+
 
 def adjust_tune_configuration_arg_(pars: dict) -> None:
     '''
@@ -192,6 +210,9 @@ def _pick_params_distributions_configuration(pars: dict) -> dict | None:
         case ("lgbm" | "es_lgbm", "c1"):
             return TuningParams.LGMB_C1
 
+        case (_, "default"):
+            return DEFAULT_ESTIMATORS_TUNE_SPACES[estimator]
+            
         case _:
             raise ValueError(
                 f"Unsupported configuration '{conf}' for '{estimator}' estimator."

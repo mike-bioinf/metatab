@@ -27,14 +27,16 @@ def get_estimator_filepath(pars: dict, repetition: int, fold: int) -> str:
 
 def create_dict_hpo(pars: dict) -> dict[str, list]:
     '''
-    Creates the dictionary used to store the best hyperparameters info.
-    The dict is empy when HP tuning is not requested.
+    Creates the dictionary used to store the tuning info.
+    The dict is empy when tuning is not requested.
     Note: Now it needs the hps dict in input.
     '''
     if not pars["tune"]: return {}
+    hpo_params_keys = list(pars["tune_configuration"]["params_distributions"].keys())
+    loss_keys = [f"loss_{i}" for i in range(pars["tune_configuration"]["n_iter"])]
     return {
         key: [] 
-        for key in HPO_DICT_BASE_KEYS + list(pars["tune_configuration"]["params_distributions"].keys())
+        for key in HPO_DICT_BASE_KEYS + hpo_params_keys + loss_keys
     }
 
 

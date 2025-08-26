@@ -42,6 +42,10 @@ class AbstractBaseEstimator(ABC):
             Number of CPU threads used to fit the estimator. 
             Is ignored by not parallelizable estimators.
 
+        early_stopping_rounds (int):
+            Number of eraly stop rounds used by the early stopped estimators.
+            The value is ignored by the non early stopped estimators.
+
         tune_configuration (None | dict):
             Dict with the tuning info. 
             Must be ignored by the not tunable estimators.
@@ -55,12 +59,14 @@ class AbstractBaseEstimator(ABC):
         preprocessing: Literal["base", "density_filter", "pca"],
         seed: int,
         n_threads: int,
+        early_stopping_rounds: int,
         tune_configuration: None | dict,
         fixed_params: dict
     ):
         self.preprocessing = preprocessing
         self.seed = seed
         self.n_threads = n_threads
+        self.early_stopping_rounds = early_stopping_rounds
         self.tune_configuration = tune_configuration
         self.fixed_params = fixed_params
         
@@ -91,32 +97,42 @@ class AbstractBaseEstimator(ABC):
             pickle.dump(self, f)
     
 
-    # to override by concrete classes
-    def get_best_hps(self) -> None:
-        '''
-        Get the best HPs resulting from tuning.
-        Returns None since this method is the one 
-        used by the estimators that do not tune HPs.
-        '''
-        return None
+    # to override if needed by concrete classes
+    def get_best_hps(self) -> dict | None:
+        '''Get the best HPs resulting from tuning'''
+        check_is_fitted(self, "estimator_")
+        if isinstance(self.estimator_, SearchCV):
+            return self.estimator_.best_params_
 
+    
+    # to override if needed by concrete classes
+    def get_search_losses(self) -> np.ndarray | None:
+        '''Get the search losses resulting from tuning'''
+        check_is_fitted(self, "estimator_")
+        if isinstance(self.estimator_, SearchCV):
+            return np.array(self.estimator_.trials_.losses())
+    
 
     def update_fixed_params(
         self,
         *,
-        up_seed: bool, 
-        up_n_threads: bool, 
+        up_seed: bool = False, 
+        up_n_threads: bool = False,
+        up_early_stopping_rounds: bool = False, 
         key_seed: str = "random_state", 
-        key_n_threads: str = "n_jobs", 
+        key_n_threads: str = "n_jobs",
+        key_early_stopping_rounds: str = "early_stopping_rounds",
         copy: bool = False
     ) -> dict:
         '''
-        Update the fixed params dict or a deepcopy of it with the seed and n_threads info.
+        Update the fixed params dict or a deepcopy of it 
+        with the seed, n_threads and early_stopping_rounds info.
         Returns the updated dict.
         '''
         fixed_params = deepcopy(self.fixed_params) if copy else self.fixed_params
         if up_seed: fixed_params[key_seed] = self.seed
         if up_n_threads: fixed_params[key_n_threads] = self.n_threads
+        if up_early_stopping_rounds: fixed_params[key_early_stopping_rounds] = self.early_stopping_rounds
         return fixed_params
                 
 

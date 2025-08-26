@@ -43,8 +43,8 @@ def add_string_to_params(params_dict: dict[str, Any], string: str) -> dict:
 
 def remove_string_from_params(params_dict: dict[str, Any], string: str) -> dict:
     '''
-    Utility to remove at the beginning of the keys of a dict the string.
-    Notes that the function assumes that the keys are str.
+    Utility to remove the string from the beginning of params dict keys.
+    Notes that the function assumes that the keys are of str type.
     Returns a new dict.
     '''
     new_params_dict = {}
@@ -183,7 +183,8 @@ def fit_with_early_stop_on_validation_set(
     y: pd.Series,
     seed: int,
     validation_set_size: float,
-    eval_set_parameter: str
+    eval_set_parameter: str,
+    fit_classifier_kwargs: dict
  ) -> Classifier | Pipeline:
     '''
     Utility to fit an estimator using early stop on a validation set.
@@ -208,6 +209,10 @@ def fit_with_early_stop_on_validation_set(
         eval_set_parameter (str): 
             Name of the parameter accepting the validation sets.
 
+        fit_classifier_kwargs (dict):
+            A dict unpackaged in the classifier fit calls.
+            The dict keys must be already adapted to the pipeline if any.
+
     Returns:
         Classifier|Pipeline: The fitted estimator.
     '''
@@ -227,14 +232,25 @@ def fit_with_early_stop_on_validation_set(
         preprocessing_pipeline: Pipeline = clf_or_pipe[:-1]
         X_train_transformed = preprocessing_pipeline.fit_transform(X_train)
         X_val_transformed = preprocessing_pipeline.transform(X_val)
+
+        # since we pop the classifier from the pipeline we must 
+        # remove the classifier name from the fit_kwargs keys
+        fit_classifier_kwargs = remove_string_from_params(
+            params_dict=fit_classifier_kwargs, 
+            string=f"{clf_or_pipe.steps[-1][0]}__"
+        )
+
         clf.fit(
             X_train_transformed, y_train, 
-            **{eval_set_parameter: [(X_val_transformed, y_val)]}
+            **{eval_set_parameter: [(X_val_transformed, y_val)]},
+            **fit_classifier_kwargs
         )
+
     else:
         clf_or_pipe.fit(
             X_train, y_train,
-            **{eval_set_parameter: [(X_val, y_val)]}
+            **{eval_set_parameter: [(X_val, y_val)]},
+            **fit_classifier_kwargs
         )
     
     return clf_or_pipe

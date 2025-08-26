@@ -10,10 +10,15 @@ def parse_args(args):
     p.add_argument("-m", "--input-mode", required=True, choices=["sets", "xy", "df"],
                     help="Defines the data input format. One of 'sets', 'xy', or 'df'.")
 
-    p.add_argument("-e", "--estimator", required=True, choices=["random_forest", "xgb", "es_xgb", "catboost", "es_catboost",
-                    "lgbm", "es_lgbm", "tabpfn"], 
+    p.add_argument("-e", "--estimator", required=True, 
+                    choices=["random_forest", "xgb", "es_xgb", "catboost", "es_catboost", "lgbm", "es_lgbm", "tabpfn"], 
                     help="""ML estimator to use. One of 'random_forest', 'xgb', 'es_xgb', 'catboost', 'es_catboost', 
                     'lgbm', 'es_lgbm', 'tabpfn'.""")
+    
+    p.add_argument("-r", "--early-stopping-rounds", type=int, default=-1,
+                   help="""Number of early stop rounds to use when using the "es" estimators.
+                   The default is -1, which means 100 for the "es" estimators and a value to be
+                   ignored by the "non es" estimators (in this case other values will results in an error).""")
     
     p.add_argument("-y", "--target-feature", default=None, 
                     help="Name of the target feature column. Must be provided if --input-mode is equal to 'df'")
@@ -28,20 +33,21 @@ def parse_args(args):
     
     p.add_argument("-t", "--tune", action="store_true", 
                    help="""Tune the estimator hyperparameters. 
-                   We use random search as tuning strategy and a preset of HPs distributions from which draw values. 
-                   These HPs preset can be specified in the '--tune-configuration' parameter. 
-                   Note that not all estimators can be tuned. For tabpfn a separated estimator must be used for HPs tuning.
+                   We use presets of HPs distributions from which draw values. These presets can be specified 
+                   in the '--tune-configuration' parameter. Note that not all estimators can be tuned. 
+                   For tabpfn a separated estimator must be used for HPs tuning.
                    Setting this parameter for untunable estimators will result in an error.""")
     
     p.add_argument("-c", "--tune-configuration", default=None,
-                   help="""Tune details. It is a string representation of a dict with the following keys-values couples:
+                   help="""Tune details. It is a string representation of a dict with the following key-value couples:
                    'configuration': Name of the configuration of HPs to use. They follow the schema 'c{number}' (i.e 'c0').
                     Note that for some estimators only one configuration (c0) is available.
+                    Is also possible to use the selected default configuration of each estimator using the value "default".
                     'algo': Search algorithm to use. One of 'random' and 'tpe' (default).
                     'n_iter': Number of iterations tested for the selected configuration. Must be an integer.
                     'n_repeats': Number of cv repeats used to test each sampled configuration. Must be an integer.
                     'n_splits': Number of cv splits used to test each sampled configuration. Must be an integer.
-                    If None, the default, the default c0 configuration is used if "--tune" is True.
+                    If None, the default, a default configuration is used when "--tune" is True.
                     One can pass a partial dict using the default values for the unspecified fields.""")
 
     p.add_argument("-s", "--seed", default=42, type=int, 

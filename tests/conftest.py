@@ -56,6 +56,7 @@ def _fit_estimator(
         preprocessing="base", 
         seed=0,
         n_threads=4,
+        early_stopping_rounds=4,
         tune_configuration=tune_configuration,
         fixed_params=fixed_params
     )
@@ -91,7 +92,6 @@ TEST_XGB_FIXED_PARAMS = {
 TEST_ES_XGB_FIXED_PARAMS = {
     "n_estimators": 10,
     "eval_metric": "logloss_to_adjust",
-    "early_stopping_rounds": 4,
     "verbose_eval": False,
     "verbosity": 0
 }
@@ -105,7 +105,6 @@ TEST_CATBOOST_FIXED_PARAMS = {
 TEST_ES_CATBOOST_FIXED_PARAMS = {
     "n_estimators": 10,
     "eval_metric": "logloss_to_adjust",
-    "early_stopping_rounds": 4,
     "verbose": False,
     "allow_writing_files": False
 }
@@ -118,7 +117,6 @@ TEST_LGBM_FIXED_PARAMS = {
 
 TEST_ES_LGBM_FIXED_PARAMS = {
     "n_estimators": 10,
-    "early_stopping_rounds": 4,
     "metric": "logloss_to_adjust",
     "min_child_samples": 1,
     "verbose": -1

@@ -34,7 +34,8 @@ class SearchCV:
         metric_to_minimize: Literal["logloss"],
         early_stop_on_validation_set: bool,
         eval_set_parameter: str = "eval_set",
-        validation_set_size: float = 0.3
+        validation_set_size: float = 0.3,
+        fit_classifier_kwargs: None | dict = None,
     ):
         '''
         Class that implements HPs optimization via random search or
@@ -77,7 +78,7 @@ class SearchCV:
             
             metric_to_minimize (Literal["logloss"]):
                 The metric to minimize in the search.
-            
+
             early_stop_on_validation_set (bool):
                 Whether to early stop on validation sets.
 
@@ -91,11 +92,16 @@ class SearchCV:
                 Inside cv this set is taken from the training portion.
                 Ignored when "early_stop_on_validation_set" is False.
 
+            fit_classifier_kwargs (None | dict, optional):
+                A dict unpackaged in the classifier fit calls.
+                If None (default) an empty dict is created.
+                The dict keys must be already adapted to the pipeline if any.
+
         Attributes:
         ------------------------------------
             best_params_ (dict):
                 Best HPs configuration obtained from the tuning procedure.
-
+            
             best_estimator_ (Classifier | Pipeline):
                 Refitted classifier/pipeline with the best hps configuration
                 coming from the search.
@@ -115,6 +121,7 @@ class SearchCV:
         self.early_stop_on_validation_set=early_stop_on_validation_set
         self.eval_set_parameter=eval_set_parameter
         self.validation_set_size=validation_set_size
+        self.fit_classifier_kwargs=fit_classifier_kwargs if fit_classifier_kwargs else {}
         self.add_string_to_params_func=self._get_add_string_to_params_func(clf_or_pipe)
 
 
@@ -151,10 +158,11 @@ class SearchCV:
                 y=y,
                 seed=self.seed,
                 validation_set_size=self.validation_set_size,
-                eval_set_parameter=self.eval_set_parameter
+                eval_set_parameter=self.eval_set_parameter,
+                fit_classifier_kwargs=self.fit_classifier_kwargs
             )
         else:
-            self.best_estimator_ = best_estimator.fit(X, y)
+            self.best_estimator_ = best_estimator.fit(X, y, **self.fit_classifier_kwargs)
         
         return self
 
@@ -189,7 +197,7 @@ class SearchCV:
         )
 
         rng_cv = np.random.default_rng(self.seed)        
-        loss_scores = []
+        losses = []
         
         for train_idx, test_idx in skf.split(self.X, self.y):
             # we create a copy of the clf/pipe at each cv round
@@ -215,20 +223,16 @@ class SearchCV:
                     y=y_train,
                     seed=self.seed,
                     validation_set_size=self.validation_set_size,
-                    eval_set_parameter=self.eval_set_parameter
+                    eval_set_parameter=self.eval_set_parameter,
+                    fit_classifier_kwargs=self.fit_classifier_kwargs
                 )
             else:
-                clf_or_pipe.fit(X_train, y_train)
+                clf_or_pipe.fit(X_train, y_train, **self.fit_classifier_kwargs)
 
             pred_proba = clf_or_pipe.predict_proba(X_test)
-            loss_scores.append(self._compute_loss_score(pred_proba, y_test))
+            losses.append(self._compute_loss_score(pred_proba, y_test))
 
-        sum_losses = sum(loss_scores)
-        
-        if agg == "sum":
-            return sum_losses
-        else:
-            return sum_losses/len(loss_scores) 
+        return np.mean(losses) if agg == "mean" else np.sum(losses)
 
 
     def _get_add_string_to_params_func(self, clf_or_pipe: Classifier | Pipeline) -> Callable:

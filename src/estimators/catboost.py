@@ -13,11 +13,11 @@ from estimators.base_gbdt import (
 class MyCatBoostClassifier(GBDTBaseEstimator):
     '''Implementation of library default catboost classifier without early stop'''
     def __init__(
-        self, preprocessing, seed, n_threads, tune_configuration, 
+        self, preprocessing, seed, n_threads, early_stopping_rounds, tune_configuration, 
         fixed_params=DefaultParams.CATBOOST_DEFAULT_PARAMS
     ):
         super().__init__(
-            preprocessing, seed, n_threads, tune_configuration, fixed_params,
+            preprocessing, seed, n_threads, early_stopping_rounds, tune_configuration, fixed_params,
             classifier_cls=CatBoostClassifier,
             callbacks_on_fixed_params=[_adjust_catboost_loss_function_and_num_classes],
             n_threads_parameter="thread_count",
@@ -29,11 +29,11 @@ class MyCatBoostClassifier(GBDTBaseEstimator):
 class MyESCatBoostClassifier(GBDTBaseEstimator):
     '''Implementation of the library default catboost classifier with early stop'''
     def __init__(
-        self, preprocessing, seed, n_threads, tune_configuration, 
+        self, preprocessing, seed, n_threads, early_stopping_rounds, tune_configuration, 
         fixed_params=DefaultParams.ES_CATBOOST_DEFAULT_PARAMS
     ):
         super().__init__(
-            preprocessing, seed, n_threads, tune_configuration, fixed_params,
+            preprocessing, seed, n_threads, early_stopping_rounds, tune_configuration, fixed_params,
             classifier_cls=CatBoostClassifier,
             callbacks_on_fixed_params=[
                 _adjust_catboost_loss_function_and_num_classes, 
@@ -48,11 +48,11 @@ class MyESCatBoostClassifier(GBDTBaseEstimator):
 class MyTunedCatBoostClassifier(GBDTBaseEstimator):
     '''Implementation of tuned catboost without early stop'''
     def __init__(
-        self, preprocessing, seed, n_threads, tune_configuration, 
+        self, preprocessing, seed, n_threads, early_stopping_rounds, tune_configuration, 
         fixed_params=TuningParams.CATBOOST_FIXED_PARAMS
     ):
         super().__init__(
-            preprocessing, seed, n_threads, tune_configuration, fixed_params,
+            preprocessing, seed, n_threads, early_stopping_rounds, tune_configuration, fixed_params,
             classifier_cls=CatBoostClassifier,
             callbacks_on_fixed_params=[_adjust_catboost_loss_function_and_num_classes],
             n_threads_parameter="thread_count",
@@ -64,11 +64,11 @@ class MyTunedCatBoostClassifier(GBDTBaseEstimator):
 class MyTunedESCatBoostClassifier(GBDTBaseEstimator):
     '''Implementation of tuned catboost with early stop'''
     def __init__(
-        self, preprocessing, seed, n_threads, tune_configuration, 
+        self, preprocessing, seed, n_threads, early_stopping_rounds, tune_configuration, 
         fixed_params=TuningParams.ES_CATBOOST_FIXED_PARAMS
     ):
         super().__init__(
-            preprocessing, seed, n_threads, tune_configuration, fixed_params,
+            preprocessing, seed, n_threads, early_stopping_rounds, tune_configuration, fixed_params,
             classifier_cls=CatBoostClassifier,
             callbacks_on_fixed_params=[
                 _adjust_catboost_loss_function_and_num_classes, 

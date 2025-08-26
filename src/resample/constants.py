@@ -5,6 +5,7 @@ from tabpfn_extensions_mod.post_hoc_ensembles.sklearn_interface import AutoTabPF
 from finetabpfn import AesFineTunedTabPFNClassifier
 
 
+
 Classifier: TypeAlias = Union[
     RandomForestClassifier,
     TabPFNClassifier, 
@@ -27,5 +28,6 @@ PRED_DATAFRAME_RESULTS_FIXED_COLUMNS = [
 
 HPO_DICT_BASE_KEYS = [
     "repetition",
-    "fold"
+    "fold",
+    "best_loss"
 ]

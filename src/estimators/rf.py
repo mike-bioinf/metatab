@@ -34,10 +34,14 @@ class MyRandomForestClassifier(AbstractBaseEstimator):
         preprocessing: Literal["base", "density_filter", "pca"],
         seed: int,
         n_threads: int,
-        tune_configuration = None,
+        early_stopping_rounds: int, # ignored
+        tune_configuration = None, # ignored
         fixed_params: dict = DefaultParams.RANDOM_FOREST_DEFAULT_PARAMS
     ):
-        super().__init__(preprocessing, seed, n_threads, tune_configuration, fixed_params)
+        super().__init__(
+            preprocessing, seed, n_threads, 
+            early_stopping_rounds, tune_configuration, fixed_params
+        )
 
     def fit(self, X: pd.DataFrame, y: pd.Series, **kwargs) -> "MyRandomForestClassifier":
         fixed_params = super().update_fixed_params(up_seed=True, up_n_threads=True, copy=True)
@@ -60,14 +64,17 @@ class MyTunedRandomForestClassifier(AbstractBaseEstimator):
         preprocessing: Literal["base", "density_filter", "pca"],
         seed: int,
         n_threads: int,
+        early_stopping_rounds: int, # ignored
         tune_configuration: dict,
         fixed_params: dict = TuningParams.RANDOM_FOREST_FIXED_PARAMS  
     ):
-        super().__init__(preprocessing, seed, n_threads, tune_configuration, fixed_params)
+        super().__init__(
+            preprocessing, seed, n_threads, 
+            early_stopping_rounds, tune_configuration, fixed_params
+        )
  
     def fit(self, X: pd.DataFrame, y: pd.Series) -> "MyTunedRandomForestClassifier":
         fixed_params = super().update_fixed_params(up_seed=True, up_n_threads=True, copy=True)
-
         self.estimator_ = SearchCV(
             clf_or_pipe=_create_rf_pipeline(self.preprocessing, fixed_params),
             algo=self.tune_configuration["algo"],
@@ -80,15 +87,9 @@ class MyTunedRandomForestClassifier(AbstractBaseEstimator):
             metric_to_minimize="logloss",
             early_stop_on_validation_set=False
         )
-
         self.estimator_.fit(X, y)
         return self
-    
-    @override
-    def get_best_hps(self) -> dict:
-        check_is_fitted(self, "estimator_")
-        return self.estimator_.best_params_
-    
+
 
 
 def _create_rf_pipeline(

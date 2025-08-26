@@ -6,7 +6,8 @@ from sklearn.metrics import (
     average_precision_score,
     accuracy_score, 
     roc_auc_score, 
-    precision_recall_fscore_support
+    precision_recall_fscore_support,
+    log_loss
 )
 
 
@@ -49,7 +50,9 @@ def compute_metrics(
             "recall": np.nan, 
             "precision": np.nan, 
             "f1": np.nan, 
-            "accuracy": np.nan, 
+            "accuracy": np.nan,
+            "ap": np.nan,
+            "logloss": np.nan, 
             "auc": np.nan
         })
 
@@ -75,6 +78,7 @@ def compute_metrics(
     )
 
     accuracy = accuracy_score(true_labels, pred_labels)
+    logloss = log_loss(true_labels, pred_proba)
     
     auc = roc_auc_score(
         true_labels, 
@@ -95,6 +99,6 @@ def compute_metrics(
         "f1": f1, 
         "accuracy": accuracy,
         "ap": ap,
+        "logloss": logloss,
         "auc": auc
     })
-

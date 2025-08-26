@@ -14,6 +14,7 @@ from metatab_utils.helper_params import (
     manage_output_path, 
     adjust_io_paths_,
     adjust_tune_configuration_arg_,
+    adjust_early_stopping_rounds_,
     pick_estimator_class
 )
 
@@ -48,6 +49,7 @@ def main():
     manage_output_path(pars, "output_dir", True)
     adjust_splitting_specs_(pars)
     adjust_tune_configuration_arg_(pars)
+    adjust_early_stopping_rounds_(pars)
     check_tune_algo(pars)
 
     if pars["save_estimators"]:
@@ -91,6 +93,7 @@ def main():
             preprocessing=pars["preprocessing"],
             seed=int(rng_estimator.integers(0, 2**32)),
             n_threads=pars["nthreads"],
+            early_stopping_rounds=pars["early_stopping_rounds"],
             tune_configuration=pars["tune_configuration"]
         )
 
@@ -100,8 +103,15 @@ def main():
         t = time()
         estimator.fit(X_train, y_train)
         fit_time = time() - t
+        
         fit_preprocessing_dict: dict = estimator.collect_fit_preprocessing_info()
         best_hps = estimator.get_best_hps()
+        search_losses = estimator.get_search_losses()
+        
+        if search_losses is not None:
+            best_loss = np.nanmin(search_losses)
+            search_losses_dict = {f"loss_{i}": value_loss for i, value_loss in enumerate(search_losses)}
+    
         logger.debug("\t-Estimator fitted on input data.")
         logger.debug(f"\t-Fit time in minutes (2-digits rounded): {round(fit_time/60, 2)}")
 
@@ -129,7 +139,9 @@ def main():
                 dictionary=dict_hpo,
                 repetition=repetition,
                 fold=fold,
-                **best_hps
+                best_loss=best_loss,
+                **best_hps,
+                **search_losses_dict
             )
         
         if pars["save_estimators"]:

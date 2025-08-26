@@ -10,6 +10,7 @@ from metatab_utils.helper_params import (
     check_fit_resample_args,
     check_tune_algo,
     adjust_tune_configuration_arg_,
+    adjust_early_stopping_rounds_,
     pick_estimator_class
 )
 
@@ -23,6 +24,7 @@ def main():
     adjust_io_paths_(pars, "input_data", "output_path")
     manage_output_path(pars, "output_path", False)
     adjust_tune_configuration_arg_(pars)
+    adjust_early_stopping_rounds_(pars)
     check_tune_algo(pars)
     
     logger = create_logger(sys.stdout)
@@ -48,6 +50,7 @@ def main():
         preprocessing=pars["preprocessing"],
         seed=pars["seed"],
         n_threads=pars["nthreads"],
+        early_stopping_rounds=pars["early_stopping_rounds"],
         tune_configuration=pars["tune_configuration"]
     )
     

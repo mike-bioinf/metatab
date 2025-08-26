@@ -5,7 +5,7 @@ from hyperopt.pyll.base import scope
 
 
 DEFAULT_TUNE_CONFIGURATION = {
-    "configuration": "c0",
+    "configuration": "default",
     "algo": "tpe",
     "n_iter": 100,
     "n_repeats": 1,
@@ -54,15 +54,13 @@ class TuningParams:
     # We do not explore less regularized configuration for "approx" algo since it's slow.
 
     XGB_FIXED_PARAMS = {
-        "n_estimators": 700,
+        "n_estimators": 1000,
         "verbosity": 0
     }
 
     ES_XGB_FIXED_PARAMS = {
         "n_estimators": 10000,
         "eval_metric": "logloss_to_adjust",
-        "early_stopping_rounds": 50,
-        "verbose_eval": False,
         "verbosity": 0
     }
 
@@ -159,7 +157,7 @@ class TuningParams:
 
     ## we list also the library defaults that we use just to be explicit
     CATBOOST_FIXED_PARAMS = {
-        "n_estimators": 1000,  ## more than xgboost since less prone to overfit (default)
+        "n_estimators": 1000,  # default
         "leaf_estimation_method": "Newton", # default
         "feature_border_type": 'GreedyLogSum', # default
         "bootstrap_type": "Bayesian", # default
@@ -171,7 +169,6 @@ class TuningParams:
     ES_CATBOOST_FIXED_PARAMS = {
         "n_estimators": 10000,
         "eval_metric": "logloss_to_adjust",
-        "early_stopping_rounds": 70,
         "od_type":"Iter", # classical early stop on validation set
         "use_best_model": True, # select early stopped ensemble
         "leaf_estimation_method": "Newton",
@@ -287,7 +284,7 @@ class TuningParams:
 
     # we list also the library defaults that we use just to be explicit
     LGBM_FIXED_PARAMS = {
-        "n_estimators": 700, # higher than default 100
+        "n_estimators": 1000, # higher than default 100
         "boosting_type": "gbdt", # dart and rf are also possible (default)
         "max_depth": -1, # no control (default)
         "data_sample_strategy": "bagging", # more robust than goss (default)
@@ -301,7 +298,6 @@ class TuningParams:
         "max_depth": -1, # no control (default)
         "data_sample_strategy": "bagging", # more robust than goss (default)
         "verbose": -1,
-        "early_stopping_rounds": 50, # set to 50 as for xgboost
         "early_stopping_min_delta": 0, # to avoid premature stopping (default)
         "metric": "logloss_to_adjust"
     }
@@ -342,6 +338,18 @@ class TuningParams:
 
 
 
+# dict of the default tuning spaces for each tunable estimator.
+# TODO: The default spaces must be updated with the pre-analysis results
+DEFAULT_ESTIMATORS_TUNE_SPACES = {
+    "random_forest": TuningParams.RF_C0,
+    "xgb": TuningParams.XGB_C0, 
+    "es_xgb": TuningParams.XGB_C0, 
+    "catboost": TuningParams.CATBOOST_C0, 
+    "es_catboost": TuningParams.CATBOOST_C0,
+    "lgbm": TuningParams.LGMB_C0, 
+    "es_lgbm": TuningParams.LGMB_C0
+}
+
 
 
 class DefaultParams:
@@ -363,9 +371,7 @@ class DefaultParams:
     # the "default behaviour" is to indirectly control this parameter via training
     ES_XGB_DEFAULT_PARAMS = {
         "n_estimators": 10000,
-        "verbose_eval": False,
         "eval_metric": "logloss_to_adjust",
-        "early_stopping_rounds": 50,
         "verbosity": 0
     }
 
@@ -378,7 +384,6 @@ class DefaultParams:
     # the "default behaviour" is to indirectly control this parameter via training
     ES_CATBOOST_DEFAULT_PARAMS = {
         "n_estimators": 10000,
-        "early_stopping_rounds": 70,
         "od_type": "Iter", 
         "eval_metric": "logloss_to_adjust",
         "use_best_model": True,
@@ -397,7 +402,6 @@ class DefaultParams:
     # the "default behaviour" is to indirectly control this parameter via training.
     ES_LGBM_DEFAULT_PARAMS = {
         "n_estimators": 10000,
-        "early_stopping_rounds": 50,
         "metric": "logloss_to_adjust",
         "min_child_samples": 1,
         "verbose": -1

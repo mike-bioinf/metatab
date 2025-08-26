@@ -10,6 +10,7 @@ from estimators.searchcv import SearchCV
 from sklearn.pipeline import Pipeline
 
 if TYPE_CHECKING:
+    import numpy as np
     from estimators.types import Classifier
 
 
@@ -47,12 +48,18 @@ class GBDTBaseEstimator(AbstractBaseEstimator):
         validation_set_size (float, optional): 
             The size of the validation set. 
             Ignored when "early_stopping" is False.
+
+        fit_classifier_kwargs (None | dict, optional):
+            A dict unpackaged in the classifier fit calls.
+            If None an empty dict is created.
+            Useful to pass fit-level implementation-specific args.
     '''
     def __init__(
         self,
         preprocessing: Literal["base", "density_filter", "pca"],
         seed: int,
         n_threads: int,
+        early_stopping_rounds: int,
         tune_configuration: None | dict,
         fixed_params: dict,
         *,
@@ -61,27 +68,33 @@ class GBDTBaseEstimator(AbstractBaseEstimator):
         callbacks_on_fixed_params: list[Callable[[dict, pd.Series, bool], dict]] | None = None, 
         early_stopping: bool = False,
         eval_set_parameter: str = "eval_set",
-        validation_set_size: float = 0.3
+        validation_set_size: float = 0.3,
+        fit_classifier_kwargs: None | dict = None
     ):
-        super().__init__(preprocessing, seed, n_threads, tune_configuration, fixed_params)
+        super().__init__(preprocessing, seed, n_threads, early_stopping_rounds, tune_configuration, fixed_params)
         self.classifier_cls = classifier_cls
         self.callbacks_on_fixed_params = callbacks_on_fixed_params
         self.n_threads_parameter = n_threads_parameter
         self.early_stopping = early_stopping
         self.eval_set_parameter = eval_set_parameter
         self.validation_set_size = validation_set_size
+        self.fit_classifier_kwargs = fit_classifier_kwargs if fit_classifier_kwargs else {}
 
 
     def fit(self, X: pd.DataFrame, y: pd.Series) -> "GBDTBaseEstimator":
+        # we are assuming that all concrete classes implementations follow the 
+        # "random_state" and "early_stopping_rounds" parameter name convention.
         fixed_params = super().update_fixed_params(
             up_seed=True, 
             up_n_threads=True, 
+            up_early_stopping_rounds=self.early_stopping,
             key_n_threads=self.n_threads_parameter,
             copy=True 
         )
 
         fixed_params = self._apply_callbacks_on_fixed_params(fixed_params, y)        
         pipe = self._create_pipeline(fixed_params)
+        fit_classifier_kwargs = self._adjust_fit_kwargs_keys(pipe)
 
         if self.tune_configuration:
             self.estimator_ = SearchCV(
@@ -94,6 +107,7 @@ class GBDTBaseEstimator(AbstractBaseEstimator):
                 n_cv_splits=self.tune_configuration["n_splits"],
                 seed=self.seed,
                 metric_to_minimize="logloss",
+                fit_classifier_kwargs=fit_classifier_kwargs,
                 early_stop_on_validation_set=self.early_stopping,
                 validation_set_size=self.validation_set_size,
                 eval_set_parameter=self.eval_set_parameter
@@ -107,11 +121,12 @@ class GBDTBaseEstimator(AbstractBaseEstimator):
                 y=y,
                 seed=self.seed,
                 validation_set_size=self.validation_set_size,
-                eval_set_parameter=self.eval_set_parameter
+                eval_set_parameter=self.eval_set_parameter,
+                fit_classifier_kwargs=fit_classifier_kwargs
             )
 
         else:
-            self.estimator_ = pipe.fit(X, y)
+            self.estimator_ = pipe.fit(X, y, **fit_classifier_kwargs)
 
         return self
 
@@ -137,6 +152,21 @@ class GBDTBaseEstimator(AbstractBaseEstimator):
         return params
 
 
+    def _adjust_fit_kwargs_keys(
+        self, 
+        clf_or_pipe: Classifier | Pipeline, 
+    ) -> dict:
+        '''
+        Adjust the fit kwargs keys according to "clf_or_pipe" argument.
+        Returns always a new dict.
+        '''
+        if isinstance(clf_or_pipe, Pipeline):
+            name_classifier = clf_or_pipe.steps[-1][0]
+            return {f"{name_classifier}__{k}":v for k, v in self.fit_classifier_kwargs.items()}
+        else:
+            return deepcopy(self.fit_classifier_kwargs)            
+
+
     @override
     def get_best_hps(self) -> dict | None:
         if self.tune_configuration:
@@ -144,6 +174,15 @@ class GBDTBaseEstimator(AbstractBaseEstimator):
             return self.estimator_.best_params_
         return None
     
+
+    @override
+    def get_search_losses(self) -> np.ndarray | None:
+        if self.tune_configuration:
+            check_is_fitted(self, "estimator_")
+            return self.estimator_.trials_.losses()
+        return None
+
+
 
 
 def adjust_objective_logloss_and_num_classes(
