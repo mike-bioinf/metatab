@@ -26,22 +26,9 @@ class MyRandomForestClassifier(AbstractBaseEstimator):
 
     Attributes
     -------------
-    estimator_ (Pipeline): 
-        Fitted pipeline with RandomForestClassifier as head.
+    estimator_ (Pipeline): Fitted pipeline with RandomForestClassifier as head.
     '''
-    def __init__(
-        self,
-        preprocessing: Literal["base", "density_filter", "pca"],
-        seed: int,
-        n_threads: int,
-        early_stopping_rounds: int, # ignored
-        tune_configuration = None, # ignored
-        fixed_params: dict = DefaultParams.RANDOM_FOREST_DEFAULT_PARAMS
-    ):
-        super().__init__(
-            preprocessing, seed, n_threads, 
-            early_stopping_rounds, tune_configuration, fixed_params
-        )
+    fixed_params = DefaultParams.RANDOM_FOREST_DEFAULT_PARAMS
 
     def fit(self, X: pd.DataFrame, y: pd.Series, **kwargs) -> "MyRandomForestClassifier":
         fixed_params = super().update_fixed_params(up_seed=True, up_n_threads=True, copy=True)
@@ -59,20 +46,8 @@ class MyTunedRandomForestClassifier(AbstractBaseEstimator):
     -----------------
     estimator_ (SeachCV): Fitted SearchCV instance
     '''
-    def __init__(
-        self,
-        preprocessing: Literal["base", "density_filter", "pca"],
-        seed: int,
-        n_threads: int,
-        early_stopping_rounds: int, # ignored
-        tune_configuration: dict,
-        fixed_params: dict = TuningParams.RANDOM_FOREST_FIXED_PARAMS  
-    ):
-        super().__init__(
-            preprocessing, seed, n_threads, 
-            early_stopping_rounds, tune_configuration, fixed_params
-        )
- 
+    fixed_params = TuningParams.RANDOM_FOREST_FIXED_PARAMS 
+    
     def fit(self, X: pd.DataFrame, y: pd.Series) -> "MyTunedRandomForestClassifier":
         fixed_params = super().update_fixed_params(up_seed=True, up_n_threads=True, copy=True)
         self.estimator_ = SearchCV(

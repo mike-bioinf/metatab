@@ -7,7 +7,7 @@ from sklearn.feature_selection import VarianceThreshold
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
-from estimators.types import Classifier
+from estimators.constants import Classifier
 from preprocessing import DensityFeatureSelector
 
 

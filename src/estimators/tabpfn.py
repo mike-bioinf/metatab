@@ -5,7 +5,8 @@ from typing import Literal, TYPE_CHECKING
 from sklearn.pipeline import Pipeline
 from tabpfn import TabPFNClassifier
 from estimators.abstract_estimator import AbstractBaseEstimator
-from estimators.params import DefaultParams
+from estimators.params import DefaultParams, TuningParams
+from estimators.searchcv import SearchCV
 
 from estimators.utils import (
     create_pca_default_pipeline, 
@@ -36,6 +37,25 @@ def suppress_sklearn_and_tabpfn_warnings(func):
 
 
 
+def create_tabpfn_estimator(
+    preprocessing: Literal["base", "density_filter", "pca"], 
+    tabpfn_params: dict 
+) -> TabPFNClassifier | Pipeline:
+    if preprocessing == "base":
+        return TabPFNClassifier(**tabpfn_params)
+    elif preprocessing == "pca":
+        return create_pca_default_pipeline(TabPFNClassifier, tabpfn_params)
+    elif preprocessing == "density_filter":
+        return create_density_filter_default_pipeline(
+            "oversample", 
+            TabPFNClassifier, 
+            tabpfn_params
+        )
+    else:
+        raise ValueError("Unsupported preprocessing.")
+
+
+
 class MyTabPFNClassifier(AbstractBaseEstimator):
     '''
     Class that wraps the base TabPFNClassifier.
@@ -46,37 +66,41 @@ class MyTabPFNClassifier(AbstractBaseEstimator):
         Fitted estimator. Is a TabPFNClassifier instance in case
         of "base" preprocessing or a Pipeline instance otherwise.  
     '''
-    def __init__(
-        self, 
-        preprocessing: Literal["base", "density_filter", "pca"], 
-        seed: int,
-        n_threads: int,
-        early_stopping_rounds: int, # ignored
-        tune_configuration = None, # ignored
-        fixed_params = DefaultParams.TABPFN_DEFAULT_PARAMS
-    ):
-        super().__init__(
-            preprocessing, seed, n_threads, 
-            early_stopping_rounds, tune_configuration, fixed_params
-        )
-
+    fixed_params = DefaultParams.TABPFN_DEFAULT_PARAMS
+ 
     @suppress_sklearn_and_tabpfn_warnings
     def fit(self, X: pd.DataFrame, y: pd.Series, **kwargs) -> "MyTabPFNClassifier":
         fixed_params = super().update_fixed_params(up_seed=True, up_n_threads=True, copy=True)
-        self.estimator_ = self._create_estimator(fixed_params)
+        self.estimator_ = create_tabpfn_estimator(self.preprocessing, fixed_params)
         self.estimator_.fit(X, y)
         return self
+        
 
-    def _create_estimator(self, fixed_params: dict) -> TabPFNClassifier | Pipeline:
-        if self.preprocessing == "base":
-            return TabPFNClassifier(**fixed_params)
-        elif self.preprocessing == "pca":
-            return create_pca_default_pipeline(TabPFNClassifier, fixed_params)
-        elif self.preprocessing == "density_filter":
-            return create_density_filter_default_pipeline(
-                "oversample", 
-                TabPFNClassifier, 
-                fixed_params
-            )
-        else:
-            raise ValueError("Unsupported preprocessing.")
+
+class MyTunedTabPFNClassifier(AbstractBaseEstimator):
+    '''
+    TabPFNClassifier with HPs tuning.
+
+    Attributes
+    ----------------
+    estimator_ (SearchCV): Fitted SearchCV instance.
+    '''
+    fixed_params = TuningParams.TABPFN_FIXED_PARAMS
+
+    @suppress_sklearn_and_tabpfn_warnings
+    def fit(self, X: pd.DataFrame, y: pd.Series, **kwargs) -> "MyTunedTabPFNClassifier":
+        fixed_params = super().update_fixed_params(up_seed=True, up_n_threads=True, copy=True)
+        self.estimator_ = SearchCV(
+            clf_or_pipe=create_tabpfn_estimator(self.preprocessing, fixed_params),
+            algo=self.tune_configuration["algo"],
+            params_distributions=self.tune_configuration["params_distributions"],
+            n_iter=self.tune_configuration["n_iter"],
+            n_cv_repeats=self.tune_configuration["n_repeats"],
+            n_cv_splits=self.tune_configuration["n_splits"],
+            random_state_parameter="random_state",
+            seed=self.seed,
+            metric_to_minimize="logloss",
+            early_stop_on_validation_set=False
+        )
+        self.estimator_.fit(X, y)
+        return self

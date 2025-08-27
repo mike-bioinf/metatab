@@ -1,20 +1,17 @@
 import traceback
+import warnings
 import numpy as np
 import pandas as pd
 from copy import deepcopy
-from functools import partial
-from typing import Literal, Callable
+from typing import Literal, Any
 from sklearn.model_selection import RepeatedStratifiedKFold
 from sklearn.pipeline import Pipeline
 from sklearn.metrics import log_loss
 from sklearn.utils.validation import check_is_fitted
+from tabpfn import TabPFNClassifier
 from hyperopt import Trials, STATUS_OK, STATUS_FAIL, tpe, rand, fmin, space_eval
-from estimators.types import Classifier
-
-from estimators.utils import (
-    fit_with_early_stop_on_validation_set,
-    add_string_to_params
-)
+from estimators.utils import fit_with_early_stop_on_validation_set
+from estimators.constants import Classifier
 
 
 
@@ -80,11 +77,11 @@ class SearchCV:
                 The metric to minimize in the search.
 
             early_stop_on_validation_set (bool):
-                Whether to early stop on validation sets.
+                Whether to early stop on validation set(s).
 
             eval_set_parameter (str, optional):
                 Name of the eval_set parameter, 
-                i.e. the parameter taking the validation sets at fit level.
+                i.e. the parameter taking the validation set(s) at fit level.
                 Ignored when "early_stop_on_validation_set" is False.
             
             validation_set_size (flot, optional):
@@ -122,7 +119,6 @@ class SearchCV:
         self.eval_set_parameter=eval_set_parameter
         self.validation_set_size=validation_set_size
         self.fit_classifier_kwargs=fit_classifier_kwargs if fit_classifier_kwargs else {}
-        self.add_string_to_params_func=self._get_add_string_to_params_func(clf_or_pipe)
 
 
     def fit(self, X: pd.DataFrame, y: pd.Series) -> "SearchCV":
@@ -170,6 +166,7 @@ class SearchCV:
     def __call__(self, params: dict):
         '''Take in input the sampled point from the hp space'''
         try:
+            params = self._correct_sampled_params(params)
             loss = self._cross_val_score(params)
             return {"loss": loss, "status": STATUS_OK}
         except Exception as e:
@@ -179,7 +176,28 @@ class SearchCV:
                 "exception": str(e),
                 "traceback": traceback.format_exc()
             }
+    
+
+    @staticmethod
+    def _correct_sampled_params(params: dict) -> dict:
+        '''
+        Apply general hyperopt level correction to the sampled params.
+        These corrections come from specific quirks of hyperopt.
+        In particular the following aspects are addressed:
+        - automatic conversion of sampled list to tuple. 
+            To distinguish between original and converted tuple we cast 
+            the specific parameters explicitly.
+        '''
+        tuple_to_list_parameters = [
+            "inference_config__PREPROCESS_TRANSFORMS",
+        ]
         
+        for param_to_convert in tuple_to_list_parameters:
+            if param_to_convert in params.keys():
+                params[param_to_convert] = list(params[param_to_convert])
+        
+        return params
+
 
     def _cross_val_score(
         self,
@@ -206,12 +224,12 @@ class SearchCV:
             # (for example for catboost is not possible to set the parameters on a fitted instance)
             clf_or_pipe = deepcopy(self.clf_or_pipe)
             self._set_params_into_clf(clf_or_pipe, params)
-            
+
             # we overwrite the classifier seed 
             # in order to maximize model entropy inside cv, 
             # while assuring uniformity between different cv runs.
             round_cv_seed = {self.random_state_parameter: int(rng_cv.integers(0, 2**32))}
-            self._set_params_into_clf(clf_or_pipe, round_cv_seed)
+            self._set_params_into_clf(clf_or_pipe, round_cv_seed, set_tabpfn_inference_config=False)
             
             X_train, y_train = self.X.iloc[train_idx, :], self.y.iloc[train_idx]
             X_test, y_test = self.X.iloc[test_idx, :], self.y.iloc[test_idx]
@@ -235,29 +253,62 @@ class SearchCV:
         return np.mean(losses) if agg == "mean" else np.sum(losses)
 
 
-    def _get_add_string_to_params_func(self, clf_or_pipe: Classifier | Pipeline) -> Callable:
+    def _set_params_into_clf(
+        self, 
+        clf_or_pipe: Classifier | Pipeline, 
+        params: dict[str, Any],
+        set_tabpfn_inference_config: bool = True
+    ) -> None:
         '''
-        Derives and returns the function that manages 
-        the addiction of the classifier name to the dict of parameters.
+        Set the parameters into the classifier.
+        The method works with all type of classifiers even when they head pipeline objects.
+        The method overwrites the pre-existent parameters values for the ones specified in params.
+        For tabpfn classifiers is possible to micro manage 
+        the setting of the "inference_config__" marked parameters.
         '''
-        # we not use lambdas since they are not serializable with pickle
-        if isinstance(clf_or_pipe, Pipeline):
-            name_classifier = f"{clf_or_pipe.steps[-1][0]}__"
-            return partial(add_string_to_params, string=name_classifier)
-        else:
-            return self._identity_params
-
-
-    @staticmethod
-    def _identity_params(params: dict):
-        return params
-
-
-    def _set_params_into_clf(self, clf_or_pipe: Classifier | Pipeline, params: dict) -> None:
-        '''Set the parameters into the classifier whether it is in a pipeline or not'''
-        clf_or_pipe.set_params(**self.add_string_to_params_func(params))
-
+        clf = clf_or_pipe[-1] if isinstance(clf_or_pipe, Pipeline) else clf_or_pipe
         
+        if isinstance(clf, TabPFNClassifier):
+            if "inference_config" in params.keys():
+                raise KeyError(
+                    "The inference_config parameter cannot be handled explicity.",
+                    "Instead its keys must be passed as normal parameters marked with the 'inference_config__' prefix."
+                )
+
+            inference_config = {}
+            cleaned_params = {}
+            
+            for k, v in params.items():
+                if k.startswith("inference_config__"):
+                    inference_config[f"{k.removeprefix("inference_config__")}"] = v
+                else:
+                    cleaned_params[k] = v
+
+            if set_tabpfn_inference_config:
+                if not inference_config:
+                    warnings.warn(
+                        message=(
+                            "Derived an empty inference_config dict. "
+                            "It will overwrite the classifier's existing inference_config."
+                        ),
+                        category=UserWarning
+                    )
+                clf.set_params(inference_config=inference_config, **cleaned_params)
+            else:
+                if inference_config:
+                    warnings.warn(
+                         message=(
+                            "Derived a non-empty inference_config dict, but since "
+                            "set_tabpfn_inference_config=False, it will be ignored."
+                        ),
+                        category=UserWarning
+                    )
+                clf.set_params(**cleaned_params)
+        
+        else:
+            clf.set_params(**params)
+
+    
     def _compute_loss_score(self, y_pred: np.ndarray, y_true: np.ndarray) -> float:
         if self.metric_to_minimize == "logloss":
             return log_loss(y_true, y_pred)
@@ -268,3 +319,4 @@ class SearchCV:
     def predict_proba(self, X: pd.DataFrame) -> np.ndarray:
         check_is_fitted(self, "best_estimator_")
         return self.best_estimator_.predict_proba(X)
+    

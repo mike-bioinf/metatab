@@ -12,12 +12,13 @@ from estimators.base_gbdt import (
 
 class MyXGBClassifier(GBDTBaseEstimator):
     '''Class that implements/wraps library XGBClassifier.'''
+    fixed_params = DefaultParams.XGB_DEFAULT_PARAMS
+
     def __init__(
-        self, preprocessing, seed, n_threads, early_stopping_rounds, tune_configuration, 
-        fixed_params=DefaultParams.XGB_DEFAULT_PARAMS
+        self, preprocessing, seed, n_threads, early_stopping_rounds, tune_configuration
     ):
         super().__init__(
-            preprocessing, seed, n_threads, early_stopping_rounds, tune_configuration, fixed_params,
+            preprocessing, seed, n_threads, early_stopping_rounds, tune_configuration,
             classifier_cls=XGBClassifier,
             callbacks_on_fixed_params=[_adjust_xgb_objective_and_num_classes],
             n_threads_parameter="n_jobs",
@@ -31,12 +32,13 @@ class MyESXGBClassifier(GBDTBaseEstimator):
     Class that wraps the library XGBClassifier used 
     with early stopping on a validation set and without HPs tuning.
     '''
+    fixed_params=DefaultParams.ES_XGB_DEFAULT_PARAMS
+    
     def __init__(
-        self, preprocessing, seed, n_threads, early_stopping_rounds, tune_configuration,
-        fixed_params=DefaultParams.ES_XGB_DEFAULT_PARAMS
+        self, preprocessing, seed, n_threads, early_stopping_rounds, tune_configuration
     ):
         super().__init__(
-            preprocessing, seed, n_threads, early_stopping_rounds, tune_configuration, fixed_params,
+            preprocessing, seed, n_threads, early_stopping_rounds, tune_configuration,
             classifier_cls=XGBClassifier,
             callbacks_on_fixed_params=[
                 _adjust_xgb_objective_and_num_classes, 
@@ -51,12 +53,13 @@ class MyESXGBClassifier(GBDTBaseEstimator):
 
 class MyTunedXGBClassifier(GBDTBaseEstimator):
     '''Class that implements Tuned xgboost without early stop'''
+    fixed_params=TuningParams.XGB_FIXED_PARAMS
+
     def __init__(
-        self, preprocessing, seed, n_threads, early_stopping_rounds, tune_configuration,
-        fixed_params=TuningParams.XGB_FIXED_PARAMS
+        self, preprocessing, seed, n_threads, early_stopping_rounds, tune_configuration
     ):
         super().__init__(
-            preprocessing, seed, n_threads, early_stopping_rounds, tune_configuration, fixed_params,
+            preprocessing, seed, n_threads, early_stopping_rounds, tune_configuration,
             classifier_cls=XGBClassifier,
             callbacks_on_fixed_params=[_adjust_xgb_objective_and_num_classes],
             n_threads_parameter="n_jobs",
@@ -67,12 +70,13 @@ class MyTunedXGBClassifier(GBDTBaseEstimator):
 
 class MyTunedESXGBClassifier(GBDTBaseEstimator):
     '''Class that implements tuned XGB with early stop on a validation set'''
+    fixed_params = TuningParams.ES_XGB_FIXED_PARAMS
+
     def __init__(
-        self, preprocessing, seed, n_threads, early_stopping_rounds, tune_configuration,
-        fixed_params = TuningParams.ES_XGB_FIXED_PARAMS
+        self, preprocessing, seed, n_threads, early_stopping_rounds, tune_configuration
     ):
         super().__init__(
-            preprocessing, seed, n_threads, early_stopping_rounds, tune_configuration, fixed_params,
+            preprocessing, seed, n_threads, early_stopping_rounds, tune_configuration,
             classifier_cls=XGBClassifier,
             callbacks_on_fixed_params=[
                 _adjust_xgb_objective_and_num_classes, 

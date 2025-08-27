@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import numpy as np
 import pandas as pd
 from copy import deepcopy
 from typing import Literal, Callable, override, TYPE_CHECKING
@@ -10,8 +11,7 @@ from estimators.searchcv import SearchCV
 from sklearn.pipeline import Pipeline
 
 if TYPE_CHECKING:
-    import numpy as np
-    from estimators.types import Classifier
+    from estimators.constants import Classifier
 
 
 
@@ -37,8 +37,8 @@ class GBDTBaseEstimator(AbstractBaseEstimator):
             List of functions to apply to the fixed/default params before fitting.
             They are applied sequentially following the list order.
             The output of the first is passed in input to the second and so on.
-            They must share the same signature (not checked in code).
-            If None nothing is done on the dict of params.
+            They must share the same signature (params, y, do_copy) which is not checked in code.
+            If None nothing is done.
         
         eval_set_parameter (str, optional):
             Name of the eval_set parameter, i.e. the
@@ -61,7 +61,6 @@ class GBDTBaseEstimator(AbstractBaseEstimator):
         n_threads: int,
         early_stopping_rounds: int,
         tune_configuration: None | dict,
-        fixed_params: dict,
         *,
         classifier_cls: Classifier,
         n_threads_parameter: str,
@@ -71,7 +70,7 @@ class GBDTBaseEstimator(AbstractBaseEstimator):
         validation_set_size: float = 0.3,
         fit_classifier_kwargs: None | dict = None
     ):
-        super().__init__(preprocessing, seed, n_threads, early_stopping_rounds, tune_configuration, fixed_params)
+        super().__init__(preprocessing, seed, n_threads, early_stopping_rounds, tune_configuration)
         self.classifier_cls = classifier_cls
         self.callbacks_on_fixed_params = callbacks_on_fixed_params
         self.n_threads_parameter = n_threads_parameter
@@ -179,7 +178,7 @@ class GBDTBaseEstimator(AbstractBaseEstimator):
     def get_search_losses(self) -> np.ndarray | None:
         if self.tune_configuration:
             check_is_fitted(self, "estimator_")
-            return self.estimator_.trials_.losses()
+            return np.array(self.estimator_.trials_.losses())
         return None
 
 

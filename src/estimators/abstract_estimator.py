@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pickle
+import numpy as np
 from copy import deepcopy
 from typing import Literal, TYPE_CHECKING
 from pathlib import Path
@@ -11,24 +12,26 @@ from sklearn.pipeline import Pipeline
 from estimators.searchcv import SearchCV
 
 if TYPE_CHECKING:
-    import numpy as np
     import pandas as pd
     from sklearn.decomposition import PCA
     from preprocessing.density_selector import DensityFeatureSelector
-    from estimators.types import Classifier
+    from estimators.constants import Classifier
 
 
 
 class AbstractBaseEstimator(ABC):
     '''
     Abstract base class for estimators classes.
-    
-    The estimators classes must implement the 'estimator_' attribute
-    learned in the 'fit' method, storing the object fitted on the input data.
+
+    The estimators concrete classes must implement the fit method, and learn 
+    the 'estimator_' attribute in it, storing the object fitted on the input data.
     This can be a Classifier, Pipeline or SearchCV object.
     
-    Note: fixed_params must always be optional i.e. it must have a default.
+    They must also have implement the "fixed_params" class attribute,
+    that is a dict with the fixed/default classifier parameters.
+    This is not checked/enforced in the code (attention !!!).
     
+
     Parameters:
         preprocessing (Literal["base", "density_filter", "pca"]): 
             Preprocessing strategy to use.
@@ -49,30 +52,24 @@ class AbstractBaseEstimator(ABC):
         tune_configuration (None | dict):
             Dict with the tuning info. 
             Must be ignored by the not tunable estimators.
-            
-        fixed_params (dict, optional):
-            Dict of param:value that are fixed.
     '''
-    @abstractmethod
     def __init__(
         self, 
         preprocessing: Literal["base", "density_filter", "pca"],
         seed: int,
         n_threads: int,
         early_stopping_rounds: int,
-        tune_configuration: None | dict,
-        fixed_params: dict
+        tune_configuration: None | dict
     ):
         self.preprocessing = preprocessing
         self.seed = seed
         self.n_threads = n_threads
         self.early_stopping_rounds = early_stopping_rounds
         self.tune_configuration = tune_configuration
-        self.fixed_params = fixed_params
         
     
     @abstractmethod
-    def fit(*args, **kwargs):
+    def fit():
         pass
     
 

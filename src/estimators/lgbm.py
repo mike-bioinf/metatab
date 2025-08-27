@@ -30,12 +30,13 @@ def ignore_lgbm_feature_name_warning(method):
 
 class MyLGBMClassifier(GBDTBaseEstimator):
     '''Class that implements/wraps library LGBMClassifier.'''
+    fixed_params=DefaultParams.LGBM_DEFAULT_PARAMS
+
     def __init__(
-        self, preprocessing, seed, n_threads, early_stopping_rounds, tune_configuration, 
-        fixed_params=DefaultParams.LGBM_DEFAULT_PARAMS
+        self, preprocessing, seed, n_threads, early_stopping_rounds, tune_configuration
     ):
         super().__init__(
-            preprocessing, seed, n_threads, early_stopping_rounds, tune_configuration, fixed_params,
+            preprocessing, seed, n_threads, early_stopping_rounds, tune_configuration,
             classifier_cls=LGBMClassifier,
             callbacks_on_fixed_params=[_adjust_lgbm_objective_and_num_classes],
             n_threads_parameter="n_jobs",
@@ -53,12 +54,13 @@ class MyESLGBMClassifier(GBDTBaseEstimator):
     Class that wraps the library LGBMClassifier used 
     with early stopping on a validation set and without HPs tuning.
     '''
+    fixed_params=DefaultParams.ES_LGBM_DEFAULT_PARAMS
+
     def __init__(
-        self, preprocessing, seed, n_threads, early_stopping_rounds, tune_configuration,
-        fixed_params=DefaultParams.ES_LGBM_DEFAULT_PARAMS
+        self, preprocessing, seed, n_threads, early_stopping_rounds, tune_configuration
     ):
         super().__init__(
-            preprocessing, seed, n_threads, early_stopping_rounds, tune_configuration, fixed_params,
+            preprocessing, seed, n_threads, early_stopping_rounds, tune_configuration,
             classifier_cls=LGBMClassifier,
             callbacks_on_fixed_params=[
                 _adjust_lgbm_objective_and_num_classes, 
@@ -76,12 +78,13 @@ class MyESLGBMClassifier(GBDTBaseEstimator):
 
 class MyTunedLGBMClassifier(GBDTBaseEstimator):
     '''Class that implements tuned LGBMclassifier without early stop'''
+    fixed_params=TuningParams.LGBM_FIXED_PARAMS
+
     def __init__(
-        self, preprocessing, seed, n_threads, early_stopping_rounds, tune_configuration,
-        fixed_params=TuningParams.LGBM_FIXED_PARAMS
+        self, preprocessing, seed, n_threads, early_stopping_rounds, tune_configuration
     ):
         super().__init__(
-            preprocessing, seed, n_threads, early_stopping_rounds, tune_configuration, fixed_params,
+            preprocessing, seed, n_threads, early_stopping_rounds, tune_configuration,
             classifier_cls=LGBMClassifier,
             callbacks_on_fixed_params=[_adjust_lgbm_objective_and_num_classes],
             n_threads_parameter="n_jobs",
@@ -100,12 +103,13 @@ class MyTunedLGBMClassifier(GBDTBaseEstimator):
 
 class MyTunedESLGBMClassifier(GBDTBaseEstimator):
     '''Class that implements tuned LGBMClassifier with early stop on a validation set'''
+    fixed_params = TuningParams.ES_LGBM_FIXED_PARAMS
+
     def __init__(
-        self, preprocessing, seed, n_threads, early_stopping_rounds, tune_configuration,
-        fixed_params = TuningParams.ES_LGBM_FIXED_PARAMS
+        self, preprocessing, seed, n_threads, early_stopping_rounds, tune_configuration
     ):
         super().__init__(
-            preprocessing, seed, n_threads, early_stopping_rounds, tune_configuration, fixed_params,
+            preprocessing, seed, n_threads, early_stopping_rounds, tune_configuration,
             classifier_cls=LGBMClassifier,
             callbacks_on_fixed_params=[
                 _adjust_lgbm_objective_and_num_classes, 

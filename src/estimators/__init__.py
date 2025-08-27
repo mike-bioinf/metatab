@@ -19,15 +19,16 @@ from estimators.rf import (
     MyTunedRandomForestClassifier
 )
 
-from estimators.tabpfn import (
-    MyTabPFNClassifier
-)
-
 from estimators.lgbm import (
     MyLGBMClassifier,
     MyESLGBMClassifier,
     MyTunedLGBMClassifier,
     MyTunedESLGBMClassifier
+)
+
+from estimators.tabpfn import (
+    MyTabPFNClassifier,
+    MyTunedTabPFNClassifier
 )
 
 
@@ -47,9 +48,9 @@ Estimator: TypeAlias = Union[
     MyESLGBMClassifier,
     MyTunedLGBMClassifier,
     MyTunedESLGBMClassifier,
-    MyTabPFNClassifier
+    MyTabPFNClassifier,
+    MyTunedTabPFNClassifier
 ]
-
 
 __all__ = [
     "MyRandomForestClassifier",
@@ -67,5 +68,6 @@ __all__ = [
     "MyTunedLGBMClassifier",
     "MyTunedESLGBMClassifier"
     "MyTabPFNClassifier",
+    "MyTunedTabPFNClassifier",
     "Estimator"
 ]

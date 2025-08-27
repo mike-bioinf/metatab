@@ -27,7 +27,8 @@ from estimators import (
     MyESLGBMClassifier,
     MyTunedLGBMClassifier,
     MyTunedESLGBMClassifier,
-    MyTabPFNClassifier
+    MyTabPFNClassifier,
+    MyTunedTabPFNClassifier
 )
 
 if TYPE_CHECKING:
@@ -57,10 +58,11 @@ def _fit_estimator(
         seed=0,
         n_threads=4,
         early_stopping_rounds=4,
-        tune_configuration=tune_configuration,
-        fixed_params=fixed_params
+        tune_configuration=tune_configuration
     )
 
+    # overwriting fixed_params class attribute
+    estimator.fixed_params = fixed_params
     estimator.fit(X, y).save(file)
 
 
@@ -123,8 +125,7 @@ TEST_ES_LGBM_FIXED_PARAMS = {
 }
 
 TEST_TABPFN_FIXED_PARAMS = {
-    "ignore_pretraining_limits": True,
-    "inference_config": {"MIN_UNIQUE_FOR_NUMERICAL_FEATURES": 0}
+    "ignore_pretraining_limits": True
 }
 
 
@@ -255,6 +256,14 @@ def fit_estimators_on_iris(tmp_path_factory) -> Path:
         tune_configuration=None,
         params_distributions=None,
         file=tmp_estimators_folder / "my_tabpfn_classifier.pkl"
+    )
+
+    _fit_estimator_on_iris(
+        estimator=MyTunedTabPFNClassifier,
+        fixed_params=TEST_TABPFN_FIXED_PARAMS,
+        tune_configuration=TEST_TUNE_CONFIGURATION,
+        params_distributions=TuningParams.TABPFN_C0,
+        file=tmp_estimators_folder / "my_tuned_tabpfn_classifier.pkl"
     )
 
     return tmp_estimators_folder

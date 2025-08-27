@@ -1,6 +1,7 @@
 import numpy as np
 from hyperopt import hp
 from hyperopt.pyll.base import scope
+from estimators.tabpfn_search_space import TABPFN_TUNE_SPACE
 
 
 
@@ -217,7 +218,7 @@ class TuningParams:
         "max_bin": hp.choice("max_bin", [254, hp.choice("max_bin_positive", list(range(20, 250, 20)))]),
         "min_data_in_leaf": hp.choice("min_data_in_leaf", [1, 2, 3, 4, 5]), # work only with depthwise and lossguide
         "max_leaves": scope.int(hp.qloguniform("max_leaves", np.log(2), np.log(512), q=1)),
-        "max_depth": hp.choice("max_depth", [16, 20, 30, 50, 100]), # in catboost is not possible to not set a depth (16 is default with lossguide)
+        "max_depth": hp.choice("max_depth", [16, 20, 30, 50, 100]), # in catboost the depth must be always set (16 is default with lossguide)
         "learning_rate": hp.loguniform("learning_rate", np.log(0.001), np.log(0.1)),
         "leaf_estimation_iterations": scope.int(hp.qloguniform("lei", np.log(1), np.log(10), q=1)),
         "l2_leaf_reg": hp.loguniform("l2_leaf_reg", np.log(1e-4), np.log(5)),
@@ -265,7 +266,7 @@ class TuningParams:
         "max_bin": hp.choice("max_bin", [254, hp.choice("max_bin_positive", list(range(20, 250, 20)))]),
         "min_data_in_leaf": hp.choice("min_data_in_leaf", [1, 2, 3, 4, 5]), # work only with depthwise and lossguide
         "max_leaves": scope.int(hp.qloguniform("max_leaves", np.log(2), np.log(512), q=1)),
-        "max_depth": hp.choice("max_depth", [16, 20, 30, 50, 100]), # in catboost is not possible to not set a depth (16 is default with lossguide)
+        "max_depth": hp.choice("max_depth", [16, 20, 30, 50, 100]), # in catboost the depth must be always set (16 is default with lossguide)
         "learning_rate": hp.loguniform("learning_rate", np.log(0.001), np.log(0.1)),
         "leaf_estimation_iterations": scope.int(hp.qloguniform("lei", np.log(1), np.log(10), q=1)),
         "l2_leaf_reg": hp.loguniform("l2_leaf_reg", np.log(1e-4), np.log(5)),
@@ -337,6 +338,19 @@ class TuningParams:
     }
 
 
+    ### TABPFN --------------------------------------------------------
+    # Here we use the search space defined in the "official extension" of tuned tabpfn wi th minor modifications. 
+    # "https://github.com/PriorLabs/tabpfn-extensions/blob/main/src/tabpfn_extensions/hpo/search_space.py".
+
+    TABPFN_FIXED_PARAMS = {
+        "ignore_pretraining_limits": True
+    }
+
+    TABPFN_C0 = TABPFN_TUNE_SPACE
+
+
+
+
 
 # dict of the default tuning spaces for each tunable estimator.
 # TODO: The default spaces must be updated with the pre-analysis results
@@ -347,7 +361,8 @@ DEFAULT_ESTIMATORS_TUNE_SPACES = {
     "catboost": TuningParams.CATBOOST_C0, 
     "es_catboost": TuningParams.CATBOOST_C0,
     "lgbm": TuningParams.LGMB_C0, 
-    "es_lgbm": TuningParams.LGMB_C0
+    "es_lgbm": TuningParams.LGMB_C0,
+    "tabpfn": TuningParams.TABPFN_C0
 }
 
 
@@ -410,6 +425,6 @@ class DefaultParams:
     TABPFN_DEFAULT_PARAMS = {
         "ignore_pretraining_limits": True,
         # suppressing categorical transformation 
-        # that leads to testing data loss with sparse data
+        # that leads to testing data loss with small sparse data
         "inference_config": {"MIN_UNIQUE_FOR_NUMERICAL_FEATURES": 0}
     }

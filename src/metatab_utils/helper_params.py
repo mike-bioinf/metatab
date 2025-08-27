@@ -26,7 +26,8 @@ from estimators import (
     MyESLGBMClassifier,
     MyTunedLGBMClassifier,
     MyTunedESLGBMClassifier,
-    MyTabPFNClassifier
+    MyTabPFNClassifier,
+    MyTunedTabPFNClassifier
 )
 
 
@@ -71,13 +72,9 @@ def check_target_feature(pars: dict) -> None:
         raise ValueError("--target-feature must be specified with 'df' input mode.")
 
 
-## TODO: complete with the tune-tabpfn estimator name
 def check_not_tunable_estimators(pars: dict) -> None:
     '''Check whether the tune flag is used with not tunable estimators'''
-    if pars["tune"] and pars["estimator"] == "tabpfn":
-        raise ValueError(
-            "The 'tabpfn' estimator cannot be tuned setting --tune. Use the '' estimator."
-        )
+    pass
 
 
 def check_ambiguous_tune_setting(pars: dict) -> None:
@@ -210,6 +207,9 @@ def _pick_params_distributions_configuration(pars: dict) -> dict | None:
         case ("lgbm" | "es_lgbm", "c1"):
             return TuningParams.LGMB_C1
 
+        case ("tabpfn", "c0"):
+            return TuningParams.TABPFN_C0
+        
         case (_, "default"):
             return DEFAULT_ESTIMATORS_TUNE_SPACES[estimator]
             
@@ -259,8 +259,10 @@ def pick_estimator_class(pars: dict) -> Estimator:
         case ("es_lgbm", True):
             return MyTunedESLGBMClassifier
 
-        case ("tabpfn", _):
+        case ("tabpfn", False):
             return MyTabPFNClassifier
-        
+        case("tabpfn", True):
+            return MyTunedTabPFNClassifier
+
         case _:
             raise ValueError("Unsupported estimator.")
