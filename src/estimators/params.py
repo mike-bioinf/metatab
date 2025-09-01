@@ -1,7 +1,7 @@
 import numpy as np
 from hyperopt import hp
 from hyperopt.pyll.base import scope
-from estimators.tabpfn_search_space import TABPFN_TUNE_SPACE
+from hp_search.tabpfn_search_space import TABPFN_TUNE_SPACE
 
 
 
@@ -339,7 +339,7 @@ class TuningParams:
 
 
     ### TABPFN --------------------------------------------------------
-    # Here we use the search space defined in the "official extension" of tuned tabpfn wi th minor modifications. 
+    # Here we use the search space defined in the "official extension" of tuned tabpfn with minor modifications. 
     # "https://github.com/PriorLabs/tabpfn-extensions/blob/main/src/tabpfn_extensions/hpo/search_space.py".
 
     TABPFN_FIXED_PARAMS = {
@@ -347,7 +347,6 @@ class TuningParams:
     }
 
     TABPFN_C0 = TABPFN_TUNE_SPACE
-
 
 
 
@@ -364,6 +363,7 @@ DEFAULT_ESTIMATORS_TUNE_SPACES = {
     "es_lgbm": TuningParams.LGMB_C0,
     "tabpfn": TuningParams.TABPFN_C0
 }
+
 
 
 
@@ -427,4 +427,14 @@ class DefaultParams:
         # suppressing categorical transformation 
         # that leads to testing data loss with small sparse data
         "inference_config": {"MIN_UNIQUE_FOR_NUMERICAL_FEATURES": 0}
+    }
+
+    AUTOTABPFN_DEFAULT_PARAMS = {
+        "max_time": 14400,   # 4 hours
+        "eval_metric": "log_loss",
+        "presets": "best_quality",
+        "phe_init_args": {"verbosity": 0}, # dict passed to autogluon TabularPredictor
+        "n_ensemble_models": 20,
+        "n_estimators": 8,
+        "ignore_pretraining_limits": True
     }

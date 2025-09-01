@@ -28,7 +28,8 @@ from estimators.lgbm import (
 
 from estimators.tabpfn import (
     MyTabPFNClassifier,
-    MyTunedTabPFNClassifier
+    MyTunedTabPFNClassifier,
+    MyAutoTabPFNClassifier
 )
 
 
@@ -49,7 +50,8 @@ Estimator: TypeAlias = Union[
     MyTunedLGBMClassifier,
     MyTunedESLGBMClassifier,
     MyTabPFNClassifier,
-    MyTunedTabPFNClassifier
+    MyTunedTabPFNClassifier,
+    MyAutoTabPFNClassifier
 ]
 
 __all__ = [
@@ -69,5 +71,6 @@ __all__ = [
     "MyTunedESLGBMClassifier"
     "MyTabPFNClassifier",
     "MyTunedTabPFNClassifier",
+    "MyAutoTabPFNClassifier",
     "Estimator"
 ]

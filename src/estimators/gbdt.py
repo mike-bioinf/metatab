@@ -7,7 +7,7 @@ from typing import Literal, Callable, override, TYPE_CHECKING
 from sklearn.utils.validation import check_is_fitted
 from estimators.abstract_estimator import AbstractBaseEstimator
 from estimators.utils import create_default_pipeline, fit_with_early_stop_on_validation_set
-from estimators.searchcv import SearchCV
+from hp_search.searchcv import SearchCV
 from sklearn.pipeline import Pipeline
 
 if TYPE_CHECKING:

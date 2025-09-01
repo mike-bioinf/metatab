@@ -9,7 +9,7 @@ def get_indexes_to_retain(
     strategy: Literal["exact", "oversample", "undersample"]
 ) -> tuple[list[Any], float]:
     '''
-    Get the series indexes to retain to reach the target number of elements.
+    Get the list of columns indexes to retain to reach the target number of elements.
     The selection is guided by the density scores, i.e. only the n_target 
     most dense columns are kept.
     

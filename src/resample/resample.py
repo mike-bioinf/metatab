@@ -6,7 +6,12 @@ from time import time
 from estimators import Estimator
 from metatab_utils.prediction import PredictionDataframe
 from metatab_utils.data_loader import DataLoader
-from metatab_utils.general import create_logger, check_y_is_integer_encoded
+
+from metatab_utils.general import (
+    create_logger, 
+    check_y_is_integer_encoded,
+    fix_estimator_fixed_params_during_resampling
+)
 
 from metatab_utils.helper_params import (
     check_fit_resample_args,
@@ -97,6 +102,13 @@ def main():
             tune_configuration=pars["tune_configuration"]
         )
 
+        fix_estimator_fixed_params_during_resampling(
+            estimator=estimator,
+            repeat=repetition,
+            fold=fold,
+            resample_program_params=pars
+        )
+
         ## TODO: here we must implement an universal fit adapter
         ## when estimators with a different fit signature are implemented
         ## MAYBE TO DO IN ABSTRACT CLASS ??
@@ -139,8 +151,8 @@ def main():
                 dictionary=dict_hpo,
                 repetition=repetition,
                 fold=fold,
-                best_loss=best_loss,
                 **best_hps,
+                best_loss=best_loss,
                 **search_losses_dict
             )
         
@@ -168,10 +180,10 @@ def main():
         estimator=pars["estimator"],
         predict_dataset=name_dataset,
         splitting_mode=pars["splitting_mode"],
-        preprocessing = pars["preprocessing"],
-        tune = pars["tune"],
-        tune_hps_configuration = tune_hps_configuration,
-        n_threads = pars["nthreads"]
+        preprocessing=pars["preprocessing"],
+        tune=pars["tune"],
+        tune_hps_configuration=tune_hps_configuration,
+        n_threads=pars["nthreads"]
     )
 
     if not df_pred_results.has_recovered:

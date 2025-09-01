@@ -11,9 +11,9 @@ def parse_args(args):
                     help="Defines the data input format. One of 'sets', 'xy', or 'df'.")
 
     p.add_argument("-e", "--estimator", required=True, 
-                    choices=["random_forest", "xgb", "es_xgb", "catboost", "es_catboost", "lgbm", "es_lgbm", "tabpfn"], 
+                    choices=["random_forest", "xgb", "es_xgb", "catboost", "es_catboost", "lgbm", "es_lgbm", "tabpfn", "autotabpfn"], 
                     help="""ML estimator to use. One of 'random_forest', 'xgb', 'es_xgb', 'catboost', 'es_catboost', 
-                    'lgbm', 'es_lgbm', 'tabpfn'.""")
+                    'lgbm', 'es_lgbm', 'tabpfn', 'autotabpfn'.""")
     
     p.add_argument("-r", "--early-stopping-rounds", type=int, default=-1,
                    help="""Number of early stop rounds to use when using the "es" estimators.
@@ -39,10 +39,10 @@ def parse_args(args):
                    Setting this parameter for untunable estimators will result in an error.""")
     
     p.add_argument("-c", "--tune-configuration", default=None,
-                   help="""Tune details. It is a string representation of a dict with the following key-value couples:
-                   'configuration': Name of the configuration of HPs to use. They follow the schema 'c{number}' (i.e 'c0').
-                    Note that for some estimators only one configuration (c0) is available.
-                    Is also possible to use the selected default configuration of each estimator using the value "default".
+                    help="""Tune details. It is a string representation of a dict with the following key-value couples:
+                   'configuration': Name of the space of HPs to use. They follow the schema 'c{number}' (i.e 'c0').
+                    Note that for some estimators only one space (c0) is available.
+                    Is also possible to use the selected default space of each estimator using the value "default".
                     'algo': Search algorithm to use. One of 'random' and 'tpe' (default).
                     'n_iter': Number of iterations tested for the selected configuration. Must be an integer.
                     'n_repeats': Number of cv repeats used to test each sampled configuration. Must be an integer.

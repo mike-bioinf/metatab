@@ -9,7 +9,7 @@ from warnings import warn
 from abc import ABC, abstractmethod
 from sklearn.utils.validation import check_is_fitted
 from sklearn.pipeline import Pipeline
-from estimators.searchcv import SearchCV
+from hp_search.searchcv import SearchCV
 
 if TYPE_CHECKING:
     import pandas as pd
@@ -69,7 +69,7 @@ class AbstractBaseEstimator(ABC):
         
     
     @abstractmethod
-    def fit():
+    def fit(X_train: pd.DataFrame, y_train: pd.Series):
         pass
     
 
@@ -83,7 +83,7 @@ class AbstractBaseEstimator(ABC):
         return self.estimator_.predict_proba(X)
 
 
-    def save(self, filepath: str | Path):
+    def save(self, filepath: str | Path) -> None:
         '''Seriealize the instance using pickle'''
         if not hasattr(self, "estimator_"):
             warn(
@@ -134,7 +134,7 @@ class AbstractBaseEstimator(ABC):
                 
 
     def get_feature_names_in_(self) -> np.ndarray:
-        '''Returns the "feature_names_in_" attribute learned at fit level'''
+        '''Returns the 'feature_names_in_' attribute learned at fit level'''
         check_is_fitted(self, "estimator_")
         fitted_obj = self._retrieve_fitted_obj()
         return fitted_obj.feature_names_in_

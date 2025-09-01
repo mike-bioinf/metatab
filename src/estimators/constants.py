@@ -28,3 +28,8 @@ EARLY_STOPPED_ESTIMATORS = [
     "es_catboost",
     "es_lgbm"
 ]
+
+# list of non tunable estimators
+NON_TUNABLE_ESTIMATORS = [
+    "autotabpfn"
+]

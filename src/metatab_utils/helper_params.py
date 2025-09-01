@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Any
 from ast import literal_eval
 from estimators import Estimator
-from estimators.constants import EARLY_STOPPED_ESTIMATORS
+from estimators.constants import EARLY_STOPPED_ESTIMATORS, NON_TUNABLE_ESTIMATORS
 
 from estimators.params import (
     DEFAULT_TUNE_CONFIGURATION,
@@ -27,7 +27,8 @@ from estimators import (
     MyTunedLGBMClassifier,
     MyTunedESLGBMClassifier,
     MyTabPFNClassifier,
-    MyTunedTabPFNClassifier
+    MyTunedTabPFNClassifier,
+    MyAutoTabPFNClassifier
 )
 
 
@@ -64,6 +65,7 @@ def check_fit_resample_args(pars: dict) -> None:
     check_target_feature(pars)
     check_not_tunable_estimators(pars)
     check_ambiguous_tune_setting(pars)
+    check_incompatible_estimator_preprocessing(pars)
 
 
 def check_target_feature(pars: dict) -> None:
@@ -74,8 +76,9 @@ def check_target_feature(pars: dict) -> None:
 
 def check_not_tunable_estimators(pars: dict) -> None:
     '''Check whether the tune flag is used with not tunable estimators'''
-    pass
-
+    if (estimator := pars["estimator"]) in NON_TUNABLE_ESTIMATORS and pars["tune"]:
+        raise ValueError(f"Estimator '{estimator} cannot be tuned.'")
+        
 
 def check_ambiguous_tune_setting(pars: dict) -> None:
     '''Check whether a tune configuration is passed with the tune flag down.'''
@@ -84,7 +87,14 @@ def check_ambiguous_tune_setting(pars: dict) -> None:
             "A tuning configurations is passed (tune_configuration is not None)" +
             " but tuning is not requested (tune flag down)."
         )
-    
+
+
+def check_incompatible_estimator_preprocessing(pars: dict) -> None:
+    estimator = pars["estimator"]
+    preprocessing = pars["preprocessing"]
+    if estimator == "autotabpfn" and preprocessing == "pca":
+        raise ValueError(f"pca preprocessing cannot be used with '{estimator}' estimator.")
+
 
 def check_tune_algo(pars: dict) -> None:
     '''Check on the validity of the tuning algo'''
@@ -104,7 +114,7 @@ def adjust_early_stopping_rounds_(pars: dict) -> None:
 
     if early_stopping_rounds != -1 and estimator not in EARLY_STOPPED_ESTIMATORS:
         return ValueError(
-            "'early_stopping_rounds' must be -1 when using a non-early stopped estimator."
+            "'early_stopping_rounds' must be -1 when using a non early stopped estimator."
         )
     
     # set the default
@@ -220,11 +230,6 @@ def _pick_params_distributions_configuration(pars: dict) -> dict | None:
 
 
 
-def check_incompatible_estimator_preprocessing(pars: dict) -> None:
-    pass
-
-
-
 def pick_estimator_class(pars: dict) -> Estimator:
     match (pars["estimator"], pars["tune"]):
         case ("random_forest", False):
@@ -263,6 +268,8 @@ def pick_estimator_class(pars: dict) -> Estimator:
             return MyTabPFNClassifier
         case("tabpfn", True):
             return MyTunedTabPFNClassifier
+        case("autotabpfn", _):
+            return MyAutoTabPFNClassifier
 
         case _:
             raise ValueError("Unsupported estimator.")

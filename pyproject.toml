@@ -10,6 +10,7 @@ dependencies = [
     "xgboost>=3.0.2",
     "catboost>=1.2.8",
     "lightgbm>=4.6.0",
+    "ray>=2.31.0,<2.45.0",  # for autotabpfn that relies on autogluon
     "tabpfn>=2.1.0"
 ]
 

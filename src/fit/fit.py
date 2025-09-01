@@ -1,8 +1,13 @@
 import sys
 from estimators import Estimator
 from metatab_utils.data_loader import DataLoader
-from metatab_utils.general import create_logger, check_y_is_integer_encoded
 from fit.params import parse_args
+
+from metatab_utils.general import (
+    create_logger, 
+    check_y_is_integer_encoded,
+    fix_estimator_fixed_params_in_fit_program
+)
 
 from metatab_utils.helper_params import (
     adjust_io_paths_, 
@@ -53,6 +58,8 @@ def main():
         early_stopping_rounds=pars["early_stopping_rounds"],
         tune_configuration=pars["tune_configuration"]
     )
+    
+    fix_estimator_fixed_params_in_fit_program(estimator, pars)
     
     ## TODO: here we must implement an universal fit adapter
     ## when estimators with a different fit signature are implemented

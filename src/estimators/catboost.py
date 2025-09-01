@@ -2,7 +2,7 @@ import pandas as pd
 from catboost import CatBoostClassifier
 from estimators.params import TuningParams, DefaultParams
 
-from estimators.base_gbdt import (
+from estimators.gbdt import (
     GBDTBaseEstimator,
     adjust_es_logloss_metric,
     adjust_objective_logloss_and_num_classes

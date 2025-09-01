@@ -2,7 +2,7 @@ import pandas as pd
 from xgboost import XGBClassifier
 from estimators.params import TuningParams, DefaultParams
 
-from estimators.base_gbdt import (
+from estimators.gbdt import (
     GBDTBaseEstimator, 
     adjust_objective_logloss_and_num_classes,
     adjust_es_logloss_metric

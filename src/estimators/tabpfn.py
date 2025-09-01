@@ -4,9 +4,10 @@ import warnings
 from typing import Literal, TYPE_CHECKING
 from sklearn.pipeline import Pipeline
 from tabpfn import TabPFNClassifier
+from tabpfn_extensions.post_hoc_ensembles.sklearn_interface import AutoTabPFNClassifier
 from estimators.abstract_estimator import AbstractBaseEstimator
 from estimators.params import DefaultParams, TuningParams
-from estimators.searchcv import SearchCV
+from hp_search.searchcv import SearchCV
 
 from estimators.utils import (
     create_pca_default_pipeline, 
@@ -21,7 +22,7 @@ if TYPE_CHECKING:
 def suppress_sklearn_and_tabpfn_warnings(func):
     '''
     Decorator to filter sklearn future deprecation warnings,
-    and tabpfn loading and ignore limits warning.
+    and tabpfn loading and ignore training limits warning.
     '''
     def wrapper(*args, **kwargs):
         with warnings.catch_warnings():
@@ -69,7 +70,7 @@ class MyTabPFNClassifier(AbstractBaseEstimator):
     fixed_params = DefaultParams.TABPFN_DEFAULT_PARAMS
  
     @suppress_sklearn_and_tabpfn_warnings
-    def fit(self, X: pd.DataFrame, y: pd.Series, **kwargs) -> "MyTabPFNClassifier":
+    def fit(self, X: pd.DataFrame, y: pd.Series) -> "MyTabPFNClassifier":
         fixed_params = super().update_fixed_params(up_seed=True, up_n_threads=True, copy=True)
         self.estimator_ = create_tabpfn_estimator(self.preprocessing, fixed_params)
         self.estimator_.fit(X, y)
@@ -88,7 +89,7 @@ class MyTunedTabPFNClassifier(AbstractBaseEstimator):
     fixed_params = TuningParams.TABPFN_FIXED_PARAMS
 
     @suppress_sklearn_and_tabpfn_warnings
-    def fit(self, X: pd.DataFrame, y: pd.Series, **kwargs) -> "MyTunedTabPFNClassifier":
+    def fit(self, X: pd.DataFrame, y: pd.Series) -> "MyTunedTabPFNClassifier":
         fixed_params = super().update_fixed_params(up_seed=True, up_n_threads=True, copy=True)
         self.estimator_ = SearchCV(
             clf_or_pipe=create_tabpfn_estimator(self.preprocessing, fixed_params),
@@ -104,3 +105,43 @@ class MyTunedTabPFNClassifier(AbstractBaseEstimator):
         )
         self.estimator_.fit(X, y)
         return self
+
+
+
+class MyAutoTabPFNClassifier(AbstractBaseEstimator):
+    '''
+    Autogluon ensemble (stacking + Caruana selection) of tabpfn classifiers.
+    
+    Attributes
+    ----------------
+    estimator_ (AutoTabPFNClassifier|Pipeline): Fitted AutoTabPFNClassifier or Pipeline instance.
+    '''
+    fixed_params = DefaultParams.AUTOTABPFN_DEFAULT_PARAMS
+
+    @suppress_sklearn_and_tabpfn_warnings
+    def fit(self, X: pd.DataFrame, y: pd.Series) -> "MyAutoTabPFNClassifier":
+        fixed_params = self.update_fixed_params(up_seed=True, copy=True)
+        self.estimator_ = self._create_autotabpfn_estimator(self.preprocessing, fixed_params)
+        # to suppress automatic categorical features inferring
+        fit_args = {"autotabpfnclassifier__categorical_feature_indices": []}\
+            if isinstance(self.estimator_, Pipeline)\
+            else {"categorical_feature_indices": []}
+        self.estimator_.fit(X, y, **fit_args)
+        return self
+    
+    def _create_autotabpfn_estimator(
+        preprocessing:  Literal["base", "density_filter", "pca"], 
+        params: dict
+    ) -> AutoTabPFNClassifier | Pipeline:
+        if preprocessing == "base":
+            return AutoTabPFNClassifier(**params)
+        elif preprocessing == "pca":
+            raise ValueError("PCA preprocessing is not possible with AutoTabPFNClassifier")
+        elif preprocessing == "density_filter":
+            return create_density_filter_default_pipeline(
+                "undersample", # to speed up 
+                AutoTabPFNClassifier, 
+                params
+            )
+        else:
+            raise ValueError("Unsupported preprocessing.")

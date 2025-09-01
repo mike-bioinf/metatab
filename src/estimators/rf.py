@@ -1,13 +1,12 @@
 from __future__ import annotations
 
-from typing import Literal, TYPE_CHECKING, override
-from sklearn.utils.validation import check_is_fitted
+from typing import Literal, TYPE_CHECKING
 from sklearn.pipeline import make_pipeline, Pipeline
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.feature_selection import VarianceThreshold
 from sklearn.preprocessing import StandardScaler
 from estimators.abstract_estimator import AbstractBaseEstimator
-from estimators.searchcv import SearchCV
+from hp_search.searchcv import SearchCV
 from estimators.params import TuningParams, DefaultParams
 
 from estimators.utils import (
@@ -17,6 +16,7 @@ from estimators.utils import (
 
 if TYPE_CHECKING:
     import pandas as pd
+
 
 
 
@@ -30,7 +30,7 @@ class MyRandomForestClassifier(AbstractBaseEstimator):
     '''
     fixed_params = DefaultParams.RANDOM_FOREST_DEFAULT_PARAMS
 
-    def fit(self, X: pd.DataFrame, y: pd.Series, **kwargs) -> "MyRandomForestClassifier":
+    def fit(self, X: pd.DataFrame, y: pd.Series) -> "MyRandomForestClassifier":
         fixed_params = super().update_fixed_params(up_seed=True, up_n_threads=True, copy=True)
         self.estimator_ = _create_rf_pipeline(self.preprocessing, fixed_params)
         self.estimator_.fit(X, y)
