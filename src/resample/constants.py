@@ -5,6 +5,7 @@ from tabpfn_extensions_mod.post_hoc_ensembles.sklearn_interface import AutoTabPF
 from finetabpfn import AesFineTunedTabPFNClassifier
 
 
+
 Classifier: TypeAlias = Union[
     RandomForestClassifier,
     TabPFNClassifier, 
@@ -13,23 +14,20 @@ Classifier: TypeAlias = Union[
 ]
 
 
-PRED_DATAFRAME_ADDITIONAL_COLUMNS = [
-    "model",
-    "test_dataset",
-    "splitting_mode",
+PRED_DATAFRAME_RESULTS_FIXED_COLUMNS = [
+    "dataset", 
+    "y_train", 
+    "y_test", 
+    "pred_proba",
     "repetition", 
-    "fold", 
-    "preprocessing",
-    "number_initial_features",
-    "number_filtered_features",
-    "filtering_threshold",
-    "number_pca_components"
+    "fold",
+    "fit_time",
+    "predict_time"
 ]
 
 
 HPO_DICT_BASE_KEYS = [
-    "splitting_mode",
-    "preprocessing",
     "repetition",
-    "fold"
+    "fold",
+    "best_loss"
 ]
