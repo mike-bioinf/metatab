@@ -3,7 +3,7 @@
 In this module we define a predifined search space for the tabpfn classifiers.
 This is mostly taken from the one proposed in the "official extension" available at:
 "https://github.com/PriorLabs/tabpfn-extensions/blob/main/src/tabpfn_extensions/hpo".
-We also use tabpfn capabilities to locally downaload and store tabpfn classifier checkpoints.
+We also use tabpfn internal capabilities to locally download and store tabpfn classifier checkpoints.
 """
 
 import sys
@@ -42,9 +42,9 @@ def enumerate_preprocess_transforms() -> list[dict]:
                                     "name": name,
                                     "global_transformer_name": global_transformer_name,
                                     "subsample_features": subsample_features,
-                                    # meaning categorical features are treated as numeric
+                                    # categorical features are treated as numeric,
                                     # this a safe fallback in case tabpfn still treats some 
-                                    # features as categoricals even though we have only continuos features. 
+                                    # features as categoricals even though we enforce only continuos features. 
                                     "categorical_name": "numeric",
                                     "append_original": append_original
                                 }

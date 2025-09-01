@@ -289,7 +289,9 @@ class TuningParams:
         "boosting_type": "gbdt", # dart and rf are also possible (default)
         "max_depth": -1, # no control (default)
         "data_sample_strategy": "bagging", # more robust than goss (default)
-        "verbose": -1
+        "verbose": -1,
+        "deterministic": True,
+        "force_col_wise": True
     }
 
     # we list also the library defaults that we use just to be explicit
@@ -300,7 +302,9 @@ class TuningParams:
         "data_sample_strategy": "bagging", # more robust than goss (default)
         "verbose": -1,
         "early_stopping_min_delta": 0, # to avoid premature stopping (default)
-        "metric": "logloss_to_adjust"
+        "metric": "logloss_to_adjust",
+        "deterministic": True,
+        "force_col_wise": True
     }
     
     # strong-regularized configuration
@@ -410,7 +414,9 @@ class DefaultParams:
     # does not permit the tree building on small datasets.
     LGBM_DEFAULT_PARAMS = {
         "min_child_samples": 1,
-        "verbose": -1
+        "verbose": -1,
+        "deterministic": True,
+        "force_col_wise": True
     }
 
     # we raise the default number of trees since with early stop 
@@ -419,7 +425,9 @@ class DefaultParams:
         "n_estimators": 10000,
         "metric": "logloss_to_adjust",
         "min_child_samples": 1,
-        "verbose": -1
+        "verbose": -1,
+        "deterministic": True,
+        "force_col_wise": True
     }
     
     TABPFN_DEFAULT_PARAMS = {

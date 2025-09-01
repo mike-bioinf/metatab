@@ -33,6 +33,16 @@ def check_y_is_integer_encoded(y: pd.Series, is_predict_scenario: bool = False) 
 
 
 
+class FlushStreamHandler(logging.StreamHandler):
+    '''
+    A stream handler that flush when emits.
+    Useful to deliver real time logging in HPC environment.
+    '''
+    def emit(self, record):
+        super().emit(record)
+        super().flush()
+
+
 def create_logger(stream) -> logging.Logger:
     '''
     Create a logger to a stream.
@@ -40,9 +50,9 @@ def create_logger(stream) -> logging.Logger:
         stream: Either sys.stdout or sys.stderr.
     Returns: The logger instance.
     '''
-    logger = logging.getLogger("runtabpfn")
+    logger = logging.getLogger("metatab")
     logger.setLevel(logging.DEBUG)
-    stream_handler = logging.StreamHandler(stream)
+    stream_handler = FlushStreamHandler(stream)
     stream_handler.setLevel(logging.DEBUG)
     logger.addHandler(stream_handler)
     logger.propagate = False

@@ -33,7 +33,7 @@ def parse_args(args):
 
     p.add_argument("-d", "--splitting-specs", default=None, 
                    help="""Specifies splitting details as key=value pairs. 
-                    Defaults to {'n_repeats':10, 'n_splits':5} with 'cv' --splitting-mode.
+                    Defaults to {'n_repeats':5, 'n_splits':10} with 'cv' --splitting-mode.
                     Defaults to {'n_splits':50, 'train_size':0.9} with 'holdout' --splitting-mode.""")
 
     p.add_argument("-p", "--preprocessing", default="base", choices=["base", "density_filter", "pca"],
