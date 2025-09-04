@@ -60,7 +60,7 @@ def create_logger(stream) -> logging.Logger:
 
 
 
-def fix_estimator_fixed_params_in_fit_program(
+def fix_estimator_fixed_params_in_fit_program_(
     estimator: Estimator,
     fit_program_params: dict
 ) -> None:
@@ -68,7 +68,8 @@ def fix_estimator_fixed_params_in_fit_program(
     Some estimators require their fixed parameters to be updated according fit program inputs. 
     This function performs that adjustment and stores the updated values in the instance-level 
     attribute fixed_params (while the "original" parameter remain defined at the class level).
-    In case the estimator needs no adjustment then no attribute is created (nothing is done).
+    In case the estimator needs no adjustment a deepcopy of the class-level attribute is 
+    created at instance level.
 
     Parameters:
         estimator (Estimator): 
@@ -81,36 +82,21 @@ def fix_estimator_fixed_params_in_fit_program(
     if isinstance(estimator, MyAutoTabPFNClassifier):
         # we create the autogluon directory in parent folder of the output file
         # using the root of the output filename in its name to prevent overwriting issues 
-        out_file: Path = fit_program_params["output_path"].resolve()
+        out_file: Path = fit_program_params["output_path"]
         autogluon_models_folder = out_file.parent / f"autogluon_tabpfn_{out_file.stem}"
-        new_fixed_params = _fix_autotabpfn_fixed_params_in_fit_program(
-            new_fixed_params,
-            autogluon_models_folder
+        new_fixed_params = _add_autogluon_path_to_params(
+            params=new_fixed_params,
+            path=autogluon_models_folder,
+            repeat=None,
+            fold=None
         )
-    else:
-        # we avoid creating the instance-level attribute when not necessary
-        return None
 
+    # setting the new params in an instance-level attribute
     estimator.fixed_params = new_fixed_params
 
 
 
-def _fix_autotabpfn_fixed_params_in_fit_program(
-    params: dict, 
-    out_path: Path
-) -> dict:
-    '''
-    Set the "path" parameter in the AutoTabPFNClassifier params dict.
-    Returns the modified params dict.
-    '''
-    phe_init_args = params.get("phe_init_args", {})
-    phe_init_args["path"] = out_path
-    params["phe_init_args"] = phe_init_args
-    return params
-
-
-
-def fix_estimator_fixed_params_during_resampling(
+def fix_estimator_fixed_params_during_resampling_(
     estimator: Estimator,
     repeat: int | NAType,
     fold: int,
@@ -120,7 +106,8 @@ def fix_estimator_fixed_params_during_resampling(
     Some estimators require their fixed parameters to be updated during resampling.
     This function performs that adjustment and stores the updated values in the instance-level 
     attribute fixed_params (while the "original" parameters remain defined at the class level).
-    In case the estimator needs no adjustment then no attribute is created (nothing is done).
+    In case the estimator needs no adjustment a deepcopy of the class-level attribute is 
+    created at instance level.
 
     Parameters:
         estimator (Estimator): 
@@ -141,43 +128,50 @@ def fix_estimator_fixed_params_during_resampling(
     new_fixed_params = deepcopy(estimator.fixed_params)
 
     if isinstance(estimator, MyAutoTabPFNClassifier):
-        out_path: Path = resample_program_params["output_path"].resolve()
+        out_path: Path = resample_program_params["output_path"]
         autogluon_top_folder = out_path / "autogluon_tabpfn"
         os.makedirs(autogluon_top_folder, exist_ok=True)
-        new_fixed_params = _fix_autotabpfn_fixed_params_for_resampling_round(
+        new_fixed_params = _add_autogluon_path_to_params(
             new_fixed_params,
             autogluon_top_folder,
             repeat, 
             fold
         )
-    else:
-        # we avoid creating the instance-level attribute when not necessary
-        return None
-    
+
     # setting the new params in an instance-level attribute
     estimator.fixed_params = new_fixed_params
 
 
 
-def _fix_autotabpfn_fixed_params_for_resampling_round(
-        params: dict, 
-        autogluon_folder: Path, 
-        repeat: int | NAType, 
-        fold: int
-    ):
+def _add_autogluon_path_to_params(
+    params: dict, 
+    path: Path,
+    repeat: int | NAType | None,
+    fold: int | None
+) -> dict:
     '''
-    Adjust the "path" parameter of AutoTabPFNClassifier estimator
-    according to the resample iteration. This assure a new folder
-    in which autogluon saves the models for each resample iteration.
+    Add the "path" parameter in the AutoTabPFNClassifier params dict,
+    needed by autogluon to save the fitted classifiers.
+    Distinguishes fit and resample cv/houldout scenarios 
+    based on the type of repeat and fold argument.
+    Returns the modified params dict.
     '''
-    # take the existing dict or create a new empty one
     phe_init_args = params.get("phe_init_args", {})
 
-    # address holdout and cross-validation scenarios
-    if repeat is pd.NA:
-        folder_models = autogluon_folder / f"classifiers_iteration{fold}"
+    if repeat is None and fold is None:
+        # we are in the fit program
+        folder_models = path
+    elif repeat is pd.NA and isinstance(fold, int):
+        # we are in the resample program with holdout
+        folder_models = path / f"classifiers_iteration{fold}"
+    elif isinstance(repeat, int) and isinstance(fold, int):
+        # we are in the resample program with cv
+        folder_models = path /f"classifiers_repeat{repeat}_fold{fold}"
     else:
-        folder_models = autogluon_folder /f"classifiers_repeat{repeat}_fold{fold}"
-
+        raise ValueError(
+            "Unrecognazible combination of types for repeat and fold arguments."
+        )
+    
     phe_init_args["path"] = folder_models
-    return phe_init_args
+    params["phe_init_args"] = phe_init_args
+    return params

@@ -98,7 +98,7 @@ def return_clf_paths_list() -> list:
 TABPFN_TUNE_SPACE = {
     ## model parameters
     "model_path": hp.choice("model_path", return_clf_paths_list()),
-    "n_estimators": hp.choice("n_estimators", [4, 8, 12, 16]),
+    "n_estimators": hp.choice("n_estimators", [8, 12, 16]),
     "average_before_softmax": hp.choice("average_before_softmax", [True, False]),
     "softmax_temperature": hp.choice("softmax_temperature", [0.75, 0.8, 0.9, 0.95, 1.0]),
     ## inference config parameters
@@ -108,6 +108,6 @@ TABPFN_TUNE_SPACE = {
     "inference_config__POLYNOMIAL_FEATURES": hp.choice("POLYNOMIAL_FEATURES", ["no"]),  
     "inference_config__OUTLIER_REMOVAL_STD": hp.choice("OUTLIER_REMOVAL_STD", [None, 7.0, 9.0, 12.0]),
     "inference_config__SUBSAMPLE_SAMPLES": hp.choice("SUBSAMPLE_SAMPLES", [0.99, None]),
-    # we suppress categorical transformation since cause test data corruption with small sparse dataset
+    # we suppress categorical transformation since causes test data corruption with small sparse dataset
     "inference_config__MIN_UNIQUE_FOR_NUMERICAL_FEATURES": hp.choice("MIN_UNIQUE_FOR_NUMERICAL_FEATURES", [0])
 }

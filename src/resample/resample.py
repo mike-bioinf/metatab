@@ -10,7 +10,7 @@ from metatab_utils.data_loader import DataLoader
 from metatab_utils.general import (
     create_logger, 
     check_y_is_integer_encoded,
-    fix_estimator_fixed_params_during_resampling
+    fix_estimator_fixed_params_during_resampling_
 )
 
 from metatab_utils.helper_params import (
@@ -102,7 +102,7 @@ def main():
             tune_configuration=pars["tune_configuration"]
         )
 
-        fix_estimator_fixed_params_during_resampling(
+        fix_estimator_fixed_params_during_resampling_(
             estimator=estimator,
             repeat=repetition,
             fold=fold,
@@ -125,7 +125,7 @@ def main():
             search_losses_dict = {f"loss_{i}": value_loss for i, value_loss in enumerate(search_losses)}
     
         logger.debug("\t-Estimator fitted on input data.")
-        logger.debug(f"\t-Fit time in minutes (2-digits rounded): {round(fit_time/60, 2)}")
+        logger.debug(f"\t-Fit time in minutes: {round(fit_time/60, 2)}")
 
         ## TODO: an universal adapter is requested due to estimators 
         # having a different predict_proba signature
@@ -160,7 +160,7 @@ def main():
             estimator_filepath = get_estimator_filepath(pars, repetition, fold)
             estimator.save(estimator_filepath)
         
-        logger.debug(f"\t-Inference completed in minutes: {round(predict_time/60, 2)}\n")
+        logger.debug(f"\t-Inference time in minutes: {round(predict_time/60, 2)}\n")
     
 
     output_dir = pars["output_dir"]

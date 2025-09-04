@@ -42,7 +42,7 @@ class TuningParams:
         "min_samples_leaf": hp.choice("min_samples_leaf", [1, 2, 3, 4, 5]),
         "max_samples": hp.choice("max_samples", [0.6, 0.7, 0.8, 0.9, 1.0]),
         "bootstrap": hp.choice("bootstrap", [False, True]),
-        "min_inpurity_decrease": hp.choice("min_inpurity_decrease", [0, hp.loguniform("mid_positive", np.log(1e-5), np.log(1e-3))])
+        "min_impurity_decrease": hp.choice("min_impurity_decrease", [0, hp.loguniform("mid_positive", np.log(1e-5), np.log(1e-3))])
     }
 
 
@@ -438,7 +438,11 @@ class DefaultParams:
     }
 
     AUTOTABPFN_DEFAULT_PARAMS = {
-        "max_time": 14400,   # 4 hours
+        # TODO: keep max_time fixed at 3 hour or adapt it depending on the scenario in some way?
+        # max_time of 3 hours set based on 7 days job time wall and classic 50 iteration 
+        # done in a resampling strategy.However sometimes we do not use 50 repeats.
+        # In addition we use this value also in the fit program where we fit one time.
+        "max_time": 10800,   # 3 hours
         "eval_metric": "log_loss",
         "presets": "best_quality",
         "phe_init_args": {"verbosity": 0}, # dict passed to autogluon TabularPredictor

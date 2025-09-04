@@ -35,11 +35,11 @@ from estimators import (
 
 def adjust_io_paths_(pars: dict, input_arg: str, output_arg: str) -> None:
     '''
-    Convert paths to Path objects.
+    Convert paths to absolute Path objects.
     The function works in place.
     '''
-    pars[input_arg] = Path(pars[input_arg])
-    pars[output_arg] = Path(pars[output_arg])
+    pars[input_arg] = Path(pars[input_arg]).resolve()
+    pars[output_arg] = Path(pars[output_arg]).resolve()
 
 
 
@@ -170,9 +170,9 @@ def try_parse_specs_into_dict(specs: str, error_message_specs: str) -> dict[str,
         specs = literal_eval(specs)
     except Exception:
         raise ValueError(
-            f"{error_message_specs} " + "cannot be correctly parsed into a dict. \
-            It should be passed following the syntax '{'key': value, ...}'.\
-            Remember to enclose the keys in ticks ('') if they are python strings."
+            f"{error_message_specs} " + "cannot be correctly parsed into a dict." +
+            "It should be passed following the syntax {'key': value, ...}, enclosing the dict with double quotes" +
+            "Remember to enclose the keys in ticks ('') if they are python strings."
         )
     return specs
 

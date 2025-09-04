@@ -6,7 +6,7 @@ from fit.params import parse_args
 from metatab_utils.general import (
     create_logger, 
     check_y_is_integer_encoded,
-    fix_estimator_fixed_params_in_fit_program
+    fix_estimator_fixed_params_in_fit_program_
 )
 
 from metatab_utils.helper_params import (
@@ -59,7 +59,7 @@ def main():
         tune_configuration=pars["tune_configuration"]
     )
     
-    fix_estimator_fixed_params_in_fit_program(estimator, pars)
+    fix_estimator_fixed_params_in_fit_program_(estimator, pars)
     
     ## TODO: here we must implement an universal fit adapter
     ## when estimators with a different fit signature are implemented
