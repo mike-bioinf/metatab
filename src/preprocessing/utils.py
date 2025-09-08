@@ -37,20 +37,20 @@ def get_indexes_to_retain(
     Returns:
         tuple:
         The indexes to keep as a list. The list can be void.
-        The minimum density score that is kept. It is -1 if no index is kept.
+        The minimum density score that is kept. Equal to -1 if no index is kept.
     '''
     if n_target < 0:
         raise ValueError("n_target must be in [0, inf].")
     
     if n_target == 0:
-        # we use -1 to indicate that no index is kept.
-        # the minimum density score is not determinable in this case.
+        # we use -1 to indicate that the minimum density score is not determinable 
         return [], -1
     
+    # use stable algorithm to get reproducible order
     sorted_densities = densities.sort_values(ascending=False, kind="stable")
 
     if densities.size <= n_target:
-        return densities.index.to_list(), sorted_densities[-1]
+        return densities.index.to_list(), sorted_densities.iloc[-1]
     
     if strategy == "exact":
         return (
@@ -67,7 +67,7 @@ def get_indexes_to_retain(
     
     elif strategy == "undersample":
         target_density = sorted_densities.iloc[n_target-1]
-        right_densities = sorted_densities[n_target:]
+        right_densities = sorted_densities.iloc[n_target:]
         n_right_ties = (right_densities == target_density).sum()
 
         if n_right_ties == 0:

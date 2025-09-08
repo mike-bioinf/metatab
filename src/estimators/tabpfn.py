@@ -40,7 +40,8 @@ def suppress_sklearn_and_tabpfn_warnings(func):
 
 def create_tabpfn_estimator(
     preprocessing: Literal["base", "density_filter", "pca"], 
-    tabpfn_params: dict 
+    tabpfn_params: dict,
+    density_feature_selector_strategy:  Literal["exact", "oversample", "undersample"]
 ) -> TabPFNClassifier | Pipeline:
     if preprocessing == "base":
         return TabPFNClassifier(**tabpfn_params)
@@ -48,7 +49,7 @@ def create_tabpfn_estimator(
         return create_pca_default_pipeline(TabPFNClassifier, tabpfn_params)
     elif preprocessing == "density_filter":
         return create_density_filter_default_pipeline(
-            "oversample", 
+            density_feature_selector_strategy, 
             TabPFNClassifier, 
             tabpfn_params
         )
@@ -72,7 +73,7 @@ class MyTabPFNClassifier(AbstractBaseEstimator):
     @suppress_sklearn_and_tabpfn_warnings
     def fit(self, X: pd.DataFrame, y: pd.Series) -> "MyTabPFNClassifier":
         fixed_params = super().update_fixed_params(up_seed=True, up_n_threads=True, copy=True)
-        self.estimator_ = create_tabpfn_estimator(self.preprocessing, fixed_params)
+        self.estimator_ = create_tabpfn_estimator(self.preprocessing, fixed_params, "oversample")
         self.estimator_.fit(X, y)
         return self
         
@@ -92,7 +93,7 @@ class MyTunedTabPFNClassifier(AbstractBaseEstimator):
     def fit(self, X: pd.DataFrame, y: pd.Series) -> "MyTunedTabPFNClassifier":
         fixed_params = super().update_fixed_params(up_seed=True, up_n_threads=True, copy=True)
         self.estimator_ = SearchCV(
-            clf_or_pipe=create_tabpfn_estimator(self.preprocessing, fixed_params),
+            clf_or_pipe=create_tabpfn_estimator(self.preprocessing, fixed_params, "undersample"),  # undersample to speed up
             algo=self.tune_configuration["algo"],
             params_distributions=self.tune_configuration["params_distributions"],
             n_iter=self.tune_configuration["n_iter"],

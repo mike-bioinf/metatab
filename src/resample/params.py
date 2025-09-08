@@ -38,7 +38,7 @@ def parse_args(args):
 
     p.add_argument("-p", "--preprocessing", default="base", choices=["base", "density_filter", "pca"],
                     help= """Preprocessing to apply on the feature space. One of 'base', 'density_filter' and 'pca'.
-                    -base: a general minimal preprocessing is applied according to the used estimator.
+                    -base: a general minimal preprocessing is applied according to the estimator.
                     -density_filter: The number of columns is reduced to 500 keeping only the most dense features.
                     Note: according to the type of filtering applied the exact number of selected features may be not exactly 500. 
                     This strategy is automatically selected based on the estimator used (no user control over it).

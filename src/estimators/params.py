@@ -146,11 +146,11 @@ class TuningParams:
 
 
     ### CATBOOST ----------------------------------------------------------------------------------------
-    # We explore different variants in terms of split quality score metrics, 
-    # tree and related boosting modes.
-    # We do not explore the split metrics requiring GPU training 
+    # We explore the different combinations of split quality score metrics and tree growing policies.
+    # Hovewer we do not explore the split metrics requiring GPU training, 
     # since it is non-deterministic (NetwonCosine and NewtonL2 metrics).
-    # We keep the defaults when in comes to leaf estimation method and split finding algos.
+    # We keep the defaults when in comes to leaf estimation method and split finding algo.
+    # We do not try the boosting type "Ordered" since is too slow.
     # We tune also the max_bin parameter (quantization aspect) setting a choice between 
     # the default and a list of lower values since the effect of selecting smaller values 
     # is not clear at priori.
@@ -179,11 +179,11 @@ class TuningParams:
         "allow_writing_files": False
     }
 
-    # Cosine-Symmetrictree-Ordered
+    # Cosine-Symmetrictree
     CATBOOST_C0 = {
         "score_function": hp.choice("score_function", ["Cosine"]),
         "grow_policy": hp.choice("grow_policy", ["SymmetricTree"]),
-        "boosting_type": hp.choice("boosting_type", ["Ordered"]),
+        "boosting_type": hp.choice("boosting_type", ["Plain"]),
         "max_bin": hp.choice("max_bin", [254, hp.choice("max_bin_positive", list(range(20, 250, 20)))]),
         "max_depth": hp.randint("max_depth", 2, 11),
         "learning_rate": hp.loguniform("learning_rate", np.log(0.001), np.log(0.1)),
@@ -194,11 +194,11 @@ class TuningParams:
         "rsm": hp.choice("rsm", [0.6, 0.7, 0.8, 0.9, 1])
     }
     
-    # Cosine-Depthwise-Plain
+    # Cosine-Depthwise
     CATBOOST_C1 = {
         "score_function": hp.choice("score_function", ["Cosine"]),
         "grow_policy": hp.choice("grow_policy", ["Depthwise"]),
-        "boosting_type": hp.choice("boosting_type", ["Plain"]),  # Ordered is not possible with depthwise and lossguide
+        "boosting_type": hp.choice("boosting_type", ["Plain"]),
         "max_bin": hp.choice("max_bin", [254, hp.choice("max_bin_positive", list(range(20, 250, 20)))]),
         "min_data_in_leaf": hp.choice("min_data_in_leaf", [1, 2, 3, 4, 5]), # work only with Depthwise and Lossguide
         "max_depth": hp.randint("max_depth", 2, 11),
@@ -210,11 +210,11 @@ class TuningParams:
         "rsm": hp.choice("rsm", [0.6, 0.7, 0.8, 0.9, 1])
     }
 
-    # Cosine-Lossguide-Plain
+    # Cosine-Lossguide
     CATBOOST_C2 = {
         "score_function": hp.choice("score_function", ["Cosine"]),
         "grow_policy": hp.choice("grow_policy", ["Lossguide"]),
-        "boosting_type": hp.choice("boosting_type", ["Plain"]), # Ordered is not possible with depthwise and lossguide
+        "boosting_type": hp.choice("boosting_type", ["Plain"]),
         "max_bin": hp.choice("max_bin", [254, hp.choice("max_bin_positive", list(range(20, 250, 20)))]),
         "min_data_in_leaf": hp.choice("min_data_in_leaf", [1, 2, 3, 4, 5]), # work only with depthwise and lossguide
         "max_leaves": scope.int(hp.qloguniform("max_leaves", np.log(2), np.log(512), q=1)),
@@ -227,11 +227,11 @@ class TuningParams:
         "rsm": hp.choice("rsm", [0.6, 0.7, 0.8, 0.9, 1])
     }
 
-    # L2-Symmetrictree-Ordered
+    # L2-Symmetrictree
     CATBOOST_C3 = {
         "score_function": hp.choice("score_function", ["L2"]),
         "grow_policy": hp.choice("grow_policy", ["SymmetricTree"]),
-        "boosting_type": hp.choice("boosting_type", ["Ordered"]),
+        "boosting_type": hp.choice("boosting_type", ["Plain"]),
         "max_bin": hp.choice("max_bin", [254, hp.choice("max_bin_positive", list(range(20, 250, 20)))]),
         "max_depth": hp.randint("max_depth", 2, 11),
         "learning_rate": hp.loguniform("learning_rate", np.log(0.001), np.log(0.1)),
@@ -242,11 +242,11 @@ class TuningParams:
         "rsm": hp.choice("rsm", [0.6, 0.7, 0.8, 0.9, 1])
     }
 
-    # L2-Depthwise-Plain
+    # L2-Depthwise
     CATBOOST_C4 = {
         "score_function": hp.choice("score_function", ["L2"]),
         "grow_policy": hp.choice("grow_policy", ["Depthwise"]),
-        "boosting_type": hp.choice("boosting_type", ["Plain"]), # Ordered is not possible with depthwise and lossguide
+        "boosting_type": hp.choice("boosting_type", ["Plain"]),
         "max_bin": hp.choice("max_bin", [254, hp.choice("max_bin_positive", list(range(20, 250, 20)))]),
         "min_data_in_leaf": hp.choice("min_data_in_leaf", [1, 2, 3, 4, 5]), # work only with depthwise and lossguide
         "max_depth": hp.randint("max_depth", 2, 11),
@@ -258,11 +258,11 @@ class TuningParams:
         "rsm": hp.choice("rsm", [0.6, 0.7, 0.8, 0.9, 1])
     }
 
-    # L2-Lossguide-Plain
+    # L2-Lossguide
     CATBOOST_C5 = {
         "score_function": hp.choice("score_function", ["L2"]),
         "grow_policy": hp.choice("grow_policy", ["Lossguide"]),
-        "boosting_type": hp.choice("boosting_type", ["Plain"]), # Ordered is not possible with depthwise and lossguide
+        "boosting_type": hp.choice("boosting_type", ["Plain"]),
         "max_bin": hp.choice("max_bin", [254, hp.choice("max_bin_positive", list(range(20, 250, 20)))]),
         "min_data_in_leaf": hp.choice("min_data_in_leaf", [1, 2, 3, 4, 5]), # work only with depthwise and lossguide
         "max_leaves": scope.int(hp.qloguniform("max_leaves", np.log(2), np.log(512), q=1)),
@@ -440,7 +440,7 @@ class DefaultParams:
     AUTOTABPFN_DEFAULT_PARAMS = {
         # TODO: keep max_time fixed at 3 hour or adapt it depending on the scenario in some way?
         # max_time of 3 hours set based on 7 days job time wall and classic 50 iteration 
-        # done in a resampling strategy.However sometimes we do not use 50 repeats.
+        # done in a resampling strategy. However sometimes we do not use 50 repeats.
         # In addition we use this value also in the fit program where we fit one time.
         "max_time": 10800,   # 3 hours
         "eval_metric": "log_loss",
