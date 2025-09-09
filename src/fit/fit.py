@@ -60,9 +60,6 @@ def main():
     )
     
     fix_estimator_fixed_params_in_fit_program_(estimator, pars)
-    
-    ## TODO: here we must implement an universal fit adapter
-    ## when estimators with a different fit signature are implemented
     estimator.fit(X_train, y_train)
     logger.debug("Estimator fitted on training data.")
     

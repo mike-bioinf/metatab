@@ -3,7 +3,12 @@ from pathlib import Path
 from typing import Any
 from ast import literal_eval
 from estimators import Estimator
-from estimators.constants import EARLY_STOPPED_ESTIMATORS, NON_TUNABLE_ESTIMATORS
+
+from estimators.constants import (
+    EARLY_STOPPED_ESTIMATORS, 
+    NON_TUNABLE_ESTIMATORS,
+    PCA_INCOMPATIBLE_ESTIMATORS
+)
 
 from estimators.params import (
     DEFAULT_TUNE_CONFIGURATION,
@@ -28,7 +33,8 @@ from estimators import (
     MyTunedESLGBMClassifier,
     MyTabPFNClassifier,
     MyTunedTabPFNClassifier,
-    MyAutoTabPFNClassifier
+    MyAutoTabPFNClassifier,
+    MyAesFineTunedTabPFNClassifier
 )
 
 
@@ -90,10 +96,11 @@ def check_ambiguous_tune_setting(pars: dict) -> None:
 
 
 def check_incompatible_estimator_preprocessing(pars: dict) -> None:
-    estimator = pars["estimator"]
-    preprocessing = pars["preprocessing"]
-    if estimator == "autotabpfn" and preprocessing == "pca":
-        raise ValueError(f"pca preprocessing cannot be used with '{estimator}' estimator.")
+    if (
+        (estimator := pars["estimator"]) in PCA_INCOMPATIBLE_ESTIMATORS and 
+        pars["preprocessing"] == "pca"
+    ):
+        raise ValueError(f"PCA preprocessing cannot be used with '{estimator}' estimator.")
 
 
 def check_tune_algo(pars: dict) -> None:
@@ -270,6 +277,8 @@ def pick_estimator_class(pars: dict) -> Estimator:
             return MyTunedTabPFNClassifier
         case("autotabpfn", _):
             return MyAutoTabPFNClassifier
-
+        case("finetunetabpfn", _):
+            return MyAesFineTunedTabPFNClassifier
+    
         case _:
             raise ValueError("Unsupported estimator.")

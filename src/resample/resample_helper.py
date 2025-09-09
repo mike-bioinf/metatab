@@ -71,34 +71,3 @@ def log_iteration(pars: dict, fold: int, repetition: int, logger: logging.Logger
         logger.debug(
             f'Running holdout iteration {fold}, with train size {pars["splitting_specs"]["train_size"]}:'
         )
-
-
-
-# def universal_predict_proba(
-#     estimator: Classifier | Pipeline | GridSearchCV, 
-#     X: np.ndarray | pd.DataFrame, 
-#     **kwargs
-# ) ->  np.ndarray:
-#     '''
-#     Adapter that invokes the estimators predict_proba method
-#     allowing for additional parameters. 
-#     Relies on the assumption that the estimator predict methods 
-#     accept the X as first argument.
-#     Necessary since AesFineTunedTabPFNClassifier does not 
-#     respect the usual predicts signature.
-
-#     Parameters:
-#         estimator (Classifier | Pipeline | GridSearchCV):
-#             The estimator object that calls the predict_proba method.
-#         X (np.ndarray | pd.DataFrame):
-#             The test data.
-#         kwargs:
-#             Other keyword arguments.
-    
-#     Returns:
-#         np.ndarray: The predicted probabilities.
-#     '''
-#     if isinstance(estimator, AesFineTunedTabPFNClassifier):
-#         return estimator.predict_proba(X, **kwargs)
-#     else:
-#         return estimator.predict_proba(X)

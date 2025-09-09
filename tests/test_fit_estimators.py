@@ -76,3 +76,6 @@ def test_my_tabpfn_classifier(fit_estimators_on_iris):
 
 def test_my_tuned_tabpfn_classifier(fit_estimators_on_iris):
     try_test_model_on_iris(fit_estimators_on_iris / "my_tuned_tabpfn_classifier.pkl")
+
+def test_my_aesfinetuned_tabpfn_classifier(fit_estimators_on_iris):
+    try_test_model_on_iris(fit_estimators_on_iris / "my_aesfinetunedtabpfn_classifier.pkl")

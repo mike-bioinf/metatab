@@ -73,11 +73,10 @@ class AbstractBaseEstimator(ABC):
         pass
     
 
-    def predict_proba(self, X: pd.DataFrame) -> np.ndarray:
+    def predict_proba(self, X: pd.DataFrame, **kwargs) -> np.ndarray:
         '''
-        Executes the "classic" predict_proba method 
-        involving only the X parameter, 
-        plus good defaults for the other ones.
+        Executes the "classic" predict_proba method involving only the X parameter.
+        kwargs are NOT used.
         '''
         check_is_fitted(self, "estimator_")
         return self.estimator_.predict_proba(X)

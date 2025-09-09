@@ -3,6 +3,7 @@ import warnings
 import numpy as np
 import pandas as pd
 from copy import deepcopy
+from functools import partial
 from typing import Literal, Any
 from sklearn.model_selection import RepeatedStratifiedKFold
 from sklearn.pipeline import Pipeline
@@ -128,7 +129,20 @@ class SearchCV:
         '''
         self.X = X
         self.y = y
-        algo_fn = tpe.suggest if self.algo == "tpe" else rand.suggest
+
+        if self.algo == "tpe":
+            # we use the default parameters
+            algo_fn = partial(
+                tpe.suggest,
+                n_startup_jobs = 20,  # number of random init points
+                n_EI_candidates= 24,  # number of candidate points from which select the most promising at each iteration
+                gamma = 0.25 # top fraction of hps-configurations to use as good
+            )
+        elif self.algo == "random":
+            algo_fn = rand.suggest
+        else:
+            raise ValueError("Unsupported optimization algorithm.")
+        
         trials = Trials()
         
         best = fmin(
@@ -316,7 +330,7 @@ class SearchCV:
             raise ValueError(f"Unsupported metric: {self.metric_to_minimize}.")
         
     
-    def predict_proba(self, X: pd.DataFrame) -> np.ndarray:
+    def predict_proba(self, X: pd.DataFrame, **kwargs) -> np.ndarray:
         check_is_fitted(self, "best_estimator_")
         return self.best_estimator_.predict_proba(X)
     

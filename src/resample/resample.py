@@ -38,7 +38,8 @@ from resample.resample_helper import (
 from resample.save import (
     create_dict_hpo, 
     create_dict_results,  
-    populate_dict_lists_,  
+    populate_dict_lists_,
+    get_resample_iteration_signature,
     get_estimator_filepath, 
     create_json_configuration_file
 )
@@ -59,6 +60,10 @@ def main():
 
     if pars["save_estimators"]:
         os.makedirs(pars["output_dir"] / "estimators", exist_ok=True)
+
+    if pars["estimator"] == "finetunetabpfn":
+        folder_stats_finetune = pars["output_dir"] / "stats_finetune"
+        os.makedirs(folder_stats_finetune, exist_ok=True)
 
     logger = create_logger(sys.stdout)
     dl = DataLoader()
@@ -109,9 +114,6 @@ def main():
             resample_program_params=pars
         )
 
-        ## TODO: here we must implement an universal fit adapter
-        ## when estimators with a different fit signature are implemented
-        ## MAYBE TO DO IN ABSTRACT CLASS ??
         t = time()
         estimator.fit(X_train, y_train)
         fit_time = time() - t
@@ -127,8 +129,6 @@ def main():
         logger.debug("\t-Estimator fitted on input data.")
         logger.debug(f"\t-Fit time in minutes: {round(fit_time/60, 2)}")
 
-        ## TODO: an universal adapter is requested due to estimators 
-        # having a different predict_proba signature
         t = time()
         pred_proba = estimator.predict_proba(X_test)
         predict_time = time() - t
@@ -157,9 +157,15 @@ def main():
             )
         
         if pars["save_estimators"]:
-            estimator_filepath = get_estimator_filepath(pars, repetition, fold)
-            estimator.save(estimator_filepath)
-        
+            estimator.save(get_estimator_filepath(pars, repetition, fold))
+     
+        if pars["estimator"] == "finetunetabpfn":
+            iteration_signature = get_resample_iteration_signature(repetition, fold)
+            estimator.save_finetune_stats(
+                txt_filepath = folder_stats_finetune / f"df_finetune_{iteration_signature}.txt",
+                json_filepath = folder_stats_finetune / f"stats_finetune_{iteration_signature}.json"
+            )
+
         logger.debug(f"\t-Inference time in minutes: {round(predict_time/60, 2)}\n")
     
 

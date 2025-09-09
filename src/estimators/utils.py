@@ -151,7 +151,8 @@ def create_density_filter_default_pipeline(
                 VarianceThreshold(), 
                 DensityFeatureSelector(
                     n_target_cols=500, 
-                    strategy=density_feature_selector_strategy
+                    strategy=density_feature_selector_strategy,
+                    error_on_empty=True
                 )
             ),
             classifier,

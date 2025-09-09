@@ -17,19 +17,20 @@ Classifier: TypeAlias = Union[
     AesFineTunedTabPFNClassifier
 ]
 
-TabPFNClassifiers: TypeAlias = Union[
-    TabPFNClassifier
-]
 
-# list of estimators employing early stop on a validation set 
-# and requiring the early_stop_rounds informagion 
 EARLY_STOPPED_ESTIMATORS = [
     "es_xgb",
     "es_catboost",
     "es_lgbm"
 ]
 
-# list of non tunable estimators
+
 NON_TUNABLE_ESTIMATORS = [
-    "autotabpfn"
+    "autotabpfn",
+    "finetunetabpfn"
+]
+
+PCA_INCOMPATIBLE_ESTIMATORS = [
+    "autotabpfn",
+    "finetunetabpfn"
 ]

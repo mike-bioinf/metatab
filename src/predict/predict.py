@@ -61,8 +61,6 @@ def main():
         X_test = X_test.reindex(columns=fit_features, fill_value=0.0)
         logger.debug("Test feature space uniformed to training space.")
     
-    ## TODO: an universal adapter is requested due to estimators 
-    # having a different predict_proba signature
     pred_proba = estimator.predict_proba(X_test)
     pdf = PredictionDataframe()
 

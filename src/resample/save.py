@@ -1,7 +1,9 @@
 import json
+import pandas as pd
 from copy import deepcopy
 from pathlib import Path
 from typing import Literal
+from pandas._libs.missing import NAType
 
 from resample.constants import (
     HPO_DICT_BASE_KEYS, 
@@ -10,18 +12,24 @@ from resample.constants import (
 
 
 
-def get_estimator_filepath(pars: dict, repetition: int, fold: int) -> str:
+def get_estimator_filepath(pars: dict, repeat: int | NAType, fold: int) -> str:
     '''Get the filename to save the estimator'''
-    splitting_mode = pars["splitting_mode"]
+    resample_iteration_signature = get_resample_iteration_signature(repeat, fold)
+    filename = f"{pars["estimator"]}__{pars["preprocessing"]}__{resample_iteration_signature}.pkl"
+    return f"{pars["output_dir"]}/estimators/{filename}"
 
-    if splitting_mode == "cv":
-        n = f"{repetition}{fold}"
-    elif splitting_mode == "holdout":
-        n = f"{fold}"
+
+
+def get_resample_iteration_signature(repeat: int | NAType, fold: int) -> str:
+    '''
+    Get the iteration signature as string, that is: 
+    - {repeat}{fold} in cross-validation
+    - {fold} in resample
+    '''
+    if pd.isna(repeat):
+        return f"{repeat}{fold}"
     else:
-        raise ValueError("Unsupported splitting_mode.")
-    
-    return f"{str(pars["output_dir"])}/estimators/{pars["estimator"]}__{pars["preprocessing"]}__{n}.pkl"
+        return f"{fold}"
 
 
 

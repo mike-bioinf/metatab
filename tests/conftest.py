@@ -28,7 +28,8 @@ from estimators import (
     MyTunedLGBMClassifier,
     MyTunedESLGBMClassifier,
     MyTabPFNClassifier,
-    MyTunedTabPFNClassifier
+    MyTunedTabPFNClassifier,
+    MyAesFineTunedTabPFNClassifier
 )
 
 if TYPE_CHECKING:
@@ -126,6 +127,13 @@ TEST_ES_LGBM_FIXED_PARAMS = {
 
 TEST_TABPFN_FIXED_PARAMS = {
     "ignore_pretraining_limits": True
+}
+
+TEST_FINETUNED_TABPFN_FIXED_PARAMS = {
+    "finetune_setup": {"max_steps": 2},
+    "tabpfn_classifier_params": {"ignore_pretraining_limits": True},
+    "n_accumulation_steps": 1,
+    "log": False
 }
 
 
@@ -266,4 +274,12 @@ def fit_estimators_on_iris(tmp_path_factory) -> Path:
         file=tmp_estimators_folder / "my_tuned_tabpfn_classifier.pkl"
     )
 
+    _fit_estimator_on_iris(
+        estimator=MyAesFineTunedTabPFNClassifier,
+        fixed_params=TEST_FINETUNED_TABPFN_FIXED_PARAMS,
+        tune_configuration=None,
+        params_distributions=None,
+        file=tmp_estimators_folder / "my_aesfinetunedtabpfn_classifier.pkl"
+    )
+    
     return tmp_estimators_folder

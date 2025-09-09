@@ -324,11 +324,13 @@ class TuningParams:
         "colsample_bytree": hp.choice("colsample_bytree", [0.6, 0.7, 0.8, 0.9, 1])
     }
 
-    # weak-regularized configuration
+    # weak-regularized configuration.
+    # It is prone to error: Check failed: (best_split_info.{left/right}_count) > (0),
+    # with small datasets
     LGMB_C1 = {
         "learning_rate": hp.loguniform("learning_rate", np.log(0.001), np.log(0.1)),
         "num_leaves": scope.int(hp.qloguniform("num_leaves", np.log(2), np.log(512), 1)),
-        "max_bin":  hp.choice("max_bin", [254, hp.choice("max_bin_positive", list(range(20, 250, 20)))]),
+        "max_bin": hp.choice("max_bin", [255, hp.choice("max_bin_positive", list(range(20, 250, 20)))]),
         "min_data_in_bin": hp.choice("min_data_in_bin", list(range(1, 11))),
         "reg_lambda": hp.choice("reg_lambda", [0, hp.loguniform("lambda_positive", np.log(0.001), np.log(5))]),
         "reg_alpha": hp.choice("reg_alpha", [0, hp.loguniform("alpha_positive", np.log(0.001), np.log(5))]),
@@ -449,4 +451,19 @@ class DefaultParams:
         "n_ensemble_models": 20,
         "n_estimators": 8,
         "ignore_pretraining_limits": True
+    }
+
+
+    AESFINETUNEDTABPFN_DEFAULT_PARAMS = {
+        "finetune_setup": {"max_steps": 10000}, # high value to stop on other conditions
+        "tabpfn_classifier_params": {
+            "ignore_pretraining_limits": True,
+            "inference_config": {"MIN_UNIQUE_FOR_NUMERICAL_FEATURES": 0} 
+        },
+        # we finetune the post-trained model (realtabpfn) since is the one used for other tabpfn-based estimators
+        "model_path": "default", 
+        "learning_rate": 1e-5, # default
+        "batch_size": 1, # default (actually enforced)
+        "n_accumulation_steps": 10,  # more than default (1) since tabpfn is a meta-estimator
+        "log": False
     }

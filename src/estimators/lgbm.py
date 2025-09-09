@@ -44,7 +44,7 @@ class MyLGBMClassifier(GBDTBaseEstimator):
         )
 
     @ignore_lgbm_feature_name_warning
-    def predict_proba(self, X):
+    def predict_proba(self, X, **kwargs):
         return super().predict_proba(X)
 
 
@@ -71,7 +71,7 @@ class MyESLGBMClassifier(GBDTBaseEstimator):
         )
 
     @ignore_lgbm_feature_name_warning
-    def predict_proba(self, X):
+    def predict_proba(self, X, **kwargs):
         return super().predict_proba(X)
 
 
@@ -96,7 +96,7 @@ class MyTunedLGBMClassifier(GBDTBaseEstimator):
         return super().fit(*args, **kwargs)
 
     @ignore_lgbm_feature_name_warning
-    def predict_proba(self, X):
+    def predict_proba(self, X, **kwargs):
         return super().predict_proba(X)
 
 
@@ -124,7 +124,7 @@ class MyTunedESLGBMClassifier(GBDTBaseEstimator):
         return super().fit(*args, **kwargs)
 
     @ignore_lgbm_feature_name_warning
-    def predict_proba(self, X):
+    def predict_proba(self, X, **kwargs):
         return super().predict_proba(X)
 
 
