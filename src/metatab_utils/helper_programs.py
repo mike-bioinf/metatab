@@ -1,6 +1,10 @@
+from __future__ import annotations
+
 import os
+import pandas as pd
+from copy import deepcopy
 from pathlib import Path
-from typing import Any
+from typing import Any, TYPE_CHECKING
 from ast import literal_eval
 from estimators import Estimator
 
@@ -36,6 +40,10 @@ from estimators import (
     MyAutoTabPFNClassifier,
     MyAesFineTunedTabPFNClassifier
 )
+
+if TYPE_CHECKING:
+    from pandas._libs.missing import NAType
+
 
 
 
@@ -109,9 +117,10 @@ def check_tune_algo(pars: dict) -> None:
         return None
     else:
         input_tune_algo = pars["tune_configuration"]["algo"]
-        if input_tune_algo not in ["random", "tpe"]:
+        if input_tune_algo not in ["random", "tpe", "meta_tpe", "meta"]:
             raise ValueError(
-                f"The tuning search algorithm must be one of 'random' or 'tpe'. Currently {input_tune_algo}."
+                "The tuning search algorithm must be one of 'random', 'tpe', 'meta_tpe' or 'meta'." +
+                f" Currently {input_tune_algo}."
             )
 
 
@@ -185,7 +194,7 @@ def try_parse_specs_into_dict(specs: str, error_message_specs: str) -> dict[str,
 
 
 
-def _pick_params_distributions_configuration(pars: dict) -> dict | None:
+def _pick_params_distributions_configuration(pars: dict) -> dict:
     conf = pars["tune_configuration"]["configuration"]
     estimator = pars["estimator"]
 
@@ -282,3 +291,121 @@ def pick_estimator_class(pars: dict) -> Estimator:
     
         case _:
             raise ValueError("Unsupported estimator.")
+        
+
+
+def fix_estimator_fixed_params_in_fit_program_(
+    estimator: Estimator,
+    fit_program_params: dict
+) -> None:
+    '''
+    Some estimators require their fixed parameters to be updated according fit program inputs. 
+    This function performs that adjustment and stores the updated values in the instance-level 
+    attribute fixed_params (while the "original" parameter remain defined at the class level).
+    In case the estimator needs no adjustment a deepcopy of the class-level attribute is 
+    created at instance level.
+
+    Parameters:
+        estimator (Estimator): 
+            The estimator instance.
+        fit_program_params (dict):
+            Dictionary containing the input parameters for the fit program.
+    '''
+    new_fixed_params = deepcopy(estimator.fixed_params)
+
+    if isinstance(estimator, MyAutoTabPFNClassifier):
+        # we create the autogluon directory in parent folder of the output file
+        # using the root of the output filename in its name to prevent overwriting issues 
+        out_file: Path = fit_program_params["output_path"]
+        autogluon_models_folder = out_file.parent / f"autogluon_tabpfn_{out_file.stem}"
+        new_fixed_params = _add_autogluon_path_to_params(
+            params=new_fixed_params,
+            path=autogluon_models_folder,
+            repeat=None,
+            fold=None
+        )
+
+    # setting the new params in an instance-level attribute
+    estimator.fixed_params = new_fixed_params
+
+
+
+def fix_estimator_fixed_params_during_resampling_(
+    estimator: Estimator,
+    repeat: int | NAType,
+    fold: int,
+    resample_program_params: dict
+) -> None:
+    '''
+    Some estimators require their fixed parameters to be updated during resampling.
+    This function performs that adjustment and stores the updated values in the instance-level 
+    attribute fixed_params (while the "original" parameters remain defined at the class level).
+    In case the estimator needs no adjustment a deepcopy of the class-level attribute is 
+    created at instance level.
+
+    Parameters:
+        estimator (Estimator): 
+            The estimator instance.
+        
+        repeat (int | NAType): 
+            The resampling repeat. 
+            An integer if the strategy is cross-validation, or Na if it is holdout.
+        
+        fold (int): 
+            The resampling fold. 
+            Represents the inner iteration within a repeat for cross-validation, 
+            or the general iteration in holdout.
+
+        resample_program_params (dict): 
+            Dictionary containing the input parameters for the resample program.  
+    '''
+    new_fixed_params = deepcopy(estimator.fixed_params)
+
+    if isinstance(estimator, MyAutoTabPFNClassifier):
+        out_path: Path = resample_program_params["output_path"]
+        autogluon_top_folder = out_path / "autogluon_tabpfn"
+        os.makedirs(autogluon_top_folder, exist_ok=True)
+        new_fixed_params = _add_autogluon_path_to_params(
+            new_fixed_params,
+            autogluon_top_folder,
+            repeat, 
+            fold
+        )
+
+    # setting the new params in an instance-level attribute
+    estimator.fixed_params = new_fixed_params
+
+
+
+def _add_autogluon_path_to_params(
+    params: dict, 
+    path: Path,
+    repeat: int | NAType | None,
+    fold: int | None
+) -> dict:
+    '''
+    Add the "path" parameter in the AutoTabPFNClassifier params dict,
+    needed by autogluon to save the fitted classifiers.
+    Distinguishes fit and resample cv/houldout scenarios 
+    based on the type of repeat and fold argument.
+    Returns the modified params dict.
+    '''
+    phe_init_args = params.get("phe_init_args", {})
+
+    if repeat is None and fold is None:
+        # we are in the fit program
+        folder_models = path
+    elif repeat is pd.NA and isinstance(fold, int):
+        # we are in the resample program with holdout
+        folder_models = path / f"classifiers_iteration{fold}"
+    elif isinstance(repeat, int) and isinstance(fold, int):
+        # we are in the resample program with cv
+        folder_models = path /f"classifiers_repeat{repeat}_fold{fold}"
+    else:
+        raise ValueError(
+            "Unrecognazible combination of types for repeat and fold arguments."
+        )
+    
+    phe_init_args["path"] = folder_models
+    params["phe_init_args"] = phe_init_args
+    return params

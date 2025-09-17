@@ -1,10 +1,8 @@
 from __future__ import annotations
 
-import numpy as np
 import pandas as pd
 from copy import deepcopy
-from typing import Literal, Callable, override, TYPE_CHECKING
-from sklearn.utils.validation import check_is_fitted
+from typing import Literal, Callable, TYPE_CHECKING
 from estimators.abstract_estimator import AbstractBaseEstimator
 from estimators.utils import create_default_pipeline, fit_with_early_stop_on_validation_set
 from hp_search.searchcv import SearchCV
@@ -164,23 +162,6 @@ class GBDTBaseEstimator(AbstractBaseEstimator):
             return {f"{name_classifier}__{k}":v for k, v in self.fit_classifier_kwargs.items()}
         else:
             return deepcopy(self.fit_classifier_kwargs)            
-
-
-    @override
-    def get_best_hps(self) -> dict | None:
-        if self.tune_configuration:
-            check_is_fitted(self, "estimator_")
-            return self.estimator_.best_params_
-        return None
-    
-
-    @override
-    def get_search_losses(self) -> np.ndarray | None:
-        if self.tune_configuration:
-            check_is_fitted(self, "estimator_")
-            return np.array(self.estimator_.trials_.losses())
-        return None
-
 
 
 

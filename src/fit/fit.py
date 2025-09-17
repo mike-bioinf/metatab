@@ -5,18 +5,18 @@ from fit.params import parse_args
 
 from metatab_utils.general import (
     create_logger, 
-    check_y_is_integer_encoded,
-    fix_estimator_fixed_params_in_fit_program_
+    check_y_is_integer_encoded
 )
 
-from metatab_utils.helper_params import (
+from metatab_utils.helper_programs import (
     adjust_io_paths_, 
     manage_output_path,
     check_fit_resample_args,
     check_tune_algo,
     adjust_tune_configuration_arg_,
     adjust_early_stopping_rounds_,
-    pick_estimator_class
+    pick_estimator_class,
+    fix_estimator_fixed_params_in_fit_program_
 )
 
 

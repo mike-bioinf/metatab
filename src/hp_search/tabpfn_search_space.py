@@ -12,9 +12,9 @@ from tabpfn.model_loading import _user_cache_dir, download_model
 
 
 
-def enumerate_preprocess_transforms() -> list[dict]:
+def enumerate_preprocess_transforms() -> list[list[dict]]:
     '''
-    Generate a list of dicts of preprocessing instructions.
+    Generate a list of sublists of dicts of preprocessing instructions.
     Taken from "https://github.com/PriorLabs/tabpfn-extensions/blob/main/src/tabpfn_extensions/hpo/search_space.py",
     with minor modifications.
     '''
@@ -32,30 +32,30 @@ def enumerate_preprocess_transforms() -> list[dict]:
     ]
 
     for names in names_list:
-            for append_original in [True, False]:
-                for subsample_features in [-1, 0.99, 0.95, 0.9]:
-                    for global_transformer_name in [None, "svd"]:
-                        transforms += [
-                            [
-                                {
-                                    # Use "name" parameter as expected by TabPFN PreprocessorConfig
-                                    "name": name,
-                                    "global_transformer_name": global_transformer_name,
-                                    "subsample_features": subsample_features,
-                                    # categorical features are treated as numeric,
-                                    # this a safe fallback in case tabpfn still treats some 
-                                    # features as categoricals even though we enforce only continuos features. 
-                                    "categorical_name": "numeric",
-                                    "append_original": append_original
-                                }
-                                for name in names
-                            ]
+        for append_original in [True, False]:
+            for subsample_features in [-1, 0.99, 0.95, 0.9]:
+                for global_transformer_name in [None, "svd"]:
+                    transforms += [
+                        [
+                            {
+                                # Use "name" parameter as expected by TabPFN PreprocessorConfig
+                                "name": name,
+                                "global_transformer_name": global_transformer_name,
+                                "subsample_features": subsample_features,
+                                # categorical features are treated as numeric,
+                                # this a safe fallback in case tabpfn still treats some 
+                                # features as categoricals even though we enforce only continuos features. 
+                                "categorical_name": "numeric",
+                                "append_original": append_original
+                            }
+                            for name in names
                         ]
+                    ]
     return transforms
 
 
 
-def return_clf_paths_list() -> list:
+def return_clf_paths_list() -> list[str]:
     '''
     Ensure all TabPFN v2 classifier checkpoints exist in the cache directory.
     Downloads any missing models using PriorLabs functions.

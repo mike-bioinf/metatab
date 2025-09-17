@@ -103,10 +103,10 @@ class AbstractBaseEstimator(ABC):
     
     # to override if needed by concrete classes
     def get_search_losses(self) -> np.ndarray | None:
-        '''Get the search losses resulting from tuning'''
+        '''Get the tuning search losses'''
         check_is_fitted(self, "estimator_")
         if isinstance(self.estimator_, SearchCV):
-            return np.array(self.estimator_.trials_.losses())
+            return np.array(self.estimator_.search_losses_)
     
 
     def update_fixed_params(
