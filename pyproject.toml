@@ -23,9 +23,11 @@ dev = ["pytest"]
 
 
 [project.scripts]
-metatab-fit = "fit:fit.main"
-metatab-predict = "predict:predict.main"
-metatab-resample = "resample:resample.main"
+metatab-fit = "fit.fit:main"
+metatab-predict = "predict.predict:main"
+metatab-resample = "resample.resample:main"
+metatab-meta-random-search = "_paper.hp_metalearning.programs.random_search:main"
+metatab-fit-surrogate = "_paper.hp_metalearning.programs.fit_surrogate:main"
 
 
 [build-system]

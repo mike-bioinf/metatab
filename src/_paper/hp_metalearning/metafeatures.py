@@ -58,7 +58,6 @@ def compute_stats_covariance(df: pd.DataFrame) -> tuple[float, float, float, flo
 
 
 
-
 def extract_metafeatures(X: pd.DataFrame, y: pd.Series) -> dict[str, int|float]:
     mean_cov_off_diagonal, std_cov_off_diagonal, mean_cov_diagonal, std_cov_diagonal = compute_stats_covariance(X)
     return {

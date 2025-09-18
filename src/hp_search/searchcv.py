@@ -15,9 +15,9 @@ from metatab_utils.general import add_broadcasted_objects_as_column
 from estimators.constants import Classifier
 from estimators.utils import fit_with_early_stop_on_validation_set
 from estimators.params import HPS_MIXED_TYPES
-from hp_search.utils import build_hps_dataframe_from_list_of_points
+from hp_search.utils import build_hps_dataframe_from_list_of_points, ConfigSearchCV
 from _paper.hp_metalearning.metafeatures import extract_metafeatures
-from _paper.hp_metalearning.database.utils import query_surrogate_pipeline
+from _paper.hp_metalearning.database.utils import query_surrogate_framework
 from _paper.hp_metalearning.acquisition_funcs import compute_upper_confidence_bound
 
 
@@ -86,6 +86,13 @@ class SearchCV:
             A dict unpackaged in the classifier fit calls.
             If None (default) an empty dict is created.
             The dict keys must be already adapted to the pipeline if any.
+        
+        build_df_search (None | bool, optional):
+            Whether to build the DataFrame with complete search information.  
+            If False, the required information is not stored.  
+            This step can be indeed memory and time consuming.
+            If None, the parameter is set via a global configuration class.
+
             
     Attributes:
     ------------------------------------
@@ -102,6 +109,7 @@ class SearchCV:
             Keep in mind that the the completed iterations are numerically 
             sequentially labeled at the end of the search ("search_iter" column).
             This means that if point n2 in the search fails, then point n3 is reported as 2 in the df.
+            The attribute is set only when "build_df_search" flag is True.
         
         search_losses_ (list):
             List of the losses registered during the search.
@@ -123,7 +131,8 @@ class SearchCV:
         early_stop_on_validation_set: bool,
         eval_set_parameter: str = "eval_set",
         validation_set_size: float = 0.3,
-        fit_classifier_kwargs: None | dict = None
+        fit_classifier_kwargs: None | dict = None,
+        build_df_search: None | bool = None
     ):
         self.clf_or_pipe=clf_or_pipe
         self.algo=algo
@@ -138,6 +147,7 @@ class SearchCV:
         self.eval_set_parameter=eval_set_parameter
         self.validation_set_size=validation_set_size
         self.fit_classifier_kwargs=fit_classifier_kwargs if fit_classifier_kwargs else {}
+        self.build_df_search=ConfigSearchCV.build_df_search if build_df_search is None else build_df_search
 
 
 
@@ -158,7 +168,7 @@ class SearchCV:
         
         if self.algo in ["meta", "meta_tpe"]:
             self._metafeatures = extract_metafeatures(X, y)
-            self._surrogate_pipeline = query_surrogate_pipeline(self.clf_or_pipe)
+            self._surrogate_framework = query_surrogate_framework(self.clf_or_pipe)
 
         if self.algo == "meta":
             self._fit_with_meta_points()
@@ -167,7 +177,8 @@ class SearchCV:
         else:
             raise ValueError("Unsupported optimization algorithm.")
         
-        self.df_search_ = self._build_df_search()
+        if self.build_df_search:
+            self.df_search_ = self._build_df_search()
 
         # refit with the best point
         best_estimator = deepcopy(self.clf_or_pipe)
@@ -274,7 +285,7 @@ class SearchCV:
 
         best_params = space_eval(self.params_distributions, best)
         # hyperopt machinery registers the non corrected params
-        self._best_params_ = self._correct_sampled_params(best_params)
+        self.best_params_ = self._correct_sampled_params(best_params)
 
 
 
@@ -357,13 +368,14 @@ class SearchCV:
         for metafeature, value in self._metafeatures.items():
             df_candidate_points[metafeature] = value
 
-        pred_values, pred_uncertainty = self._surrogate_pipeline.predict(df_candidate_points)
+        pred_values, pred_uncertainty = self._surrogate_framework.predict(df_candidate_points)
         
         if acquisition_function == "UCB":
             promisingness = compute_upper_confidence_bound(
                 pred_values, 
-                pred_uncertainty, 
+                pred_uncertainty,
                 k="infer", 
+                mean_direction="lower_is_better", # we currently use only the logloss
                 n_points=n_points_to_propose
             )
         else:
@@ -452,12 +464,16 @@ class SearchCV:
             pred_proba = clf_or_pipe.predict_proba(X_test)
             loss = self._compute_loss_score(pred_proba, y_test)
             cv_losses.append(loss)
-            cv_results.append({"repeat": repeat, "fold": fold, "loss": loss})
 
-        # adding the results here allows to avoid adding results of failing cv
-        self._iter_cv_results.append(cv_results)
-        self._iter_params_cv.append(params)
-        self._number_completed_iter += 1
+            if self.build_df_search:
+                cv_results.append({"repeat": repeat, "fold": fold, "loss": loss})
+
+        if self.build_df_search:
+            # adding the results at the end allows to avoid adding the results of failing cv
+            self._iter_cv_results.append(cv_results)
+            self._iter_params_cv.append(params)
+            self._number_completed_iter += 1
+        
         return np.mean(cv_losses) if agg == "mean" else np.sum(cv_losses)
 
 

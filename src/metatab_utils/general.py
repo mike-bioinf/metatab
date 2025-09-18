@@ -1,55 +1,6 @@
-import logging
-import numpy as np
 import pandas as pd
 from copy import deepcopy
 from typing import  Any
-
-
-
-def check_y_is_integer_encoded(y: pd.Series, is_predict_scenario: bool = False) -> None:
-    '''
-    Checks that y is integer encoded. 
-    This is essential to avoid errors in metrics computation.
-    Raises different error messages depending on the scenario.
-    '''
-    y = np.asarray(y)
-    
-    if not np.issubdtype(y.dtype, np.integer):
-        message = "Target variable y must be integer-encoded (e.g., 0, 1, 2, ...)."
-        if is_predict_scenario:
-            message += (
-                " Note: in binary classification, class `1` is treated as the reference class"
-                " in performance metrics computation."
-            )
-        raise ValueError(message)
-
-
-
-class FlushStreamHandler(logging.StreamHandler):
-    '''
-    A stream handler that flush when emits.
-    Useful to deliver real time logging in HPC environment.
-    '''
-    def emit(self, record):
-        super().emit(record)
-        super().flush()
-
-
-
-def create_logger(stream) -> logging.Logger:
-    '''
-    Create a logger to a stream.
-    Parameters:
-        stream: Either sys.stdout or sys.stderr.
-    Returns: The logger instance.
-    '''
-    logger = logging.getLogger("metatab")
-    logger.setLevel(logging.DEBUG)
-    stream_handler = FlushStreamHandler(stream)
-    stream_handler.setLevel(logging.DEBUG)
-    logger.addHandler(stream_handler)
-    logger.propagate = False
-    return logger
 
 
 

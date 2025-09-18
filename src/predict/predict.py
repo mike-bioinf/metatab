@@ -2,11 +2,16 @@ import sys
 import pickle
 import numpy as np
 from metatab_utils.data_loader import DataLoader
-from metatab_utils.helper_programs import adjust_io_paths_, manage_output_path
-from metatab_utils.general import check_y_is_integer_encoded, create_logger
 from metatab_utils.prediction import PredictionDataframe
 from predict.params import parse_args, check_args
 from estimators import Estimator
+
+from metatab_utils.helper_programs import (
+    adjust_io_paths_, 
+    manage_output_path,
+    check_y_is_integer_encoded, 
+    create_logger
+)
 
 from predict.predict_helper import (
     check_type_deserialized_object,

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import os
+import logging
+import numpy as np
 import pandas as pd
 from copy import deepcopy
 from pathlib import Path
@@ -122,6 +124,25 @@ def check_tune_algo(pars: dict) -> None:
                 "The tuning search algorithm must be one of 'random', 'tpe', 'meta_tpe' or 'meta'." +
                 f" Currently {input_tune_algo}."
             )
+
+
+def check_y_is_integer_encoded(y: pd.Series, is_predict_scenario: bool = False) -> None:
+    '''
+    Checks that y is integer encoded. 
+    This is essential to avoid errors in metrics computation.
+    Raises different error messages depending on the scenario.
+    '''
+    y = y.to_numpy()
+
+    if not np.issubdtype(y.dtype, np.integer):
+        message = "Target variable y must be integer-encoded (e.g., 0, 1, 2, ...)."
+        if is_predict_scenario:
+            message += (
+                " Note: in binary classification, class `1` is treated as the reference class"
+                " in performance metrics computation."
+            )
+        raise ValueError(message)
+    
 
 
 def adjust_early_stopping_rounds_(pars: dict) -> None:
@@ -409,3 +430,31 @@ def _add_autogluon_path_to_params(
     phe_init_args["path"] = folder_models
     params["phe_init_args"] = phe_init_args
     return params
+
+
+
+class FlushStreamHandler(logging.StreamHandler):
+    '''
+    A stream handler that flush when emits.
+    Useful to deliver real time logging in HPC environment.
+    '''
+    def emit(self, record):
+        super().emit(record)
+        super().flush()
+
+
+
+def create_logger(stream) -> logging.Logger:
+    '''
+    Create a logger to a stream.
+    Parameters:
+        stream: Either sys.stdout or sys.stderr.
+    Returns: The logger instance.
+    '''
+    logger = logging.getLogger("metatab")
+    logger.setLevel(logging.DEBUG)
+    stream_handler = FlushStreamHandler(stream)
+    stream_handler.setLevel(logging.DEBUG)
+    logger.addHandler(stream_handler)
+    logger.propagate = False
+    return logger

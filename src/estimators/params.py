@@ -475,7 +475,6 @@ class DefaultParams:
         "ignore_pretraining_limits": True
     }
 
-
     AESFINETUNEDTABPFN_DEFAULT_PARAMS = {
         "finetune_setup": {"max_steps": 10000}, # high value to stop on other conditions
         "tabpfn_classifier_params": {
@@ -485,7 +484,7 @@ class DefaultParams:
         # we finetune the post-trained model (realtabpfn) since is the one used for other tabpfn-based estimators
         "model_path": "default", 
         "learning_rate": 1e-5, # default
-        "batch_size": 1, # default (actually enforced)
+        "batch_size": 1, # default (currently enforced)
         "n_accumulation_steps": 10,  # more than default (1) since tabpfn is a meta-estimator
         "log": False
     }
