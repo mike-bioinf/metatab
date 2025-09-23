@@ -1,4 +1,4 @@
-from resample_launchers.launchers import PolimorphicLauncher
+from _paper.resample_launchers.launchers import PolimorphicLauncher
 
 
 def main():

@@ -1,6 +1,10 @@
-import pandas as pd
-from collections import defaultdict
-from estimators.params import HPS_MIXED_TYPES, HPS_COMPLEX_TYPES
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import pandas as pd
+
 
 
 
@@ -10,28 +14,10 @@ class ConfigSearchCV:
 
 
 
-def build_hps_dataframe_from_list_of_points(points: list[dict]) -> pd.DataFrame:
-    '''
-    Build the hyperparameter dataframes from a list of space points.
-    The points are expected to have the same set of keys.
-    The utility take cares of assigning and respecting the correct value types.
-    Returns the HPs dataframe.
-    '''
-    dict_lists = defaultdict(list)
-    to_str_keys = HPS_MIXED_TYPES + HPS_COMPLEX_TYPES
-
-    for point in points:
-        for k, v in point.items():
-            if k in to_str_keys:
-                dict_lists[k].append(str(v))
-            else:
-                dict_lists[k].append(v)
-
-    return pd.DataFrame(dict(dict_lists))
-
-
-
-def aggregate_df_search_at_iteration_level(df_search: pd.DataFrame) -> pd.DataFrame:
+def aggregate_df_search_at_iteration_level(
+    df_search: pd.DataFrame, 
+    remove_groupby_column: bool = False
+) -> pd.DataFrame:
     '''
     Abstract the logic to aggregate the "df_search" dataframe at search iteration level,
     computing the mean of cv inner losses for each iteration.
@@ -43,8 +29,12 @@ def aggregate_df_search_at_iteration_level(df_search: pd.DataFrame) -> pd.DataFr
         agg_func = "mean" if col == "loss" else "first"
         agg_dict[col] = agg_func
 
-    del agg_dict["search_iter"]
-    df_search = df_search.groupby("search_iter").agg(agg_dict).reset_index()
+    search_col = "search_iter"
+    del agg_dict[search_col]
+    df_search = df_search.groupby(search_col).agg(agg_dict).reset_index()
+
+    if remove_groupby_column:
+        del df_search[search_col]
     
     # we remove the non useful cols on the aggregate result to avoid creating a deepcopy  
     del df_search["fold"]

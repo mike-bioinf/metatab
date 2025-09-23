@@ -139,12 +139,12 @@ def main():
     starting_time = time()
     estimator.fit(X, y)
     fit_time = round(((time() - starting_time)/60), ndigits=2)
-    logger.debug(f"Estimator fitted with runtime of {fit_time} minutes.")
+    logger.debug(f"Completed search with runtime of {fit_time} minutes.")
 
     df_search = estimator.estimator_.df_search_
     
     # aggregate cv results for single hp configuration (row --> 1 configuration + 1 loss)
-    df_search_agg = aggregate_df_search_at_iteration_level(df_search)
+    df_search_agg = aggregate_df_search_at_iteration_level(df_search, remove_groupby_column=True)
     
     # z-normalize the loss column
     loss_col = df_search_agg["loss"]

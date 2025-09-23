@@ -38,15 +38,16 @@ def enumerate_preprocess_transforms() -> list[list[dict]]:
                     transforms += [
                         [
                             {
-                                # Use "name" parameter as expected by TabPFN PreprocessorConfig
-                                "name": name,
-                                "global_transformer_name": global_transformer_name,
-                                "subsample_features": subsample_features,
+                                ### KEYS MUST BE ALPHABETICALLY ORDERED SINCE HYPEROPT ENFORCE THIS ORDER WHEN IT SAMPLES
+                                "append_original": append_original,
                                 # categorical features are treated as numeric,
                                 # this a safe fallback in case tabpfn still treats some 
                                 # features as categoricals even though we enforce only continuos features. 
                                 "categorical_name": "numeric",
-                                "append_original": append_original
+                                "global_transformer_name": global_transformer_name,
+                                # Use "name" parameter as expected by TabPFN PreprocessorConfig
+                                "name": name,
+                                "subsample_features": subsample_features,
                             }
                             for name in names
                         ]

@@ -14,25 +14,19 @@ DEFAULT_TUNE_CONFIGURATION = {
 }
 
 
-## TODO: we do not differentiate between same-named parameters for different estimators.
-## This is "manually" guaranteed.
-# List of HPs that assume mixed typed values
+## TODO: we do not differentiate between same-named parameters for different estimators. This is "manually" guaranteed.
+# List of HPs that assume mixed typed values.
 HPS_MIXED_TYPES = [
-    # random forest
-    "max_features",
-    # tabpfn
-    "inference_config__OUTLIER_REMOVAL_STD",
-    "inference_config__SUBSAMPLE_SAMPLES"
+    "max_features"
 ]
 
 
-## TODO: we do not differentiate between same-named parameters for different estimators.
-## This is "manually" guaranteed.
+## TODO: we do not differentiate between same-named parameters for different estimators. This is "manually" guaranteed.
 # List oh HPs that assume complex typed values that require special handling in hps dataframe building
-HPS_COMPLEX_TYPES = {
+HPS_COMPLEX_TYPES = [
     # tabpfn
     "inference_config__PREPROCESS_TRANSFORMS"
-}
+]
 
 
 

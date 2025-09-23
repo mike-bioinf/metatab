@@ -80,6 +80,8 @@ def add_broadcasted_objects_as_column(
             v = str(v)
         if convert_none_to_str and v is None:
             v = str(v)
-        df[k] = pd.Series([v] * n_rows, dtype="object") if k in force_object_datatype else [v] * n_rows
+        df[k] = pd.Series([v] * n_rows, dtype="object") \
+            if k in force_object_datatype \
+            else [v] * n_rows
 
     return df

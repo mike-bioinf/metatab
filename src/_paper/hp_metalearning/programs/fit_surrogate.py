@@ -10,9 +10,9 @@ import argparse
 import joblib
 import pandas as pd
 from typing import TYPE_CHECKING
-from sklearn.pipeline import Pipeline
-from _paper.hp_metalearning.hps_cat_encoding import get_encoding_scheme
+from sklearn.pipeline import make_pipeline
 from _paper.hp_metalearning.surrogate_rf import SurrogateRandomForestRegressor
+from _paper.hp_metalearning.encoding import get_encoding_scheme
 
 from metatab_utils.helper_programs import (
     adjust_io_paths_,
@@ -92,22 +92,13 @@ def main():
     logger.debug("Meta-data loaded in memory!")
 
     y_col = pars["column_metric"]
-    if y_col not in meta_data.columns():
+    if y_col not in meta_data.columns:
         raise ValueError(f"'{y_col}'column_metric not found in meta_data.")
     
-    surrogate_rf = SurrogateRandomForestRegressor(n_jobs=pars["nthreads"], random_state=pars["seed"])
     preprocessor = get_encoding_scheme(pars["estimator"])
-
-    if preprocessor:
-        surrogate_framework = Pipeline(
-            [
-                ("preprocessor", preprocessor),
-                ("surrogate_rf", surrogate_rf)
-            ]
-        )
-    else:
-        surrogate_framework = surrogate_rf
-
+    surrogate_rf = SurrogateRandomForestRegressor(n_jobs=pars["nthreads"], random_state=pars["seed"])
+    surrogate_framework = make_pipeline(*preprocessor, surrogate_rf)
+   
     X = meta_data.drop(columns=y_col)
     y = meta_data[y_col]
 

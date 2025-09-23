@@ -15,7 +15,7 @@ from metatab_utils.general import add_broadcasted_objects_as_column
 from estimators.constants import Classifier
 from estimators.utils import fit_with_early_stop_on_validation_set
 from estimators.params import HPS_MIXED_TYPES
-from hp_search.utils import build_hps_dataframe_from_list_of_points, ConfigSearchCV
+from hp_search.utils import ConfigSearchCV
 from _paper.hp_metalearning.metafeatures import extract_metafeatures
 from _paper.hp_metalearning.database.utils import query_surrogate_framework
 from _paper.hp_metalearning.acquisition_funcs import compute_upper_confidence_bound
@@ -165,15 +165,13 @@ class SearchCV:
         self._iter_cv_results: list[list[dict]] = []
         self._iter_params_cv: list[dict] = []
         self._number_completed_iter = 0
-        
-        if self.algo in ["meta", "meta_tpe"]:
-            self._metafeatures = extract_metafeatures(X, y)
-            self._surrogate_framework = query_surrogate_framework(self.clf_or_pipe)
 
         if self.algo == "meta":
+            self._metafeatures = extract_metafeatures(X, y)
+            self._surrogate_framework = query_surrogate_framework(self.clf_or_pipe)
             self._fit_with_meta_points()
-        elif self.algo in ["random", "tpe", "meta_tpe"]:
-            self._fit_with_optmized_points()
+        elif self.algo in ["random", "tpe"]:
+            self._fit_with_standard_algo()
         else:
             raise ValueError("Unsupported optimization algorithm.")
         
@@ -215,8 +213,8 @@ class SearchCV:
 
         for point in points:
             _ = self._fit_point(
-                params=point, 
-                apply_hyperopt_correction_to_params=False, # the proposed points are already corrected
+                point,
+                apply_hyperopt_corrections=False,  # the proposed points are already corrected
                 returns_type="simple"
             )
 
@@ -229,16 +227,14 @@ class SearchCV:
     
 
 
-    def _fit_with_optmized_points(self) -> None:
+    def _fit_with_standard_algo(self) -> None:
         '''
-        Optimize HPs with or without meta-learned points as warm up.
+        Optimize HPs with the random or tpe algo.
         Set the best_params_ attribute.
         '''
         if self.algo == "random":
-            warm_up_points = None
             algo_fn = rand.suggest
         elif self.algo == "tpe":
-            warm_up_points = None
             # we use hyperopt defaults
             algo_fn = partial(
                 tpe.suggest,
@@ -246,32 +242,15 @@ class SearchCV:
                 n_EI_candidates=24,  # number of candidate points from which select the most promising at each iteration
                 gamma=0.25 # top fraction of hps-configurations to use as good
             )
-        elif self.algo == "meta_tpe":
-            warm_up_points = self._propose_meta_points(
-                n_candidate_points=5000, 
-                n_points_to_propose=20,
-                acquisition_function="UCB"
-            )
-            algo_fn = partial(
-                tpe.suggest,
-                n_startup_jobs=0,
-                n_EI_candidates=24,
-                gamma=0.25
-            )
         else:
             raise ValueError("Unsupported optimization algorithm.")
 
         fit_point_fn = partial(
             self._fit_point,
-            apply_hyperopt_correction_to_params=True,
+            apply_hyperopt_corrections=True,
             returns_type="hyperopt"
         )
 
-        # We cannot store the Trials object since we must pass a None when points_to_evaluate is set.
-        # A possible workaround is to use the "generate_trials_to_calculate" function (hp module), 
-        # which accepts the list of candidate points and returns a Trials object, 
-        # that then maybe can be passed to fmin (to check if tpe start with optimization or random in this way).
-        # See "https://github.com/hyperopt/hyperopt/issues/450".
         best = fmin(
             fn=fit_point_fn,
             space=self.params_distributions,
@@ -279,37 +258,37 @@ class SearchCV:
             max_evals=self.n_iter,
             trials=None,
             rstate=np.random.default_rng(self.seed),
-            verbose=False,
-            points_to_evaluate=warm_up_points
+            verbose=False
         )
 
-        best_params = space_eval(self.params_distributions, best)
-        # hyperopt machinery registers the non corrected params
-        self.best_params_ = self._correct_sampled_params(best_params)
+        # hyperopt tracks the uncorrected params
+        self.best_params_ = self._apply_hyperopt_corrections_to_sampled_point(
+            space_eval(self.params_distributions, best)
+        )
 
 
 
     def _fit_point(
         self, 
         params: dict,
-        apply_hyperopt_correction_to_params: bool,
-        returns_type: Literal["hyperopt", "simple"],
+        apply_hyperopt_corrections: bool,
+        returns_type: Literal["hyperopt", "simple"]
     ) -> dict | float:
         '''
         Fit using the input tune space point.
 
         Parameters:
             params (dict): dict of hps to use (tune space point).
-            apply_hyperopt_correction_to_params (bool):
-                Whether to apply the hyperopt level correction to the point.
+            apply_hyperopt_corrections (bool):
+                Whether to apply the hyperopt corrections to the point.
             returns_type (Literal["hyperopt", "simple"]):
                 Whether returns a hyperopt compatible result or a simpler one.
                 In the first case the function returns a dict with hyperopt
                 compatible info, in the second only the loss.
         '''
         try:
-            if apply_hyperopt_correction_to_params:
-                params = self._correct_sampled_params(params)
+            if apply_hyperopt_corrections:
+                params = self._apply_hyperopt_corrections_to_sampled_point(params)
             loss = self._cross_val_score(params)
             self.search_losses_.append(loss)
             if returns_type == "hyperopt":
@@ -354,17 +333,15 @@ class SearchCV:
             A list of dict where each dict is a point in the tune space.
         '''     
         rng_candidates = np.random.default_rng(self.seed)
-        candidate_points = []
-
-        for _ in range(n_candidate_points):
-            candidate_points.append(
-                self._correct_sampled_params(
-                    sample(self.params_distributions, rng_candidates) 
-                )
+        
+        candidate_points = [
+            self._apply_hyperopt_corrections_to_sampled_point(
+                sample(self.params_distributions, rng_candidates)
             )
-
-        # build df of hps + metafeatures
-        df_candidate_points = build_hps_dataframe_from_list_of_points(candidate_points)
+            for _ in range(n_candidate_points)
+        ]
+     
+        df_candidate_points = pd.DataFrame(candidate_points)
         for metafeature, value in self._metafeatures.items():
             df_candidate_points[metafeature] = value
 
@@ -388,10 +365,12 @@ class SearchCV:
 
 
     @staticmethod
-    def _correct_sampled_params(params: dict[str, Any]) -> dict[str, Any]:
+    def _apply_hyperopt_corrections_to_sampled_point(params: dict[str, Any]) -> dict[str, Any]:
         '''
         Apply general hyperopt level correction to the sampled params.
         These corrections come from specific quirks of hyperopt.
+        The corrections are done in place.
+
         In particular the following aspects are addressed:
         - automatic conversion of sampled list to tuple. 
             To distinguish between original and converted tuple we cast 
@@ -404,9 +383,9 @@ class SearchCV:
         for param_to_convert in tuple_to_list_parameters:
             if param_to_convert in params.keys():
                 params[param_to_convert] = list(params[param_to_convert])
-        
-        return params
 
+        return params
+    
 
 
     def _cross_val_score(
@@ -486,6 +465,8 @@ class SearchCV:
             dict_iter_params = self._iter_params_cv[i]
             dict_iter_params["search_iter"] = i
             
+            # this is because concatenation between same named column with 
+            # different dtypes causes coection when possible.
             df_iter = add_broadcasted_objects_as_column(
                 df=df_iter, 
                 dictionary=dict_iter_params,
