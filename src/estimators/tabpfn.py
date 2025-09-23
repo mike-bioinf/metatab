@@ -16,7 +16,6 @@ from tabpfn_extensions.post_hoc_ensembles.sklearn_interface import AutoTabPFNCla
 from estimators.abstract_estimator import AbstractBaseEstimator
 from estimators.params import DefaultParams, TuningParams
 from hp_search.searchcv import SearchCV
-
 from finetabpfn import AesFineTunedTabPFNClassifier
 
 from estimators.utils import (

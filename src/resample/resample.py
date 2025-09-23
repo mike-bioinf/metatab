@@ -7,20 +7,17 @@ from estimators import Estimator
 from metatab_utils.prediction import PredictionDataframe
 from metatab_utils.data_loader import DataLoader
 
-from metatab_utils.general import (
-    create_logger, 
-    check_y_is_integer_encoded,
-    fix_estimator_fixed_params_during_resampling_
-)
-
-from metatab_utils.helper_params import (
+from metatab_utils.helper_programs import (
     check_fit_resample_args,
     check_tune_algo,
     manage_output_path, 
     adjust_io_paths_,
     adjust_tune_configuration_arg_,
     adjust_early_stopping_rounds_,
-    pick_estimator_class
+    pick_estimator_class,
+    fix_estimator_fixed_params_during_resampling_,
+    create_logger, 
+    check_y_is_integer_encoded
 )
 
 from resample.params import (

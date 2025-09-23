@@ -14,6 +14,22 @@ DEFAULT_TUNE_CONFIGURATION = {
 }
 
 
+## TODO: we do not differentiate between same-named parameters for different estimators. This is "manually" guaranteed.
+# List of HPs that assume mixed typed values.
+HPS_MIXED_TYPES = [
+    "max_features"
+]
+
+
+## TODO: we do not differentiate between same-named parameters for different estimators. This is "manually" guaranteed.
+# List oh HPs that assume complex typed values that require special handling in hps dataframe building
+HPS_COMPLEX_TYPES = [
+    # tabpfn
+    "inference_config__PREPROCESS_TRANSFORMS"
+]
+
+
+
 
 class TuningParams:
     '''
@@ -30,7 +46,7 @@ class TuningParams:
 
     RF_C0 = {
         "max_features": hp.choice("max_features", [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, None, "sqrt", "log2"]),
-        "min_samples_split": hp.randint("min_samples_split", 2, 21),
+        "min_samples_split": hp.choice("min_samples_split", list(range(2, 21))),
         "min_samples_leaf": hp.choice("min_samples_leaf", [1, 2, 3, 4, 5]),
         "max_samples": hp.choice("max_samples", [0.6, 0.7, 0.8, 0.9, 1.0])
     }
@@ -38,7 +54,7 @@ class TuningParams:
     # extended version of C0
     RF_C1 = {
         "max_features": hp.choice("max_features", [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, None, "sqrt", "log2"]),
-        "min_samples_split": hp.randint("min_samples_split", 2, 21),
+        "min_samples_split": hp.choice("min_samples_split", list(range(2, 21))),
         "min_samples_leaf": hp.choice("min_samples_leaf", [1, 2, 3, 4, 5]),
         "max_samples": hp.choice("max_samples", [0.6, 0.7, 0.8, 0.9, 1.0]),
         "bootstrap": hp.choice("bootstrap", [False, True]),
@@ -69,7 +85,7 @@ class TuningParams:
     XGB_C0 = {
         "grow_policy": hp.choice("grow_policy", ["depthwise"]),
         "tree_method": hp.choice("tree_method", ["exact"]),
-        "max_depth": hp.randint("max_depth", 2, 9),
+        "max_depth": hp.choice("max_depth", list(range(2, 9))),
         "learning_rate": hp.loguniform("learning_rate", np.log(0.001), np.log(0.1)),
         "reg_lambda": hp.loguniform("reg_lambda", np.log(0.001), np.log(5)),
         "reg_alpha": hp.loguniform("reg_alpha", np.log(0.001), np.log(5)),
@@ -117,7 +133,7 @@ class TuningParams:
     XGB_C3 = {
         "grow_policy": hp.choice("grow_policy", ["depthwise"]),
         "tree_method": hp.choice("tree_method", ["exact"]),
-        "max_depth": hp.randint("max_depth", 2, 9),
+        "max_depth": hp.choice("max_depth", list(range(2, 9))),
         "learning_rate": hp.loguniform("learning_rate", np.log(0.001), np.log(0.1)),
         "reg_lambda": hp.choice("reg_lambda", [0, hp.loguniform("lambda_positive", np.log(0.001), np.log(5))]),
         "reg_alpha": hp.choice("reg_alpha", [0, hp.loguniform("alpha_positive", np.log(0.001), np.log(5))]),
@@ -133,7 +149,7 @@ class TuningParams:
         "tree_method": hp.choice("tree_method", ["hist"]),
         # not sure about max_bin effects, so choice between the default 256 and a list of smaller values
         "max_bin": hp.choice("max_bin", [256, hp.choice("max_bin_positive", list(range(20, 250, 20)))]),
-        "max_depth": hp.randint("max_depth", 2, 9),
+        "max_depth": hp.choice("max_depth", list(range(2, 9))),
         "learning_rate": hp.loguniform("learning_rate", np.log(0.001), np.log(0.1)),
         "reg_lambda": hp.choice("reg_lambda", [0, hp.loguniform("lambda_positive", np.log(0.001), np.log(5))]),
         "reg_alpha": hp.choice("reg_alpha", [0, hp.loguniform("alpha_positive", np.log(0.001), np.log(5))]),
@@ -185,7 +201,7 @@ class TuningParams:
         "grow_policy": hp.choice("grow_policy", ["SymmetricTree"]),
         "boosting_type": hp.choice("boosting_type", ["Plain"]),
         "max_bin": hp.choice("max_bin", [254, hp.choice("max_bin_positive", list(range(20, 250, 20)))]),
-        "max_depth": hp.randint("max_depth", 2, 11),
+        "max_depth": hp.choice("max_depth", list(range(2, 11))),
         "learning_rate": hp.loguniform("learning_rate", np.log(0.001), np.log(0.1)),
         "leaf_estimation_iterations": scope.int(hp.qloguniform("lei", np.log(1), np.log(10), q=1)),
         "l2_leaf_reg": hp.loguniform("l2_leaf_reg", np.log(1e-4), np.log(5)),
@@ -201,7 +217,7 @@ class TuningParams:
         "boosting_type": hp.choice("boosting_type", ["Plain"]),
         "max_bin": hp.choice("max_bin", [254, hp.choice("max_bin_positive", list(range(20, 250, 20)))]),
         "min_data_in_leaf": hp.choice("min_data_in_leaf", [1, 2, 3, 4, 5]), # work only with Depthwise and Lossguide
-        "max_depth": hp.randint("max_depth", 2, 11),
+        "max_depth": hp.choice("max_depth", list(range(2, 11))),
         "learning_rate": hp.loguniform("learning_rate", np.log(0.001), np.log(0.1)),
         "leaf_estimation_iterations": scope.int(hp.qloguniform("lei", np.log(1), np.log(10), q=1)),
         "l2_leaf_reg": hp.loguniform("l2_leaf_reg", np.log(1e-4), np.log(5)),
@@ -233,7 +249,7 @@ class TuningParams:
         "grow_policy": hp.choice("grow_policy", ["SymmetricTree"]),
         "boosting_type": hp.choice("boosting_type", ["Plain"]),
         "max_bin": hp.choice("max_bin", [254, hp.choice("max_bin_positive", list(range(20, 250, 20)))]),
-        "max_depth": hp.randint("max_depth", 2, 11),
+        "max_depth": hp.choice("max_depth", list(range(2, 11))),
         "learning_rate": hp.loguniform("learning_rate", np.log(0.001), np.log(0.1)),
         "leaf_estimation_iterations": scope.int(hp.qloguniform("lei", np.log(1), np.log(10), q=1)),
         "l2_leaf_reg": hp.loguniform("l2_leaf_reg", np.log(1e-4), np.log(5)),
@@ -249,7 +265,7 @@ class TuningParams:
         "boosting_type": hp.choice("boosting_type", ["Plain"]),
         "max_bin": hp.choice("max_bin", [254, hp.choice("max_bin_positive", list(range(20, 250, 20)))]),
         "min_data_in_leaf": hp.choice("min_data_in_leaf", [1, 2, 3, 4, 5]), # work only with depthwise and lossguide
-        "max_depth": hp.randint("max_depth", 2, 11),
+        "max_depth": hp.choice("max_depth", list(range(2, 11))),
         "learning_rate": hp.loguniform("learning_rate", np.log(0.001), np.log(0.1)),
         "leaf_estimation_iterations": scope.int(hp.qloguniform("lei", np.log(1), np.log(10), q=1)),
         "l2_leaf_reg": hp.loguniform("l2_leaf_reg", np.log(1e-4), np.log(5)),
@@ -317,7 +333,7 @@ class TuningParams:
         "reg_lambda": hp.loguniform("reg_lambda", np.log(0.001), np.log(5)),
         "min_split_gain": hp.loguniform("min_split_gain", np.log(0.001), np.log(5)),
         "min_child_weight": hp.loguniform("min_child_weight", np.log(0.001), np.log(5)),
-        "min_child_samples": hp.randint("min_child_samples", 1, 5),
+        "min_child_samples": hp.choice("min_child_samples", list(range(1, 5))),
         "extra_trees": hp.choice("extra_trees", [False, True]),
         "subsample": hp.choice("subsample", [0.8, 0.9, 1]),
         "subsample_freq": hp.choice("subsample_freq", [1]), # subsample every tree
@@ -325,7 +341,7 @@ class TuningParams:
     }
 
     # weak-regularized configuration.
-    # It is prone to error: Check failed: (best_split_info.{left/right}_count) > (0),
+    # It is prone to error --> Check failed: (best_split_info.{left/right}_count) > (0),
     # with small datasets
     LGMB_C1 = {
         "learning_rate": hp.loguniform("learning_rate", np.log(0.001), np.log(0.1)),
@@ -336,7 +352,7 @@ class TuningParams:
         "reg_alpha": hp.choice("reg_alpha", [0, hp.loguniform("alpha_positive", np.log(0.001), np.log(5))]),
         "min_split_gain": hp.choice("min_split_gain", [0, hp.loguniform("min_split_gain_positive", np.log(0.001), np.log(5))]),
         "min_child_weight": hp.choice("min_child_weight", [0, hp.loguniform("min_child_weight_positive", np.log(0.001), np.log(5))]),
-        "min_child_samples": hp.randint("min_child_samples", 1, 5),
+        "min_child_samples": hp.choice("min_child_samples", list(range(1, 5))),
         "extra_trees": hp.choice("extra_trees", [False, True]),
         "subsample": hp.choice("subsample", [0.8, 0.9, 1]),
         "subsample_freq": hp.choice("subsample_freq", [1, 2, 3, 4, 5]),
@@ -453,7 +469,6 @@ class DefaultParams:
         "ignore_pretraining_limits": True
     }
 
-
     AESFINETUNEDTABPFN_DEFAULT_PARAMS = {
         "finetune_setup": {"max_steps": 10000}, # high value to stop on other conditions
         "tabpfn_classifier_params": {
@@ -463,7 +478,7 @@ class DefaultParams:
         # we finetune the post-trained model (realtabpfn) since is the one used for other tabpfn-based estimators
         "model_path": "default", 
         "learning_rate": 1e-5, # default
-        "batch_size": 1, # default (actually enforced)
+        "batch_size": 1, # default (currently enforced)
         "n_accumulation_steps": 10,  # more than default (1) since tabpfn is a meta-estimator
         "log": False
     }

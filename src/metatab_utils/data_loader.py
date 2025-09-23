@@ -35,7 +35,6 @@ class DataLoader():
         self.test_dataset_name: str = None
 
     
-    
     def load(self, mode: Literal["df", "xy", "sets"], **load_params) -> None:
         '''
         Allow to call a specific 'load' method using the mode parameter.
@@ -88,7 +87,6 @@ class DataLoader():
         self._set_xyd_attributes(X, y, dname, load_as)
 
 
-
     def load_xy_mode(
         self, 
         path: str | Path, 
@@ -123,7 +121,6 @@ class DataLoader():
         X = pd.read_csv(x_path, sep="\t")
         y = pd.Series(pd.read_csv(y_path, sep="\t").iloc[:, 0])
         self._set_xyd_attributes(X, y, dname, load_as)
-
 
 
     def load_sets_mode(
@@ -192,7 +189,6 @@ class DataLoader():
             setattr(self, set_name, data)
 
 
-
     def _set_xyd_attributes(
         self, 
         x_value: Any, 
@@ -208,7 +204,6 @@ class DataLoader():
         setattr(self, x_attr, x_value)
         setattr(self, y_attr, y_value)
         setattr(self, name_attr, dname_value)
-
 
 
     @staticmethod

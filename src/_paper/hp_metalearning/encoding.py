@@ -1,0 +1,205 @@
+import numpy as np
+import pandas as pd
+from typing import Literal, Any
+from copy import deepcopy
+from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.preprocessing import OrdinalEncoder, OneHotEncoder
+from sklearn.feature_selection import VarianceThreshold
+from sklearn.compose import ColumnTransformer
+
+from hp_search.tabpfn_search_space import (
+    enumerate_preprocess_transforms, 
+    return_clf_paths_list
+)
+
+
+
+
+class NanToNone(BaseEstimator, TransformerMixin):
+    '''
+    Scikit-like transformer to convert nan to None.
+    Works only on pandas DataFrames (no numpy arrays).
+
+    Parameters:
+        columns (str | list[str]): Columns on which apply the transformation.
+        check_on_fit (bool): Whether execute the data checks at fit level.
+    '''
+    def __init__(self, columns: str | list[str], check_on_fit: bool):
+        self.columns = columns
+        self.check_on_fit = check_on_fit
+
+
+    def fit(self, X: pd.DataFrame, y: None) -> "NanToNone":
+        self._list_columns = self.columns if isinstance(self.columns, list) else [self.columns]
+        if self.check_on_fit:
+            _check_X_type(X)
+            _check_columns_presence(X, self._list_columns)
+        return self
+
+
+    def transform(self, X: pd.DataFrame, y: None = None) -> pd.DataFrame:
+        _check_X_type(X)
+        _check_columns_presence(X, self._list_columns)
+        X_copy = deepcopy(X)
+        X_copy[self._list_columns] = X_copy[self._list_columns].replace({np.nan: None})
+        return X_copy
+
+
+
+
+class ColToStr(BaseEstimator, TransformerMixin):
+    '''
+    Scikit-like transformer casting DataFrame columns 
+    to object-dtyped columns and column values to str type.
+    Works only on DataFrame (no numpy arrays).
+
+    Parameters:
+        columns (str | list[str]): Columns to transform.
+        check_on_fit (bool): Whether execute the data checks at fit level.
+    '''
+    def __init__(self, columns: str | list[str], check_on_fit: bool):
+        self.columns = columns
+        self.check_on_fit = check_on_fit
+
+
+    def fit(self, X: pd.DataFrame, y: None = None) -> "ColToStr":
+        self._list_columns = self.columns if isinstance(self.columns, list) else [self.columns]
+        if self.check_on_fit:
+            _check_X_type(X)
+            _check_columns_presence(X, self._list_columns)
+        return self
+    
+
+    def transform(self, X: pd.DataFrame, y: None = None) -> pd.DataFrame:
+        _check_X_type(X)
+        _check_columns_presence(X, self._list_columns)
+        X_copy = deepcopy(X)
+        X_copy = X_copy.astype({col: "str" for col in self._list_columns})
+        return X_copy
+
+
+
+def _check_columns_presence(X: pd.DataFrame, cols: list[str]) -> None:
+    for col in cols:
+        if col not in X.columns:
+            raise ValueError(f"'{col}' column not found in X.")
+
+
+def _check_X_type(X: Any) -> None:
+    if not isinstance(X, pd.DataFrame):
+        raise TypeError("X must be a pandas DataFrame.")
+
+
+
+
+COLUMN_TRANSFORMER_FIXED_PARAMS = {
+    "remainder": "passthrough",
+    "n_jobs": 1, # avoid cluster cores problem
+    "force_int_remainder_cols": False, # to suppress a FutureWarning
+    "sparse_threshold": 0  # to avoid output conversion to sparse matrix objects 
+}
+
+
+PREPROCESSING_COLUMN_ENCODING = (
+    "preprocessing_column", 
+    OneHotEncoder(categories=[["base", "pca", "density_filter"]]),
+    ["preprocessing"]
+)
+
+
+def create_preprocessing_encoding() -> ColumnTransformer:
+    '''Create a ColumnTransformer executing the "preprocessing" column encoding only.'''
+    return ColumnTransformer(
+        transformers=[PREPROCESSING_COLUMN_ENCODING],
+        **COLUMN_TRANSFORMER_FIXED_PARAMS
+    )
+
+
+
+HPS_ENCODING_SCHEME_RANDOM_FOREST = [
+    NanToNone("max_features", check_on_fit=True), 
+    ColToStr("max_features", check_on_fit=True),
+    ColumnTransformer(
+        transformers=[
+            (
+                "onehot",
+                # we cast and save this col as str
+                OneHotEncoder(categories=[["0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9", "None", "sqrt", "log2"]]), 
+                ["max_features"]
+            ),
+            PREPROCESSING_COLUMN_ENCODING
+        ],
+        ** COLUMN_TRANSFORMER_FIXED_PARAMS
+    ),
+    VarianceThreshold()
+]
+
+
+
+HPS_ENCODING_SCHEME_TABPFN = [
+    NanToNone(
+        columns=[
+            "inference_config__OUTLIER_REMOVAL_STD", 
+            "inference_config__SUBSAMPLE_SAMPLES"
+        ], 
+        check_on_fit=True
+        ),
+    ColToStr(
+        columns=[
+            "inference_config__OUTLIER_REMOVAL_STD", 
+            "inference_config__SUBSAMPLE_SAMPLES", 
+            "inference_config__PREPROCESS_TRANSFORMS"
+        ],
+        check_on_fit=True
+    ),
+    ColumnTransformer(
+        transformers=[
+            (  
+                "onehot",
+                OneHotEncoder(
+                    categories=[
+                        # we save the lists as string in the meta-data so it should work 
+                        [str(list_of_dicts) for list_of_dicts in enumerate_preprocess_transforms()],
+                        ["None", "7.0", "9.0", "12.0"],
+                        return_clf_paths_list()
+                    ]
+                ),
+                [
+                    "inference_config__PREPROCESS_TRANSFORMS", 
+                    "inference_config__OUTLIER_REMOVAL_STD", 
+                    "model_path"
+                ]
+            ),
+            (
+                "binary",
+                OrdinalEncoder(categories=[["0.99", "None"], ["no"]]),
+                ["inference_config__SUBSAMPLE_SAMPLES", "inference_config__POLYNOMIAL_FEATURES"]
+            ),
+            PREPROCESSING_COLUMN_ENCODING
+        ],
+        **COLUMN_TRANSFORMER_FIXED_PARAMS
+    ),
+    VarianceThreshold()
+]
+
+
+
+## TODO: complete once defined default tuninng space
+HPS_ENCODING_SCHEME = {
+    "random_forest": HPS_ENCODING_SCHEME_RANDOM_FOREST,
+    "xgb": [create_preprocessing_encoding()], ## to complete
+    "catboost": [create_preprocessing_encoding()],  ## to complete
+    "lgbm": [create_preprocessing_encoding()],
+    "tabpfn": HPS_ENCODING_SCHEME_TABPFN
+}
+
+
+
+def get_encoding_scheme(
+        estimator: Literal["random_forest", "xgb", "catboost", "lgbm", "tabpfn"]
+    ) -> list:
+    '''
+    Get a deepcopy of the encoding scheme of the HP feature space designed for the input estimator.
+    The encoding scheme consists in a ordered list of sklearn transformer to insert in a Pipeline object.
+    '''
+    return deepcopy(HPS_ENCODING_SCHEME[estimator])

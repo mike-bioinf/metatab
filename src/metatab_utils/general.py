@@ -1,177 +1,87 @@
-from __future__ import annotations
-
-import os
-import logging
-import numpy as np
 import pandas as pd
-from pathlib import Path
 from copy import deepcopy
-from typing import TYPE_CHECKING
-from estimators import MyAutoTabPFNClassifier, Estimator
-
-if TYPE_CHECKING:
-    from pandas._libs.missing import NAType
+from typing import  Any
 
 
 
-def check_y_is_integer_encoded(y: pd.Series, is_predict_scenario: bool = False) -> None:
+def add_broadcasted_objects_as_column(
+    df: pd.DataFrame, 
+    dictionary: dict[Any, Any],
+    convert_bool_to_str: bool = False,
+    convert_none_to_str: bool = False,
+    force_object_datatype: list = [],
+    check_matching_keys_cols: bool = True,
+    check_non_builtin_types: bool = True,
+    allowed_non_builtin_types: tuple = tuple(),
+    copy: bool = True 
+) -> pd.DataFrame:
     '''
-    Checks that y is integer encoded. 
-    This is essential to avoid errors in metrics computation.
-    Raises different error messages depending on the scenario.
-    '''
-    y = np.asarray(y)
-    
-    if not np.issubdtype(y.dtype, np.integer):
-        message = "Target variable y must be integer-encoded (e.g., 0, 1, 2, ...)."
-        if is_predict_scenario:
-            message += (
-                " Note: in binary classification, class `1` is treated as the reference class"
-                " in performance metrics computation."
-            )
-        raise ValueError(message)
-
-
-
-class FlushStreamHandler(logging.StreamHandler):
-    '''
-    A stream handler that flush when emits.
-    Useful to deliver real time logging in HPC environment.
-    '''
-    def emit(self, record):
-        super().emit(record)
-        super().flush()
-
-
-def create_logger(stream) -> logging.Logger:
-    '''
-    Create a logger to a stream.
-    Parameters:
-        stream: Either sys.stdout or sys.stderr.
-    Returns: The logger instance.
-    '''
-    logger = logging.getLogger("metatab")
-    logger.setLevel(logging.DEBUG)
-    stream_handler = FlushStreamHandler(stream)
-    stream_handler.setLevel(logging.DEBUG)
-    logger.addHandler(stream_handler)
-    logger.propagate = False
-    return logger
-
-
-
-def fix_estimator_fixed_params_in_fit_program_(
-    estimator: Estimator,
-    fit_program_params: dict
-) -> None:
-    '''
-    Some estimators require their fixed parameters to be updated according fit program inputs. 
-    This function performs that adjustment and stores the updated values in the instance-level 
-    attribute fixed_params (while the "original" parameter remain defined at the class level).
-    In case the estimator needs no adjustment a deepcopy of the class-level attribute is 
-    created at instance level.
+    Utility to add and broadcast complex objects into dataframe columns.
+    The new columns will contain repetition of the same object regardless of its type.
 
     Parameters:
-        estimator (Estimator): 
-            The estimator instance.
-        fit_program_params (dict):
-            Dictionary containing the input parameters for the fit program.
-    '''
-    new_fixed_params = deepcopy(estimator.fixed_params)
+        df (pd.DataFrame): Dataframe.
 
-    if isinstance(estimator, MyAutoTabPFNClassifier):
-        # we create the autogluon directory in parent folder of the output file
-        # using the root of the output filename in its name to prevent overwriting issues 
-        out_file: Path = fit_program_params["output_path"]
-        autogluon_models_folder = out_file.parent / f"autogluon_tabpfn_{out_file.stem}"
-        new_fixed_params = _add_autogluon_path_to_params(
-            params=new_fixed_params,
-            path=autogluon_models_folder,
-            repeat=None,
-            fold=None
-        )
+        dictionary (dict[Any, Any]): Dict of objects.
 
-    # setting the new params in an instance-level attribute
-    estimator.fixed_params = new_fixed_params
+        convert_bool_to_str (bool, optional):
+            Whether to convert booleans to their string representation.
 
-
-
-def fix_estimator_fixed_params_during_resampling_(
-    estimator: Estimator,
-    repeat: int | NAType,
-    fold: int,
-    resample_program_params: dict
-) -> None:
-    '''
-    Some estimators require their fixed parameters to be updated during resampling.
-    This function performs that adjustment and stores the updated values in the instance-level 
-    attribute fixed_params (while the "original" parameters remain defined at the class level).
-    In case the estimator needs no adjustment a deepcopy of the class-level attribute is 
-    created at instance level.
-
-    Parameters:
-        estimator (Estimator): 
-            The estimator instance.
+        convert_none_to_str (bool, optional):
+            Whether to convert None object to "None" (string representation).
         
-        repeat (int | NAType): 
-            The resampling repeat. 
-            An integer if the strategy is cross-validation, or Na if it is holdout.
+        force_object_datatype (list, optional):
+            A list of the new column names (dict keys) to be forced to "object" datatype.
+            Note that this applies only to the columns created starting
+            from the dict keys, both new and overwritten ones. 
+
+        check_matching_keys_cols (bool, optional): 
+            Whether to check if the dictionary keys match the dataframe column index. 
+            The match is checked via the equality operator ("==").
+            IF True an error is raised when the condition is met.
         
-        fold (int): 
-            The resampling fold. 
-            Represents the inner iteration within a repeat for cross-validation, 
-            or the general iteration in holdout.
+        check_non_builtin_types (bool, optional):
+            Whether to check for non builtin objects in the dict.
+            If True an error is raised when the condition is met.
+        
+        allowed_non_builtin_types (tuple, optional): 
+            Tuple of non builtin types not triggering the builtin type check.
+            Ignored if "check_non_builtin_types" is False.
+        
+        copy (bool, optional):
+            Whether to work and return a copy of the input dataframe.
 
-        resample_program_params (dict): 
-            Dictionary containing the input parameters for the resample program.  
+    Returns:
+        pd.DataFrame: The new/updated dataframe.
     '''
-    new_fixed_params = deepcopy(estimator.fixed_params)
+    df = deepcopy(df) if copy else df
+    dict_keys = dictionary.keys()
 
-    if isinstance(estimator, MyAutoTabPFNClassifier):
-        out_path: Path = resample_program_params["output_path"]
-        autogluon_top_folder = out_path / "autogluon_tabpfn"
-        os.makedirs(autogluon_top_folder, exist_ok=True)
-        new_fixed_params = _add_autogluon_path_to_params(
-            new_fixed_params,
-            autogluon_top_folder,
-            repeat, 
-            fold
-        )
+    if check_matching_keys_cols:
+        for col in df.columns:
+            if col in dict_keys:
+                raise ValueError(f"'{col}' triggers a key-column match.")
 
-    # setting the new params in an instance-level attribute
-    estimator.fixed_params = new_fixed_params
+    if check_non_builtin_types:
+        for v in dictionary.values():
+            if (
+                not v.__class__.__module__ == "builtins" and
+                (allowed_non_builtin_types and not isinstance(v, allowed_non_builtin_types))
+            ):
+                raise ValueError(f"Found non-allowed non-builtin type object in dictionary.")
 
+    n_rows = df.shape[0]
 
+    # our strategy is to wrap the generic object in a list and expand it to have 
+    # the same n_rows of the dataframe. In this way pandas will not consider the 
+    # nature of the objects inside the list.
+    for k, v in dictionary.items():
+        if convert_bool_to_str and isinstance(v, bool):
+            v = str(v)
+        if convert_none_to_str and v is None:
+            v = str(v)
+        df[k] = pd.Series([v] * n_rows, dtype="object") \
+            if k in force_object_datatype \
+            else [v] * n_rows
 
-def _add_autogluon_path_to_params(
-    params: dict, 
-    path: Path,
-    repeat: int | NAType | None,
-    fold: int | None
-) -> dict:
-    '''
-    Add the "path" parameter in the AutoTabPFNClassifier params dict,
-    needed by autogluon to save the fitted classifiers.
-    Distinguishes fit and resample cv/houldout scenarios 
-    based on the type of repeat and fold argument.
-    Returns the modified params dict.
-    '''
-    phe_init_args = params.get("phe_init_args", {})
-
-    if repeat is None and fold is None:
-        # we are in the fit program
-        folder_models = path
-    elif repeat is pd.NA and isinstance(fold, int):
-        # we are in the resample program with holdout
-        folder_models = path / f"classifiers_iteration{fold}"
-    elif isinstance(repeat, int) and isinstance(fold, int):
-        # we are in the resample program with cv
-        folder_models = path /f"classifiers_repeat{repeat}_fold{fold}"
-    else:
-        raise ValueError(
-            "Unrecognazible combination of types for repeat and fold arguments."
-        )
-    
-    phe_init_args["path"] = folder_models
-    params["phe_init_args"] = phe_init_args
-    return params
+    return df

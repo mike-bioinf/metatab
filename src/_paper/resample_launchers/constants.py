@@ -1,0 +1,23 @@
+CPU_ESTIMATORS = [
+    "random_forest",
+    "xgboost",
+    "es_xgboost",
+    "catboost",
+    "es_catboost",
+    "lgbm",
+    "es_lgbm"
+]
+
+SINGLE_GPU_ESTIMATORS = [
+    "tabpfn"
+]
+
+MULTIPLE_GPU_ESTIMATORS = [
+    "autotabpfn"
+]
+
+ALL_GPU_ESTIMATORS = SINGLE_GPU_ESTIMATORS + MULTIPLE_GPU_ESTIMATORS
+
+NUMBER_CPUS_ON_PARALLEL_PARTITION = 10
+
+NUMBER_CPUS_ON_GPUS_PARTITON = 6
