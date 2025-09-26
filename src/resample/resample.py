@@ -2,6 +2,7 @@ import os
 import sys
 import pandas as pd
 import numpy as np
+from collections import defaultdict
 from time import time
 from estimators import Estimator
 from metatab_utils.prediction import PredictionDataframe
@@ -32,9 +33,7 @@ from resample.resample_helper import (
     log_program_setting
 )
 
-from resample.save import (
-    create_dict_hpo, 
-    create_dict_results,  
+from resample.save import ( 
     populate_dict_lists_,
     get_resample_iteration_signature,
     get_estimator_filepath, 
@@ -83,9 +82,8 @@ def main():
     estimator_class = pick_estimator_class(pars)
     rng_estimator = np.random.default_rng(pars["seed"])
 
-    dict_results = create_dict_results(pars)
-    dict_hpo = create_dict_hpo(pars)
-
+    dict_results = defaultdict(list)
+    if pars["tune"]: dict_hpo = defaultdict(list)
 
     # run resampling
     for i, (train_idx, test_idx) in enumerate(splitter.split(X, y)):
@@ -116,10 +114,11 @@ def main():
         fit_time = time() - t
         
         fit_preprocessing_dict: dict = estimator.collect_fit_preprocessing_info()
-        best_hps = estimator.get_best_hps()
-        search_losses = estimator.get_search_losses()
-        
-        if search_losses is not None:
+
+        if pars["tune"]:
+            best_hps = estimator.get_best_hps()
+            refit_time = estimator.get_refit_time()
+            search_losses = estimator.get_search_losses()
             best_loss = np.nanmin(search_losses)
             search_losses_dict = {f"loss_{i}": value_loss for i, value_loss in enumerate(search_losses)}
     
@@ -148,6 +147,7 @@ def main():
                 dictionary=dict_hpo,
                 repetition=repetition,
                 fold=fold,
+                refit_time=refit_time,
                 **best_hps,
                 best_loss=best_loss,
                 **search_losses_dict

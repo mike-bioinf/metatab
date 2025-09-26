@@ -19,6 +19,7 @@ if TYPE_CHECKING:
 
 
 
+
 class AbstractBaseEstimator(ABC):
     '''
     Abstract base class for estimators classes.
@@ -95,19 +96,41 @@ class AbstractBaseEstimator(ABC):
 
     # to override if needed by concrete classes
     def get_best_hps(self) -> dict | None:
-        '''Get the best HPs resulting from tuning'''
+        '''
+        Get the best HPs resulting from tuning.
+        Raise an error if estimator_ is not a SearchCV instance.
+        '''
         check_is_fitted(self, "estimator_")
         if isinstance(self.estimator_, SearchCV):
             return self.estimator_.best_params_
+        else:
+            raise TypeError("estimator_ is not a SearchCV instance.")
 
     
     # to override if needed by concrete classes
     def get_search_losses(self) -> np.ndarray | None:
-        '''Get the tuning search losses'''
+        '''
+        Get the tuning search losses.
+        Raise an error if estimator_ is not a SearchCV instance.
+        '''
         check_is_fitted(self, "estimator_")
         if isinstance(self.estimator_, SearchCV):
             return np.array(self.estimator_.search_losses_)
+        else:
+            raise TypeError("estimator_ is not a SearchCV instance.")
     
+
+    def get_refit_time(self) -> float | None:
+        '''
+        Get the refit time of the best tuning configuration.
+        Raise an error if estimator_ is not a SearchCV instance.
+        '''
+        check_is_fitted(self, "estimator_")
+        if isinstance(self.estimator_, SearchCV):
+            return self.estimator_.refit_time_
+        else:
+            raise TypeError("estimator_ is not a SearchCV instance.")
+
 
     def update_fixed_params(
         self,

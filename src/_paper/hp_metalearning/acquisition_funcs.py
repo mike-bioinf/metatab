@@ -19,7 +19,7 @@ def compute_upper_confidence_bound(
         mean (np.ndarray): 
             Array of mean values, aka the predictions of the surrogate model
         
-        uncertainty (np.ndarray): 
+        uncertainty (np.ndarray):
             Array of uncertainty values over the mean values.
         
         mean_direction (Literal["higher_is_better", "lower_is_better"]):
@@ -67,6 +67,8 @@ def _infer_k_factor(n_points: int) -> float:
         # we take the best performance-wise ignoring the uncertainty
         k = 0
     elif n_points <= 5:
+        k = 1
+    elif n_points <= 10:
         k = 1.2
     else:
         k = 1.8

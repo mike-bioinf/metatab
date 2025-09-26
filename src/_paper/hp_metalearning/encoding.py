@@ -1,3 +1,7 @@
+"""
+In this module we set the encoding (preprocessing) to apply to the meta-data obtained 
+from the different estimators, considering ONLY the default estimators tune spaces.
+"""
 import numpy as np
 import pandas as pd
 from typing import Literal, Any
@@ -184,12 +188,12 @@ HPS_ENCODING_SCHEME_TABPFN = [
 
 
 
-## TODO: complete once defined default tuninng space
+## TODO: complete once defined default tuning space
 HPS_ENCODING_SCHEME = {
     "random_forest": HPS_ENCODING_SCHEME_RANDOM_FOREST,
     "xgb": [create_preprocessing_encoding()], ## to complete
     "catboost": [create_preprocessing_encoding()],  ## to complete
-    "lgbm": [create_preprocessing_encoding()],
+    "lgbm": [create_preprocessing_encoding(), VarianceThreshold()],
     "tabpfn": HPS_ENCODING_SCHEME_TABPFN
 }
 

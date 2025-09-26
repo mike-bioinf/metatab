@@ -1,3 +1,4 @@
+import time
 import pandas as pd
 from copy import deepcopy
 from numpy.random import RandomState
@@ -185,7 +186,8 @@ def fit_with_early_stop_on_validation_set(
     seed: int,
     validation_set_size: float,
     eval_set_parameter: str,
-    fit_classifier_kwargs: dict
+    fit_classifier_kwargs: dict,
+    return_fit_time: bool = False
  ) -> Classifier | Pipeline:
     '''
     Utility to fit an estimator using early stop on a validation set.
@@ -214,8 +216,13 @@ def fit_with_early_stop_on_validation_set(
             A dict unpackaged in the classifier fit calls.
             The dict keys must be already adapted to the pipeline if any.
 
+        return_fit_time (bool, optional):
+            Whether tp return the fit time also along the fitted clf_or_pipe.
+            If True returns a tuple [clf_or_pipe, fit_time], otherwise clf_or_pipe directly.
+
     Returns:
-        Classifier|Pipeline: The fitted estimator.
+        Classifier|Pipeline|tuple: 
+        The fitted estimator alone or in a tuple with the fit time.
     '''
     X_train, X_val, y_train, y_val = train_test_split(
         X, 
@@ -225,6 +232,9 @@ def fit_with_early_stop_on_validation_set(
         stratify=y
     )
     
+    # we always consider the preprocessing in the fit time
+    start_fit_time = time.time()
+
     if isinstance(clf_or_pipe, Pipeline):
         # we split the classifier from the preprocessing pipeline 
         # to avoid to repeat the preprocessing 2 times.
@@ -254,4 +264,9 @@ def fit_with_early_stop_on_validation_set(
             **fit_classifier_kwargs
         )
     
-    return clf_or_pipe
+    fit_time = time.time() - start_fit_time
+
+    if return_fit_time:
+        return [clf_or_pipe, fit_time]
+    else:
+        return clf_or_pipe

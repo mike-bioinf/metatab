@@ -1,4 +1,5 @@
 import warnings
+import time
 import numpy as np
 import pandas as pd
 from copy import deepcopy
@@ -114,6 +115,9 @@ class SearchCV:
             List of the losses registered during the search.
             Contains np.nan for failed iterations.
             The search order is respected.
+
+        refit_time_ (float):
+            Time of refit on the best configuration in seconds.
     '''
     def __init__(
         self,
@@ -179,20 +183,23 @@ class SearchCV:
 
         # refit with the best point
         best_estimator = deepcopy(self.clf_or_pipe)
-        self._set_params_into_clf(best_estimator, self.best_params_)
-
+        self._set_params_into_clf(best_estimator, self.best_params_)   
+        
         if self.early_stop_on_validation_set:
-            self.best_estimator_ = fit_with_early_stop_on_validation_set(
+            self.best_estimator_, self.refit_time_ = fit_with_early_stop_on_validation_set(
                 clf_or_pipe=best_estimator,
                 X=X,
                 y=y,
                 seed=self.seed,
                 validation_set_size=self.validation_set_size,
                 eval_set_parameter=self.eval_set_parameter,
-                fit_classifier_kwargs=self.fit_classifier_kwargs
+                fit_classifier_kwargs=self.fit_classifier_kwargs,
+                return_fit_time=True
             )
         else:
+            start_refit_time = time.time()
             self.best_estimator_ = best_estimator.fit(X, y, **self.fit_classifier_kwargs)
+            self.refit_time_ = time.time() - start_refit_time
         
         return self
 

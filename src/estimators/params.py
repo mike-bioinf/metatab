@@ -21,14 +21,6 @@ HPS_MIXED_TYPES = [
 ]
 
 
-## TODO: we do not differentiate between same-named parameters for different estimators. This is "manually" guaranteed.
-# List oh HPs that assume complex typed values that require special handling in hps dataframe building
-HPS_COMPLEX_TYPES = [
-    # tabpfn
-    "inference_config__PREPROCESS_TRANSFORMS"
-]
-
-
 
 
 class TuningParams:
@@ -69,6 +61,10 @@ class TuningParams:
     # can set a lower number of bins. This is True especially for "hist" and "exact" variants. 
     # Therefore we mainly explore the quantization variants in combination with different growing policy. 
     # We do not explore less regularized configuration for "approx" algo since it's slow.
+
+
+    ### TODO: In c4 we mistakenly use max_depth instead of max_leaves.
+
 
     XGB_FIXED_PARAMS = {
         "n_estimators": 1000,
@@ -149,6 +145,7 @@ class TuningParams:
         "tree_method": hp.choice("tree_method", ["hist"]),
         # not sure about max_bin effects, so choice between the default 256 and a list of smaller values
         "max_bin": hp.choice("max_bin", [256, hp.choice("max_bin_positive", list(range(20, 250, 20)))]),
+        #### ERROR HERE (max_depth instead of max_leaves) ?????
         "max_depth": hp.choice("max_depth", list(range(2, 9))),
         "learning_rate": hp.loguniform("learning_rate", np.log(0.001), np.log(0.1)),
         "reg_lambda": hp.choice("reg_lambda", [0, hp.loguniform("lambda_positive", np.log(0.001), np.log(5))]),
@@ -170,6 +167,10 @@ class TuningParams:
     # We tune also the max_bin parameter (quantization aspect) setting a choice between 
     # the default and a list of lower values since the effect of selecting smaller values 
     # is not clear at priori.
+
+
+    ### TODO: reduce max_leaves from 512 to 128 (with 512 n. leaves > n. samples in most cases)
+    ### TODO: reduce list for max_depth in lossguide, set 16 the default or explore smaller values along this.
 
 
     ## we list also the library defaults that we use just to be explicit
@@ -298,7 +299,14 @@ class TuningParams:
     # with strong and weak regularization.
     # Similar to catboost and xgboost we tune the max_bin using a choice between
     # default and a list of smaller values.
+    
+    
+    ### TODO: reduce max_leaves from 512 to 128 (with 512 n. leaves > n. samples in most cases)
+    ### TODO: include 5 for "min_child_samples" since this was the original intention
+    ### and to have uniformity with other gbdts
 
+
+    
     # we list also the library defaults that we use just to be explicit
     LGBM_FIXED_PARAMS = {
         "n_estimators": 1000, # higher than default 100
@@ -373,10 +381,10 @@ class TuningParams:
 
 
 
-# dict of the default tuning spaces for each tunable estimator.
-# TODO: The default spaces must be updated with the pre-analysis results
+# Dict of default tuning spaces for each tunable estimator.
+# The default spaces are identified based on our paper preanalysis
 DEFAULT_ESTIMATORS_TUNE_SPACES = {
-    "random_forest": TuningParams.RF_C0,
+    "random_forest": TuningParams.RF_C1,
     "xgb": TuningParams.XGB_C0, 
     "es_xgb": TuningParams.XGB_C0, 
     "catboost": TuningParams.CATBOOST_C0, 
