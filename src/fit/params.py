@@ -43,7 +43,7 @@ def parse_args(args):
                    'configuration': Name of the space of HPs to use. They follow the schema 'c{number}' (i.e 'c0').
                     Note that for some estimators only one space (c0) is available.
                     Is also possible to use the selected default space of each estimator using the value "default".
-                    'algo': Search algorithm to use. One of 'random', 'tpe' (default) and 'meta'.
+                    'algo': Search algorithm to use. One of 'random', 'tpe' (default) and 'meta' (works only with the default configuration).
                     'n_iter': Number of iterations tested for the selected configuration. Must be an integer.
                     'n_repeats': Number of cv repeats used to test each sampled configuration. Must be an integer.
                     'n_splits': Number of cv splits used to test each sampled configuration. Must be an integer.

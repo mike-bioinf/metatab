@@ -7,7 +7,7 @@ from metatab_utils.helper_programs import (
     adjust_io_paths_, 
     manage_output_path,
     check_fit_resample_args,
-    check_tune_algo,
+    check_tune_configuration,
     adjust_tune_configuration_arg_,
     adjust_early_stopping_rounds_,
     pick_estimator_class,
@@ -20,6 +20,7 @@ from metatab_utils.helper_programs import (
 
 
 def main():
+    logger = create_logger(sys.stdout)
     pars = vars(parse_args(sys.argv[1:]))
     check_fit_resample_args(pars)
 
@@ -27,9 +28,8 @@ def main():
     manage_output_path(pars, "output_path", False)
     adjust_tune_configuration_arg_(pars)
     adjust_early_stopping_rounds_(pars)
-    check_tune_algo(pars)
+    check_tune_configuration(pars, logger)
     
-    logger = create_logger(sys.stdout)
     dl = DataLoader()
 
     dl.load(

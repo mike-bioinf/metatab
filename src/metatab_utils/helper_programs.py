@@ -113,17 +113,49 @@ def check_incompatible_estimator_preprocessing(pars: dict) -> None:
         raise ValueError(f"PCA preprocessing cannot be used with '{estimator}' estimator.")
 
 
-def check_tune_algo(pars: dict) -> None:
-    '''Check on the validity of the tuning algo'''
+
+def check_tune_configuration(pars: dict, logger: logging.Logger) -> None:
+    '''
+    General check on the tune configuration.
+    In detail checks that:
+    1) A valid algo is selected.
+    2) Meta algo is selected with the default tune space.
+    '''
+    # do nothing when tune is not requested or used with our default configuration
     if not pars["tune"] or pars["tune_configuration"] is None:
         return None
-    else:
-        input_tune_algo = pars["tune_configuration"]["algo"]
-        if input_tune_algo not in ["random", "tpe", "meta"]:
-            raise ValueError(
-                "The tuning search algorithm must be one of 'random', 'tpe' or 'meta'." +
-                f" Currently {input_tune_algo}."
+    
+    estimator = pars["estimator"]
+    estimator_default_space = DEFAULT_ESTIMATORS_TUNE_SPACES[estimator][0]
+    preprocessing = pars["preprocessing"]
+    opt_algo = pars["tune_configuration"]["algo"]
+    space = pars["tune_configuration"]["configuration"]
+
+    if opt_algo not in ["random", "tpe", "meta"]:
+        raise ValueError(
+            "The tuning search algorithm must be one of 'random', 'tpe' or 'meta'." +
+            f" Currently {opt_algo}."
+        )
+
+    if opt_algo == "meta" and space not in ["default", estimator_default_space]:
+        raise ValueError(
+            "'meta' algo can be used only with the estimator default tune space" + 
+            f" ({estimator} --> {estimator_default_space})."
+        )
+
+    if (
+        opt_algo == "meta" and
+            (
+                (estimator == "tabpfn" and preprocessing != "density_filter") or
+                (estimator != "tabpfn" and preprocessing != " base")
             )
+        ):
+        logger.debug(
+            "'meta' tuning algo is less effective when the following estimator-preprocessing couples are NOT respected:" +
+            " tabpfn --> density_filter," +
+            " others estimators --> base."
+        )
+
 
 
 def check_y_is_integer_encoded(y: pd.Series, is_predict_scenario: bool = False) -> None:
@@ -258,7 +290,7 @@ def _pick_params_distributions_configuration(pars: dict) -> dict:
             return TuningParams.TABPFN_C0
         
         case (_, "default"):
-            return DEFAULT_ESTIMATORS_TUNE_SPACES[estimator]
+            return DEFAULT_ESTIMATORS_TUNE_SPACES[estimator][1]
             
         case _:
             raise ValueError(

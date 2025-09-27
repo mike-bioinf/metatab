@@ -10,7 +10,7 @@ from metatab_utils.data_loader import DataLoader
 
 from metatab_utils.helper_programs import (
     check_fit_resample_args,
-    check_tune_algo,
+    check_tune_configuration,
     manage_output_path, 
     adjust_io_paths_,
     adjust_tune_configuration_arg_,
@@ -44,6 +44,7 @@ from resample.save import (
 
 
 def main():
+    logger = create_logger(sys.stdout)
     pars = vars(parse_args(sys.argv[1:]))
     check_fit_resample_args(pars)
 
@@ -52,7 +53,7 @@ def main():
     adjust_splitting_specs_(pars)
     adjust_tune_configuration_arg_(pars)
     adjust_early_stopping_rounds_(pars)
-    check_tune_algo(pars)
+    check_tune_configuration(pars, logger)
 
     if pars["save_estimators"]:
         os.makedirs(pars["output_dir"] / "estimators", exist_ok=True)
@@ -61,7 +62,6 @@ def main():
         folder_stats_finetune = pars["output_dir"] / "stats_finetune"
         os.makedirs(folder_stats_finetune, exist_ok=True)
 
-    logger = create_logger(sys.stdout)
     dl = DataLoader()
 
     dl.load(

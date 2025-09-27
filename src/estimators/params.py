@@ -384,14 +384,14 @@ class TuningParams:
 # Dict of default tuning spaces for each tunable estimator.
 # The default spaces are identified based on our paper preanalysis
 DEFAULT_ESTIMATORS_TUNE_SPACES = {
-    "random_forest": TuningParams.RF_C1,
-    "xgb": TuningParams.XGB_C0, 
-    "es_xgb": TuningParams.XGB_C0, 
-    "catboost": TuningParams.CATBOOST_C0, 
-    "es_catboost": TuningParams.CATBOOST_C0,
-    "lgbm": TuningParams.LGMB_C0, 
-    "es_lgbm": TuningParams.LGMB_C0,
-    "tabpfn": TuningParams.TABPFN_C0
+    "random_forest": ("c1", TuningParams.RF_C1),
+    "xgb": ("c0", TuningParams.XGB_C0), 
+    "es_xgb": ("c0", TuningParams.XGB_C0), 
+    "catboost": ("c0", TuningParams.CATBOOST_C0), 
+    "es_catboost": ("c0", TuningParams.CATBOOST_C0),
+    "lgbm": ("c0", TuningParams.LGMB_C0), 
+    "es_lgbm": ("c0", TuningParams.LGMB_C0),
+    "tabpfn": ("c0", TuningParams.TABPFN_C0)
 }
 
 
