@@ -1,9 +1,12 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+import warnings
+from typing import TYPE_CHECKING, Any
+from tabpfn import TabPFNClassifier
+from sklearn.pipeline import Pipeline
 
 if TYPE_CHECKING:
-    import pandas as pd
+    from estimators.constants import Classifier
 
 
 
@@ -11,36 +14,99 @@ if TYPE_CHECKING:
 class ConfigSearchCV:
     '''
     Class that holds the globally configurable settings for SearchCV instances.
-    - build_df_search: bool that control whether SearchCV builds the df_search when fitted.
-    '''
-    build_df_search = False
-
-
-
-def aggregate_df_search_at_iteration_level(
-    df_search: pd.DataFrame, 
-    remove_groupby_column: bool = False
-) -> pd.DataFrame:
-    '''
-    Abstract the logic to aggregate the "df_search" dataframe at search iteration level,
-    computing the mean of cv inner losses for each iteration.
-    Note that the function does not control if the dataframe in input is a valid df_search dataframe.
-    Returns the aggragated dataframe.
-    '''
-    agg_dict = {}
-    for col in df_search.columns:
-        agg_func = "mean" if col == "loss" else "first"
-        agg_dict[col] = agg_func
-
-    search_col = "search_iter"
-    del agg_dict[search_col]
-    df_search = df_search.groupby(search_col).agg(agg_dict).reset_index()
-
-    if remove_groupby_column:
-        del df_search[search_col]
     
-    # we remove the non useful cols on the aggregate result to avoid creating a deepcopy  
-    del df_search["fold"]
-    del df_search["repeat"]
+    - raise_error_during_search (bool):
+        Control whether to ignore the errors during the search.
+        If True an error in the fitting process of one point  
+        will determine the failure of the entire search.
 
-    return df_search
+    - refit_with_best_hps (bool): 
+        Control whether SearchCV refit the estimator with the best hps.
+    
+    - build_df_search (bool): 
+        Control whether SearchCV builds the df_search when fitted.
+    
+    - save_realtime_df_search_filepath (str | Path | None):
+        If not None allow to save the df_search after each search iteration at the specified path. 
+        Ignored when "build_df_search" is False.
+    '''
+    raise_error_during_search = False
+    refit_with_best_hps = True
+    build_df_search = False
+    save_realtime_df_search_filepath = None
+    _attrs = [
+        "raise_error_during_search",
+        "refit_with_best_hps", 
+        "build_df_search", 
+        "save_realtime_df_search_filepath"
+    ]
+
+    @classmethod
+    def get_setting(cls, value: Any, attr: str) -> Any:
+        '''
+        Returns the configuration or input value for the specified attribute. 
+        The fallback on the global setting happens when the input value is None.
+        '''
+        if attr not in cls._attrs:
+            raise ValueError(f"attr must be one of {cls._attrs}")
+        if value is None:
+            return getattr(cls, attr)
+        else:
+            return value
+
+
+
+def set_params_into_clf(
+    clf_or_pipe: Classifier | Pipeline, 
+    params: dict[str, Any],
+    set_tabpfn_inference_config: bool = True
+) -> None:
+    '''
+    Set the parameters into the classifier in place. 
+    The method works with all type of classifiers and even when they head pipeline objects.
+    Note that the method expects 'classified formatted' parameters.
+    The method overwrites the pre-existent parameters values for the ones specified in params.
+    For tabpfn classifiers is possible to micro manage the setting of the `inference_config__` 
+    marked parameters.
+    '''
+    clf = clf_or_pipe[-1] if isinstance(clf_or_pipe, Pipeline) else clf_or_pipe
+    
+    if isinstance(clf, TabPFNClassifier):
+        if "inference_config" in params.keys():
+            raise KeyError(
+                "The inference_config parameter cannot be handled explicity.",
+                "Instead its keys must be passed as normal parameters marked with the 'inference_config__' prefix."
+            )
+
+        inference_config = {}
+        cleaned_params = {}
+        
+        for k, v in params.items():
+            if k.startswith("inference_config__"):
+                inference_config[f"{k.removeprefix("inference_config__")}"] = v
+            else:
+                cleaned_params[k] = v
+
+        if set_tabpfn_inference_config:
+            if not inference_config:
+                warnings.warn(
+                    message=(
+                        "Derived an empty inference_config dict."
+                        " It will overwrite the classifier's existing inference_config."
+                    ),
+                    category=UserWarning
+                )
+            clf.set_params(inference_config=inference_config, **cleaned_params)
+        else:
+            if inference_config:
+                warnings.warn(
+                        message=(
+                        "Derived a non-empty inference_config dict, but since "
+                        "set_tabpfn_inference_config=False, it will be ignored."
+                    ),
+                    category=UserWarning
+                )
+            clf.set_params(**cleaned_params)
+    
+    else:
+        clf.set_params(**params)

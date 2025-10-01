@@ -96,6 +96,7 @@ class GBDTBaseEstimator(AbstractBaseEstimator):
         if self.tune_configuration:
             self.estimator_ = SearchCV(
                 clf_or_pipe=pipe,
+                type_clf_or_pipe_preprocessing=self.preprocessing,
                 algo=self.tune_configuration["algo"],
                 params_distributions=self.tune_configuration["params_distributions"],
                 random_state_parameter="random_state",
@@ -162,6 +163,7 @@ class GBDTBaseEstimator(AbstractBaseEstimator):
             return {f"{name_classifier}__{k}":v for k, v in self.fit_classifier_kwargs.items()}
         else:
             return deepcopy(self.fit_classifier_kwargs)            
+
 
 
 

@@ -1,5 +1,5 @@
 from sklearn.datasets import make_regression
-from _paper.hp_metalearning.surrogate_rf import SurrogateRandomForestRegressor
+from metalearning.surrogate_rf import SurrogateRandomForestRegressor
 
 
 

@@ -1,24 +1,39 @@
 import numpy as np
 import pandas as pd
-from typing import Iterable
+from typing import Iterable, Any
+from copy import deepcopy
 
 
 
-def wrap_into_list(*objects) -> list | list[list]:
+def wrap_into_list(*objects) -> list[Any] | list[list[Any]]:
     '''Wrap non-list python objects with list.'''
     wrapped = [obj if isinstance(obj, list) else [obj] for obj in objects]
     return wrapped[0] if len(wrapped) == 1 else wrapped
 
 
 
-def to_numpy_iterable(iterable: Iterable[np.ndarray | pd.Series]) -> list[np.ndarray]:
-    '''Create from an iterable of numpy arrays or pandas series a list of numpy arrays.'''
-    if not iterable:
-        return iterable
-    numpy_iterable = []
+def to_list_of_numpy_arrays(
+    iterable: Iterable[np.ndarray | pd.Series],
+    copy: bool = False
+) -> list[np.ndarray]:
+    '''
+    Obtain a list of numpy arrays from an iterable of numpy or pandas arrays.
+    Parameters:
+        iterable (Iterable[np.ndarray|pd.Series]):
+            Iterable of pandas series and/or numpy arrays.
+        copy (cool, optional):
+            Whether to deepcopy the original data in the resulting list.
+    '''
+    array_list = []
     for el in iterable:
-        numpy_iterable.append(el.to_numpy(copy=True) if isinstance(el, pd.Series) else el)
-    return numpy_iterable
+        if isinstance(el, pd.Series):
+            array_list.append(el.to_numpy(copy=copy))
+        elif isinstance(el, np.ndarray):
+            array_to_insert = deepcopy(el) if copy else el
+            array_list.append(array_to_insert)
+        else:
+            raise TypeError("el must be a pandas series or a numpy array.")
+    return array_list
 
 
 

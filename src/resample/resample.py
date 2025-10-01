@@ -3,6 +3,7 @@ import sys
 import pandas as pd
 import numpy as np
 from collections import defaultdict
+from copy import deepcopy
 from time import time
 from estimators import Estimator
 from metatab_utils.prediction import PredictionDataframe
@@ -36,7 +37,7 @@ from resample.resample_helper import (
 from resample.save import ( 
     populate_dict_lists_,
     get_resample_iteration_signature,
-    get_estimator_filepath, 
+    get_round_estimator_filepath, 
     create_json_configuration_file
 )
 
@@ -82,9 +83,22 @@ def main():
     estimator_class = pick_estimator_class(pars)
     rng_estimator = np.random.default_rng(pars["seed"])
 
+    # initialize outputs
+    output_dir = pars["output_dir"]
+    results_filepath = output_dir / "pred_dataframe.txt"
+    configuration_filepath = output_dir / "configuration.json"
+    create_json_configuration_file(pars, configuration_filepath)
+    
     dict_results = defaultdict(list)
-    if pars["tune"]: dict_hpo = defaultdict(list)
+    df_pred_results = PredictionDataframe()
+    
+    if pars["tune"]: 
+        dict_hpo = defaultdict(list)
+        hpo_filepath = output_dir / "hpo.txt"
+        copy_tune_configuration = deepcopy(pars["tune_configuration"])
+        del copy_tune_configuration["params_distributions"]
 
+    
     # run resampling
     for i, (train_idx, test_idx) in enumerate(splitter.split(X, y)):
         repetition, fold = get_repetition_fold(i, pars)
@@ -128,23 +142,38 @@ def main():
         t = time()
         pred_proba = estimator.predict_proba(X_test)
         predict_time = time() - t
+        logger.debug(f"\t-Inference time in minutes: {round(predict_time/60, 2)}\n")
 
-        populate_dict_lists_(
-            dictionary=dict_results,
-            dataset=name_dataset, # must have the same length of the other inputs
-            y_train=y_train,
-            y_test=y_test,
-            repetition=repetition,
-            fold=fold,
-            pred_proba=pred_proba,
-            fit_time=fit_time,
-            predict_time=predict_time,
-            **fit_preprocessing_dict
-        )
+        # store and/or save the iteration info
+        iter_results = {
+            "dataset": name_dataset,
+            "predict_dataset": name_dataset,
+            "estimator": pars["estimator"],
+            "tune": pars["tune"],
+            "tune_hps_configuration": pars["tune_configuration"]["configuration"] if pars["tune"] else None,
+            "tune_algo": pars["tune_configuration"]["algo"] if pars["tune"] else None,
+            "n_tune_iter": pars["tune_configuration"]["n_iter"] if pars["tune"] else None,
+            "n_threads": pars["nthreads"],
+            "preprocessing": pars["preprocessing"],
+            "splitting_mode": pars["splitting_mode"],
+            "repetition": repetition,
+            "fold": fold,
+            **fit_preprocessing_dict,
+            "y_train": y_train,
+            "y_test": y_test,
+            "pred_proba": pred_proba,
+            "fit_time": fit_time,
+            "predict_time": predict_time
+        }
 
         if pars["tune"]:
             populate_dict_lists_(
                 dictionary=dict_hpo,
+                dataset=name_dataset,
+                estimator=pars["estimator"],
+                preprocessing=pars["preprocessing"],
+                **copy_tune_configuration,
+                splitting_mode=pars["splitting_mode"], 
                 repetition=repetition,
                 fold=fold,
                 refit_time=refit_time,
@@ -152,9 +181,25 @@ def main():
                 best_loss=best_loss,
                 **search_losses_dict
             )
-        
+
+        if not pars["save_realtime"]:
+            populate_dict_lists_(dict_results, **iter_results)
+        else:
+            df_pred_results.add_rows(
+                iter_results, 
+                compute_metrics=True,
+                multiclass="average",
+                average_strategy="macro" 
+            )
+
+            df_pred_results.to_csv(results_filepath, sep="\t", index=False)
+
+            if pars["tune"]:
+                pd.DataFrame(dict_hpo).to_csv(hpo_filepath, sep="\t", index=False)
+
+        # save additional optional iteration-level info
         if pars["save_estimators"]:
-            estimator.save(get_estimator_filepath(pars, repetition, fold))
+            estimator.save(get_round_estimator_filepath(pars, repetition, fold))
      
         if pars["estimator"] == "finetunetabpfn":
             iteration_signature = get_resample_iteration_signature(repetition, fold)
@@ -163,51 +208,18 @@ def main():
                 json_filepath = folder_stats_finetune / f"stats_finetune_{iteration_signature}.json"
             )
 
-        logger.debug(f"\t-Inference time in minutes: {round(predict_time/60, 2)}\n")
     
+    # Save final info when realtime mode is not enabled
+    if not pars["save_realtime"]:
+        df_pred_results.build_from_data(**dict_results, save_path=output_dir)
 
-    output_dir = pars["output_dir"]
-    results_filepath = output_dir / "pred_dataframe.txt"
-    hpo_filepath = output_dir / "hpo.txt"
-    configuration_filepath = output_dir / "configuration.json"
-    
-    df_pred_results = PredictionDataframe()
-    
-    tune_hps_configuration = None \
-        if pars["tune_configuration"] is None \
-        else pars["tune_configuration"]["configuration"]
+        if not df_pred_results.has_recovered:
+            df_pred_results.compute_metrics(multiclass="average", average_strategy="macro")
+            df_pred_results.to_csv(results_filepath, sep="\t", index=False)
 
-    df_pred_results.build_from_data(
-        **dict_results, 
-        save_path=output_dir,
-        estimator=pars["estimator"],
-        predict_dataset=name_dataset,
-        splitting_mode=pars["splitting_mode"],
-        preprocessing=pars["preprocessing"],
-        tune=pars["tune"],
-        tune_hps_configuration=tune_hps_configuration,
-        n_threads=pars["nthreads"]
-    )
+        if pars["tune"]:
+            pd.DataFrame(dict_hpo).to_csv(hpo_filepath, sep="\t", index=False)
 
-    if not df_pred_results.has_recovered:
-        df_pred_results.compute_metrics(multiclass="average", average_strategy="macro")
-        df_pred_results.to_csv(results_filepath, sep="\t", index=False)
-
-
-    if pars["tune"]:
-        # remove params_distributions from the tune conf to store it in a df
-        del pars["tune_configuration"]["params_distributions"]
-        dict_hpo = {
-            "dataset": name_dataset,
-            "estimator": pars["estimator"],
-            "splitting_mode": pars["splitting_mode"], 
-            "preprocessing": pars["preprocessing"],
-            **pars["tune_configuration"],
-            **dict_hpo
-        }
-        pd.DataFrame(dict_hpo).to_csv(hpo_filepath, sep="\t", index=False)
-
-    create_json_configuration_file(pars, configuration_filepath)
     logger.debug(f"Outputs created at {output_dir}")
 
 

@@ -101,10 +101,8 @@ class AbstractBaseEstimator(ABC):
         Raise an error if estimator_ is not a SearchCV instance.
         '''
         check_is_fitted(self, "estimator_")
-        if isinstance(self.estimator_, SearchCV):
-            return self.estimator_.best_params_
-        else:
-            raise TypeError("estimator_ is not a SearchCV instance.")
+        self._check_searchcv_estimator(instance=True)
+        return self.estimator_.best_params_
 
     
     # to override if needed by concrete classes
@@ -114,11 +112,9 @@ class AbstractBaseEstimator(ABC):
         Raise an error if estimator_ is not a SearchCV instance.
         '''
         check_is_fitted(self, "estimator_")
-        if isinstance(self.estimator_, SearchCV):
-            return np.array(self.estimator_.search_losses_)
-        else:
-            raise TypeError("estimator_ is not a SearchCV instance.")
-    
+        self._check_searchcv_estimator(instance=True)
+        return np.array(self.estimator_.search_losses_)
+      
 
     def get_refit_time(self) -> float | None:
         '''
@@ -126,11 +122,19 @@ class AbstractBaseEstimator(ABC):
         Raise an error if estimator_ is not a SearchCV instance.
         '''
         check_is_fitted(self, "estimator_")
-        if isinstance(self.estimator_, SearchCV):
-            return self.estimator_.refit_time_
-        else:
+        self._check_searchcv_estimator(instance=True, refit=True)
+        return self.estimator_.refit_time_
+    
+    
+    def _check_searchcv_estimator(self, instance = False, refit = False) -> None:
+        '''Check on the type and refit of SearchCV instances'''
+        if instance and not isinstance(self.estimator_, SearchCV):
             raise TypeError("estimator_ is not a SearchCV instance.")
-
+        if refit and not self.estimator_.refit_with_best_hps:
+            raise ValueError(
+                "SearchCv instance has refitting option disabled."
+            )
+    
 
     def update_fixed_params(
         self,
@@ -177,10 +181,11 @@ class AbstractBaseEstimator(ABC):
 
     def _retrieve_fitted_obj(self) -> Classifier | Pipeline:
         '''Retrieve the fitted object, i.e. the classifier or the pipeline.'''
-        fitted_obj = self.estimator_.best_estimator_ \
-            if isinstance(self.estimator_, SearchCV)\
-            else self.estimator_
-        return fitted_obj
+        if isinstance(self.estimator_, SearchCV):
+            self._check_searchcv_estimator(refit=True)
+            return self.estimator_.best_estimator_
+        else:
+            return self.estimator_
 
 
     def _collect_fit_preprocessing_info(self, pipeline: Pipeline) -> dict:

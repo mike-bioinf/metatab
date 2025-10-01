@@ -8,7 +8,6 @@ MANDATORY_COLUMNS = [
     "pred_proba"
 ]
 
-
 MUST_COLUMNS_TO_PARSE = [
     "classes", 
     "classes_counts", 
@@ -17,12 +16,10 @@ MUST_COLUMNS_TO_PARSE = [
     "pred_proba"
 ]
 
-
 # These columns can be absent
 OPTIONAL_COLUMNS_TO_PARSE = [
     "explained_variance_ratio"
 ]
-
 
 PERFORMANCE_METRICS = [
     "recall", 
@@ -31,4 +28,12 @@ PERFORMANCE_METRICS = [
     "accuracy",
     "ap",
     "auc"
+]
+
+# list of column created on mandatory info
+EXTRACTED_COLUMNS = [
+    "classes", 
+    "classes_counts", 
+    "classification_setting", 
+    "pred_labels"
 ]

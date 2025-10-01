@@ -7,10 +7,10 @@ from pandas._libs.missing import NAType
 
 
 
-def get_estimator_filepath(pars: dict, repeat: int | NAType, fold: int) -> str:
-    '''Get the filename to save the estimator'''
+def get_round_estimator_filepath(pars: dict, repeat: int | NAType, fold: int) -> str:
+    '''Get the filename made of the estimator name and current round info'''
     resample_iteration_signature = get_resample_iteration_signature(repeat, fold)
-    filename = f"{pars["estimator"]}__{pars["preprocessing"]}__{resample_iteration_signature}.pkl"
+    filename = f"{pars["estimator"]}_{resample_iteration_signature}.pkl"
     return f"{pars["output_dir"]}/estimators/{filename}"
 
 
@@ -19,7 +19,7 @@ def get_resample_iteration_signature(repeat: int | NAType, fold: int) -> str:
     '''
     Get the iteration signature as string, that is: 
     - {repeat}{fold} in cross-validation
-    - {fold} in resample
+    - {fold} in holdout
     '''
     if pd.isna(repeat):
         return f"{repeat}{fold}"
@@ -71,6 +71,9 @@ def create_json_configuration_file(pars: dict, filepath: str | Path) -> None:
     Takes in input the parsed and adjusted dict of program parameters.
     '''
     copy_pars = deepcopy(pars)
+
+    if copy_pars["tune"]:
+        del copy_pars["tune_configuration"]["params_distributions"]
 
     for key, value in copy_pars.items():
         if isinstance(value, Path):

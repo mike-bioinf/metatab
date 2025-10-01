@@ -1,6 +1,7 @@
 [project]
 name = "metatab"
 version = "0.1"
+requires-python = ">=3.9"
 dependencies = [
     "numpy>=2.1.3",
     "pandas>=2.2.3",
@@ -26,13 +27,19 @@ dev = ["pytest"]
 metatab-fit = "fit.fit:main"
 metatab-predict = "predict.predict:main"
 metatab-resample = "resample.resample:main"
-metatab-meta-random-search = "_paper.hp_metalearning.programs.random_search:main"
-metatab-fit-surrogate = "_paper.hp_metalearning.programs.fit_surrogate:main"
+metatab-opt-search = "metalearning.programs.opt_search:main"
+metatab-prepare-metadata = "metalearning.programs.prepare_metadata:main"
+metatab-fit-surrogate = "metalearning.programs.fit_surrogate:main"
 
 
 [build-system]
 requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
+
+
+# this is needed to install the binary surrogate models files
+[tool.setuptools.package-data]
+metalearning = ["*.joblib"]
 
 
 [tool.pytest.ini_options]

@@ -11,8 +11,8 @@ import joblib
 import pandas as pd
 from typing import TYPE_CHECKING
 from sklearn.pipeline import make_pipeline
-from _paper.hp_metalearning.surrogate_rf import SurrogateRandomForestRegressor
-from _paper.hp_metalearning.encoding import get_encoding_scheme
+from metalearning.surrogate_rf import SurrogateRandomForestRegressor
+from metalearning.encoding import get_encoding_scheme
 
 from metatab_utils.helper_programs import (
     adjust_io_paths_,
@@ -35,12 +35,15 @@ def parse_args(args):
     p.add_argument("-o", "--output-file", required=True, 
                    help="Output filepath. It will be a binary file containing the serialized surrogate model.")
 
-    p.add_argument("-y", "--column-metric", default="z_normalized_loss", help="Name of the perfomance metric column tratead as the y target.")
+    p.add_argument("-y", "--column-metric", default="z_normalized_loss", 
+                   help="Name of the perfomance metric column tratead as the y target.")
 
     p.add_argument("-e", "--estimator", required=True, 
                    choices=["random_forest", "xgb", "catboost", "lgbm", "tabpfn"],
-                   help="""The estimator on which the meta-datasets have been generated. Needed to apply the correct preprocessing to the meta-data.
-                   The early stopped estimator version are not present since they require the same preprocessing of their base counterpart.""")
+                   help="""The estimator on which the meta-datasets have been generated. 
+                   Needed to apply the correct preprocessing to the meta-data.
+                   The early stopped estimator version are not present since they require 
+                   the same preprocessing of their base counterpart.""")
     
     p.add_argument("--seed", default=42, type=int, help="Seed used to control randomness of the surrogate model.")
 
@@ -53,11 +56,10 @@ def parse_args(args):
 
 
 def log_program_setting(logger: Logger, pars: dict):
-    meta_folder = pars["meta_folder"].stem
     logger.debug(
         (
-            f"\nLaunching the surrogate fit program on folder {meta_folder}"
-            f" with {pars["estimator"]} preprocessing scheme.\n"
+            f"\nLaunching the surrogate fit program on folder '{pars["meta_folder"].stem}'"
+            f" with '{pars["estimator"]}' preprocessing scheme.\n"
         )
     )
 

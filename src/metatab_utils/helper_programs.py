@@ -59,6 +59,17 @@ def adjust_io_paths_(pars: dict, input_arg: str, output_arg: str) -> None:
 
 
 
+def adjust_paths_(pars: dict, *args) -> None:
+    '''
+    Convert the values associated to the key specified in `args`
+    to absolute Path object. The function works in place.
+    Is a version of `adjust_io_paths_` that works on multiple args
+    '''
+    for arg in args:
+        pars[arg] = Path(pars[arg]).resolve()
+
+
+
 def manage_output_path(pars: dict, output_arg: str, is_folder: bool) -> None:
     '''
     Control whether the output folder exists and whether to create it if not.
@@ -84,10 +95,12 @@ def check_fit_resample_args(pars: dict) -> None:
     check_incompatible_estimator_preprocessing(pars)
 
 
+
 def check_target_feature(pars: dict) -> None:
     '''Check that the target feature is set with df input-mode'''
     if pars["input_mode"] == "df" and pars["target_feature"] is None:
         raise ValueError("--target-feature must be specified with 'df' input mode.")
+
 
 
 def check_not_tunable_estimators(pars: dict) -> None:
@@ -96,6 +109,7 @@ def check_not_tunable_estimators(pars: dict) -> None:
         raise ValueError(f"Estimator '{estimator}' cannot be tuned.")
         
 
+
 def check_ambiguous_tune_setting(pars: dict) -> None:
     '''Check whether a tune configuration is passed with the tune flag down.'''
     if not pars["tune"] and pars["tune_configuration"] is not None:
@@ -103,6 +117,7 @@ def check_ambiguous_tune_setting(pars: dict) -> None:
             "A tuning configurations is passed (tune_configuration is not None)" +
             " but tuning is not requested (tune flag down)."
         )
+
 
 
 def check_incompatible_estimator_preprocessing(pars: dict) -> None:
@@ -147,7 +162,7 @@ def check_tune_configuration(pars: dict, logger: logging.Logger) -> None:
         opt_algo == "meta" and
             (
                 (estimator == "tabpfn" and preprocessing != "density_filter") or
-                (estimator != "tabpfn" and preprocessing != " base")
+                (estimator != "tabpfn" and preprocessing != "base")
             )
         ):
         logger.debug(

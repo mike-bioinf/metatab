@@ -41,7 +41,7 @@ def compute_upper_confidence_bound(
     if isinstance(k, str) and n_points is None:
         raise ValueError("To infer 'k' n_points must be provided (currently None).")
     
-    if isinstance(k, [float, int]) and n_points is not None:
+    if isinstance(k, (float, int)) and n_points is not None:
         raise ValueError("k is passed as a number with n_points not None. Ambiguous setting.")
 
     if mean_direction not in ["higher_is_better", "lower_is_better"]:
@@ -49,7 +49,7 @@ def compute_upper_confidence_bound(
             "mean_direction can assume only two possible values: 'higher_is_better' or 'lower_is_better'."
         )
 
-    k = k if isinstance(k, [float | int]) else _infer_k_factor(n_points)
+    k = k if isinstance(k, (float | int)) else _infer_k_factor(n_points)
     mean = mean if mean_direction == "higher_is_better" else -1*mean
     return mean + k * uncertainty
 

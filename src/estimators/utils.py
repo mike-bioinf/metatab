@@ -188,7 +188,7 @@ def fit_with_early_stop_on_validation_set(
     eval_set_parameter: str,
     fit_classifier_kwargs: dict,
     return_fit_time: bool = False
- ) -> Classifier | Pipeline:
+ ) -> Classifier | Pipeline | tuple[Classifier|Pipeline, float]:
     '''
     Utility to fit an estimator using early stop on a validation set.
     The estimator must implement the early stop capability at its 
@@ -217,7 +217,7 @@ def fit_with_early_stop_on_validation_set(
             The dict keys must be already adapted to the pipeline if any.
 
         return_fit_time (bool, optional):
-            Whether tp return the fit time also along the fitted clf_or_pipe.
+            Whether to return the fit time along the fitted clf_or_pipe.
             If True returns a tuple [clf_or_pipe, fit_time], otherwise clf_or_pipe directly.
 
     Returns:

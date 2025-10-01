@@ -103,6 +103,7 @@ class MyTunedTabPFNClassifier(AbstractBaseEstimator):
         fixed_params = super().update_fixed_params(up_seed=True, up_n_threads=True, copy=True)
         self.estimator_ = SearchCV(
             clf_or_pipe=create_tabpfn_estimator(self.preprocessing, fixed_params, "undersample"),  # undersample to speed up
+            type_clf_or_pipe_preprocessing=self.preprocessing,
             algo=self.tune_configuration["algo"],
             params_distributions=self.tune_configuration["params_distributions"],
             n_iter=self.tune_configuration["n_iter"],

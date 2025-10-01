@@ -67,13 +67,16 @@ def parse_args(args):
                     If None, the default, a default configuration is used when "--tune" is True.
                     One can pass a partial dict using the default values for the unspecified fields.""")
     
+    p.add_argument("-w", "--save-realtime", action="store_true",
+                   help="""Option to save the resample results in realtime. 
+                   Adds a little of overhead. Highly suggested for time-consuming jobs.""")
+
     p.add_argument("-q", "--save-estimators", action="store_true",
                    help="""Option to save the fitted estimators. 
                    The estimators object are saved via pickle in the 'estimators' folder.
                    Note that all estimators fitted during the splitting procedure are saved.
-                   The filenames follow the generic structure: {estimator}__{preprocessing}__{repetition}{fold}.
-                   In case of 'holdout' splitting mode the "__{repetition}{fold}" part is replaced by
-                   a sequential number.""")
+                   The filenames follow the generic structure: {estimator}_{repetition}{fold}.
+                   In case of 'holdout' splitting mode the "{repetition}{fold}" part is replaced by a sequential number.""")
 
     p.add_argument("--nthreads", default=16, type=int, 
                    help="Number of CPU threads to use to fit the estimators. Defaults to 16.")

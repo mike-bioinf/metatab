@@ -1,8 +1,7 @@
-"""Program to create meta-data running a random search on the default HP-tune-space of different ml algorithms.
+"""Program to run an optmization search on some data with some ml algo.
 
-The program allows to specify the search setting like number of iterations 
-and the specifics of the inner cross validation used to evaluate each configuration.
-This program is intended to be used as meta-data generator.
+The program allows to specify the search settings like optimization algorithm, 
+tune space, number of iterations and the specifics of the inner cross validation.
 """
 
 from __future__ import annotations
@@ -13,8 +12,7 @@ from time import time
 from typing import TYPE_CHECKING
 from estimators import Estimator
 from metatab_utils.data_loader import DataLoader
-from hp_search.utils import ConfigSearchCV, aggregate_df_search_at_iteration_level
-from _paper.hp_metalearning.metafeatures import extract_metafeatures
+from hp_search.utils import ConfigSearchCV
 
 from metatab_utils.helper_programs import (
     check_target_feature,
@@ -56,9 +54,11 @@ def parse_args(args):
                    The default is -1, which means 100 for the "es" estimators and a value to be
                    ignored by the "non es" estimators (in this case other values will results in an error).""")
     
+    p.add_argument("--tune-algo", default="random", choices=["random", "tpe"], help="Tune optimization algorithm.")
+
     p.add_argument("--tune-space", default="default", help="Tune space")
 
-    p.add_argument("--niter", default=1500, type=int, help="Number of search iterations.")
+    p.add_argument("--niter", default=1500, type=int, help="Number of search iterations. Cannot be 1.")
     
     p.add_argument("--nrepeats", default=3, type=int, help="Number of inner cv repeats.")
 
@@ -67,6 +67,10 @@ def parse_args(args):
     p.add_argument("--seed", default=42, type=int, help="Seed used to control randomness.")
 
     p.add_argument("--nthreads", default=16, type=int, help="Number of CPU threads to use. Defaults to 16.")
+
+    p.add_argument("--save-realtime", action="store_true", 
+                   help="""Enables to save the search results after every search iteration.
+                   Adds a bit of overhead. Highly suggested for long jobs.""")
 
     p.add_argument("--create-outdir", action="store_true", help="Create the output directory if does not exists.")
 
@@ -77,7 +81,7 @@ def parse_args(args):
 def log_program_setting(logger: Logger, pars: dict, name_dataset: str):
     logger.debug(
         (
-            f"\nLaunching random search on {name_dataset} with"
+            f"\nLaunching {pars["tune_algo"]} search on {name_dataset} with"
             f" {pars["estimator"]} on the {pars["tune_space"]} tune space, with"
             f" {pars["niter"]} iterations and {pars["nrepeats"]}-repeat {pars["nfolds"]}-fold cv.\n"
         )
@@ -85,22 +89,39 @@ def log_program_setting(logger: Logger, pars: dict, name_dataset: str):
 
 
 
+def check_n_iter(pars: dict) -> None:
+    '''
+    SearchCV skips the evaluation when optimizing for a single point.
+    The df search is not constructed in this scenario.
+    '''
+    if pars["niter"] == 1:
+        raise ValueError(
+            "Is not possible to collect the search data when 'niter' equal 1."
+        )
+
+
+
 
 def main():
+    logger = create_logger(sys.stdout)
     pars = vars(parse_args(sys.argv[1:]))
     check_target_feature(pars)
+    check_n_iter(pars)
     adjust_io_paths_(pars, "input_data", "output_file")
     manage_output_path(pars, "output_file", False)
     adjust_early_stopping_rounds_(pars)
     pars["tune"] = True
     
-    # allow building the search data
+    # set instruction for building and saving the search data
+    ConfigSearchCV.refit_with_best_hps = False
     ConfigSearchCV.build_df_search = True
+    if pars["save_realtime"]:
+        ConfigSearchCV.save_realtime_df_search_filepath = pars["output_file"]
     
     # build the tune dict needed by the Estimator
     pars["tune_configuration"] = {
         "configuration": pars["tune_space"],
-        "algo": "random",
+        "algo": pars["tune_algo"],
         "n_iter": pars["niter"],
         "n_repeats": pars["nrepeats"],
         "n_splits": pars["nfolds"]
@@ -111,7 +132,6 @@ def main():
         _pick_params_distributions_configuration(pars)
     )
 
-    logger = create_logger(sys.stdout)
     dl = DataLoader()
 
     dl.load(
@@ -141,24 +161,10 @@ def main():
     fit_time = round(((time() - starting_time)/60), ndigits=2)
     logger.debug(f"Completed search with runtime of {fit_time} minutes.")
 
-    df_search = estimator.estimator_.df_search_
-    
-    # aggregate cv results for single hp configuration (row --> 1 configuration + 1 loss)
-    df_search_agg = aggregate_df_search_at_iteration_level(df_search, remove_groupby_column=True)
-    
-    # z-normalize the loss column
-    loss_col = df_search_agg["loss"]
-    df_search_agg["z_normalized_loss"] = (loss_col - loss_col.mean()) / loss_col.std()
-    del df_search_agg["loss"]
+    if not pars["save_realtime"]:
+        df_search = estimator.estimator_.df_search_
+        df_search.to_csv(pars["output_file"], sep="\t", index=False)
 
-    # add preprocessing column and metafeatures
-    df_search_agg["preprocessing"] = pars["preprocessing"]
-    metafeatures = extract_metafeatures(X, y)
-    for metafeature, value in metafeatures.items():
-        df_search_agg[metafeature] = value
-
-    # save
-    df_search_agg.to_csv(pars["output_file"], sep="\t", index=False)
     logger.debug(f"File created at location: {pars['output_file']}")
 
 

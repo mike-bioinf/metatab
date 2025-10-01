@@ -26,10 +26,10 @@ class MyRandomForestClassifier(AbstractBaseEstimator):
     def fit(self, X: pd.DataFrame, y: pd.Series) -> "MyRandomForestClassifier":
         fixed_params = super().update_fixed_params(up_seed=True, up_n_threads=True, copy=True)
         self.estimator_ = create_default_pipeline(
-            self.preprocessing, 
-            "oversample", 
-            RandomForestClassifier, 
-            fixed_params
+            preprocessing=self.preprocessing, 
+            density_feature_selector_strategy="oversample", 
+            classifier=RandomForestClassifier, 
+            classifier_params=fixed_params
         )
         self.estimator_.fit(X, y)
         return self
@@ -50,11 +50,12 @@ class MyTunedRandomForestClassifier(AbstractBaseEstimator):
         fixed_params = super().update_fixed_params(up_seed=True, up_n_threads=True, copy=True)
         self.estimator_ = SearchCV(
             clf_or_pipe=create_default_pipeline(
-                self.preprocessing, 
-                "oversample", 
-                RandomForestClassifier, 
-                fixed_params
+                preprocessing=self.preprocessing, 
+                density_feature_selector_strategy="oversample", 
+                classifier=RandomForestClassifier, 
+                classifier_params=fixed_params
             ),
+            type_clf_or_pipe_preprocessing=self.preprocessing,
             algo=self.tune_configuration["algo"],
             params_distributions=self.tune_configuration["params_distributions"],
             random_state_parameter="random_state",
