@@ -1,3 +1,7 @@
+"""
+Program to do inference on a dataset using an serialized external fitted model via the "fit" program.
+"""
+
 import sys
 import pickle
 import numpy as np
@@ -13,7 +17,7 @@ from metatab_utils.helper_programs import (
     create_logger
 )
 
-from predict.predict_helper import (
+from predict.helper import (
     check_type_deserialized_object,
     check_estimator_is_fitted
 )

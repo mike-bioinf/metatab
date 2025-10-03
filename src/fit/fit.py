@@ -1,3 +1,8 @@
+"""
+Program to fit an ML estimator on a dataset with different preprocessing and tuning options.
+The program saves the fitted and serialized model in a binary file via pickle.
+"""
+
 import sys
 from estimators import Estimator
 from metatab_utils.data_loader import DataLoader
@@ -64,7 +69,7 @@ def main():
     estimator._y_train_ = y_train
     estimator._fit_dataset_name_ = fit_dataset_name
 
-    estimator.save(pars["output_path"])
+    estimator.save(pars["output_path"], check_is_fitted=True)
     logger.debug(f"Estimator serialized in '{pars["output_path"]}'.")
 
 

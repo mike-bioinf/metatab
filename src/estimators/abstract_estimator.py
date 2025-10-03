@@ -5,7 +5,6 @@ import numpy as np
 from copy import deepcopy
 from typing import Literal, TYPE_CHECKING
 from pathlib import Path
-from warnings import warn
 from abc import ABC, abstractmethod
 from sklearn.utils.validation import check_is_fitted
 from sklearn.pipeline import Pipeline
@@ -83,12 +82,11 @@ class AbstractBaseEstimator(ABC):
         return self.estimator_.predict_proba(X)
 
 
-    def save(self, filepath: str | Path) -> None:
-        '''Seriealize the instance using pickle'''
-        if not hasattr(self, "estimator_"):
-            warn(
-                message="The estimator instance is not fitted! Is this expected?", 
-                category=UserWarning
+    def save(self, filepath: str | Path, check_is_fitted = False) -> None:
+        '''Seriealize the instance using joblib'''
+        if check_is_fitted and not hasattr(self, "estimator_"):
+            raise ValueError(
+                "The estimator instance is not fitted (no 'estimator_' attibute)."
             )
         with open(filepath, "wb") as f:
             pickle.dump(self, f)

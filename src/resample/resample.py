@@ -27,20 +27,16 @@ from resample.params import (
     adjust_splitting_specs_
 )
 
-from resample.resample_helper import (
+from resample.helper import (
     get_repetition_fold,
     pick_splitter,
     log_iteration,
-    log_program_setting
-)
-
-from resample.save import ( 
+    log_program_setting,
     populate_dict_lists_,
     get_resample_iteration_signature,
-    get_round_estimator_filepath, 
+    get_iteration_estimator_filepath, 
     create_json_configuration_file
 )
-
 
 
 
@@ -199,7 +195,7 @@ def main():
 
         # save additional optional iteration-level info
         if pars["save_estimators"]:
-            estimator.save(get_round_estimator_filepath(pars, repetition, fold))
+            estimator.save(get_iteration_estimator_filepath(pars, repetition, fold))
      
         if pars["estimator"] == "finetunetabpfn":
             iteration_signature = get_resample_iteration_signature(repetition, fold)
