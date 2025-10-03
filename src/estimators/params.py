@@ -55,15 +55,12 @@ class TuningParams:
 
 
     ### XGBOOST ---------------------------------------------------------------------------------------
-    # We explore different quantization-tree growing policy variants combinations.
+    # We explore different quantization-tree_growing_policy combinations.
     # We also consider more and less regularized configurations for most scenario.
-    # With small sparse datasets the quantization methods converge, even though we 
-    # can set a lower number of bins. This is True especially for "hist" and "exact" variants. 
-    # Therefore we mainly explore the quantization variants in combination with different growing policy. 
+    # With small sparse datasets we expect the quantization methods to converge especially 
+    # with higher max_bin values. This is true especially for "hist" and "exact" variants. 
+    # Therefore we mainly explore fixed quantization-tree_policies. 
     # We do not explore less regularized configuration for "approx" algo since it's slow.
-
-
-    ### TODO: In c4 we mistakenly use max_depth instead of max_leaves.
 
 
     XGB_FIXED_PARAMS = {
@@ -81,7 +78,7 @@ class TuningParams:
     XGB_C0 = {
         "grow_policy": hp.choice("grow_policy", ["depthwise"]),
         "tree_method": hp.choice("tree_method", ["exact"]),
-        "max_depth": hp.choice("max_depth", list(range(2, 9))),
+        "max_depth": hp.choice("max_depth", list(range(1, 9))),
         "learning_rate": hp.loguniform("learning_rate", np.log(0.001), np.log(0.1)),
         "reg_lambda": hp.loguniform("reg_lambda", np.log(0.001), np.log(5)),
         "reg_alpha": hp.loguniform("reg_alpha", np.log(0.001), np.log(5)),
@@ -95,8 +92,7 @@ class TuningParams:
     XGB_C1 = {
         "grow_policy": hp.choice("grow_policy", ["lossguide"]),
         "tree_method": hp.choice("tree_method", ["approx"]),
-        # not sure about max_bin effects, so choice between the default 256 and a list of smaller values
-        "max_bin": hp.choice("max_bin", [256, hp.choice("max_bin_positive", list(range(20, 250, 20)))]),
+        "max_bin": hp.choice("max_bin", [5, 10, 20, 30, 50, 100, 150, 256]),
         "max_depth": hp.choice("max_depth", [0]), # no constrain
         "max_leaves": scope.int(hp.qloguniform("max_leaves", np.log(2), np.log(128), q=1)),
         "learning_rate": hp.loguniform("learning_rate", np.log(0.001), np.log(0.1)),
@@ -112,8 +108,7 @@ class TuningParams:
     XGB_C2 = {
         "grow_policy": hp.choice("grow_policy", ["lossguide"]),
         "tree_method": hp.choice("tree_method", ["hist"]),
-        # not sure about max_bin effects, so choice between the default 256 and a list of smaller values
-        "max_bin": hp.choice("max_bin", [256, hp.choice("max_bin_positive", list(range(20, 250, 20)))]),
+        "max_bin": hp.choice("max_bin", [5, 10, 20, 30, 50, 100, 150, 256]),
         "max_depth": hp.choice("max_depth", [0]), # no constrain
         "max_leaves": scope.int(hp.qloguniform("max_leaves", np.log(2), np.log(128), q=1)),
         "learning_rate": hp.loguniform("learning_rate", np.log(0.001), np.log(0.1)),
@@ -129,7 +124,7 @@ class TuningParams:
     XGB_C3 = {
         "grow_policy": hp.choice("grow_policy", ["depthwise"]),
         "tree_method": hp.choice("tree_method", ["exact"]),
-        "max_depth": hp.choice("max_depth", list(range(2, 9))),
+        "max_depth": hp.choice("max_depth", list(range(1, 9))),
         "learning_rate": hp.loguniform("learning_rate", np.log(0.001), np.log(0.1)),
         "reg_lambda": hp.choice("reg_lambda", [0, hp.loguniform("lambda_positive", np.log(0.001), np.log(5))]),
         "reg_alpha": hp.choice("reg_alpha", [0, hp.loguniform("alpha_positive", np.log(0.001), np.log(5))]),
@@ -143,10 +138,8 @@ class TuningParams:
     XGB_C4 = {
         "grow_policy": hp.choice("grow_policy", ["lossguide"]),
         "tree_method": hp.choice("tree_method", ["hist"]),
-        # not sure about max_bin effects, so choice between the default 256 and a list of smaller values
-        "max_bin": hp.choice("max_bin", [256, hp.choice("max_bin_positive", list(range(20, 250, 20)))]),
-        #### ERROR HERE (max_depth instead of max_leaves) ?????
-        "max_depth": hp.choice("max_depth", list(range(2, 9))),
+        "max_bin": hp.choice("max_bin", [5, 10, 20, 30, 50, 100, 150, 256]),
+        "max_leaves": scope.int(hp.qloguniform("max_leaves", np.log(2), np.log(128), q=1)),
         "learning_rate": hp.loguniform("learning_rate", np.log(0.001), np.log(0.1)),
         "reg_lambda": hp.choice("reg_lambda", [0, hp.loguniform("lambda_positive", np.log(0.001), np.log(5))]),
         "reg_alpha": hp.choice("reg_alpha", [0, hp.loguniform("alpha_positive", np.log(0.001), np.log(5))]),
@@ -164,13 +157,6 @@ class TuningParams:
     # since it is non-deterministic (NetwonCosine and NewtonL2 metrics).
     # We keep the defaults when in comes to leaf estimation method and split finding algo.
     # We do not try the boosting type "Ordered" since is too slow.
-    # We tune also the max_bin parameter (quantization aspect) setting a choice between 
-    # the default and a list of lower values since the effect of selecting smaller values 
-    # is not clear at priori.
-
-
-    ### TODO: reduce max_leaves from 512 to 128 (with 512 n. leaves > n. samples in most cases)
-    ### TODO: reduce list for max_depth in lossguide, set 16 the default or explore smaller values along this.
 
 
     ## we list also the library defaults that we use just to be explicit
@@ -201,8 +187,8 @@ class TuningParams:
         "score_function": hp.choice("score_function", ["Cosine"]),
         "grow_policy": hp.choice("grow_policy", ["SymmetricTree"]),
         "boosting_type": hp.choice("boosting_type", ["Plain"]),
-        "max_bin": hp.choice("max_bin", [254, hp.choice("max_bin_positive", list(range(20, 250, 20)))]),
-        "max_depth": hp.choice("max_depth", list(range(2, 11))),
+        "max_bin": hp.choice("max_bin", [5, 10, 20, 30, 50, 100, 150, 254]),
+        "max_depth": hp.choice("max_depth", list(range(1, 9))),
         "learning_rate": hp.loguniform("learning_rate", np.log(0.001), np.log(0.1)),
         "leaf_estimation_iterations": scope.int(hp.qloguniform("lei", np.log(1), np.log(10), q=1)),
         "l2_leaf_reg": hp.loguniform("l2_leaf_reg", np.log(1e-4), np.log(5)),
@@ -216,9 +202,9 @@ class TuningParams:
         "score_function": hp.choice("score_function", ["Cosine"]),
         "grow_policy": hp.choice("grow_policy", ["Depthwise"]),
         "boosting_type": hp.choice("boosting_type", ["Plain"]),
-        "max_bin": hp.choice("max_bin", [254, hp.choice("max_bin_positive", list(range(20, 250, 20)))]),
+        "max_bin": hp.choice("max_bin", [5, 10, 20, 30, 50, 100, 150, 254]),
+        "max_depth": hp.choice("max_depth", list(range(1, 9))),
         "min_data_in_leaf": hp.choice("min_data_in_leaf", [1, 2, 3, 4, 5]), # work only with Depthwise and Lossguide
-        "max_depth": hp.choice("max_depth", list(range(2, 11))),
         "learning_rate": hp.loguniform("learning_rate", np.log(0.001), np.log(0.1)),
         "leaf_estimation_iterations": scope.int(hp.qloguniform("lei", np.log(1), np.log(10), q=1)),
         "l2_leaf_reg": hp.loguniform("l2_leaf_reg", np.log(1e-4), np.log(5)),
@@ -232,10 +218,10 @@ class TuningParams:
         "score_function": hp.choice("score_function", ["Cosine"]),
         "grow_policy": hp.choice("grow_policy", ["Lossguide"]),
         "boosting_type": hp.choice("boosting_type", ["Plain"]),
-        "max_bin": hp.choice("max_bin", [254, hp.choice("max_bin_positive", list(range(20, 250, 20)))]),
+        "max_bin": hp.choice("max_bin", [5, 10, 20, 30, 50, 100, 150, 254]),
+        "max_leaves": scope.int(hp.qloguniform("max_leaves", np.log(2), np.log(128), q=1)),
+        "max_depth": hp.choice("max_depth", [16]), # in catboost the depth must be always set (16 is the default with lossguide)
         "min_data_in_leaf": hp.choice("min_data_in_leaf", [1, 2, 3, 4, 5]), # work only with depthwise and lossguide
-        "max_leaves": scope.int(hp.qloguniform("max_leaves", np.log(2), np.log(512), q=1)),
-        "max_depth": hp.choice("max_depth", [16, 20, 30, 50, 100]), # in catboost the depth must be always set (16 is default with lossguide)
         "learning_rate": hp.loguniform("learning_rate", np.log(0.001), np.log(0.1)),
         "leaf_estimation_iterations": scope.int(hp.qloguniform("lei", np.log(1), np.log(10), q=1)),
         "l2_leaf_reg": hp.loguniform("l2_leaf_reg", np.log(1e-4), np.log(5)),
@@ -249,8 +235,8 @@ class TuningParams:
         "score_function": hp.choice("score_function", ["L2"]),
         "grow_policy": hp.choice("grow_policy", ["SymmetricTree"]),
         "boosting_type": hp.choice("boosting_type", ["Plain"]),
-        "max_bin": hp.choice("max_bin", [254, hp.choice("max_bin_positive", list(range(20, 250, 20)))]),
-        "max_depth": hp.choice("max_depth", list(range(2, 11))),
+        "max_bin": hp.choice("max_bin", [5, 10, 20, 30, 50, 100, 150, 254]),
+        "max_depth": hp.choice("max_depth", list(range(1, 9))),
         "learning_rate": hp.loguniform("learning_rate", np.log(0.001), np.log(0.1)),
         "leaf_estimation_iterations": scope.int(hp.qloguniform("lei", np.log(1), np.log(10), q=1)),
         "l2_leaf_reg": hp.loguniform("l2_leaf_reg", np.log(1e-4), np.log(5)),
@@ -264,9 +250,9 @@ class TuningParams:
         "score_function": hp.choice("score_function", ["L2"]),
         "grow_policy": hp.choice("grow_policy", ["Depthwise"]),
         "boosting_type": hp.choice("boosting_type", ["Plain"]),
-        "max_bin": hp.choice("max_bin", [254, hp.choice("max_bin_positive", list(range(20, 250, 20)))]),
+        "max_bin": hp.choice("max_bin", [5, 10, 20, 30, 50, 100, 150, 254]),
+        "max_depth": hp.choice("max_depth", list(range(1, 9))),
         "min_data_in_leaf": hp.choice("min_data_in_leaf", [1, 2, 3, 4, 5]), # work only with depthwise and lossguide
-        "max_depth": hp.choice("max_depth", list(range(2, 11))),
         "learning_rate": hp.loguniform("learning_rate", np.log(0.001), np.log(0.1)),
         "leaf_estimation_iterations": scope.int(hp.qloguniform("lei", np.log(1), np.log(10), q=1)),
         "l2_leaf_reg": hp.loguniform("l2_leaf_reg", np.log(1e-4), np.log(5)),
@@ -280,10 +266,10 @@ class TuningParams:
         "score_function": hp.choice("score_function", ["L2"]),
         "grow_policy": hp.choice("grow_policy", ["Lossguide"]),
         "boosting_type": hp.choice("boosting_type", ["Plain"]),
-        "max_bin": hp.choice("max_bin", [254, hp.choice("max_bin_positive", list(range(20, 250, 20)))]),
+        "max_bin": hp.choice("max_bin", [5, 10, 20, 30, 50, 100, 150, 254]),
+        "max_leaves": scope.int(hp.qloguniform("max_leaves", np.log(2), np.log(128), q=1)),
+        "max_depth": hp.choice("max_depth", [16]), # in catboost the depth must be always set (16 is the default with lossguide)
         "min_data_in_leaf": hp.choice("min_data_in_leaf", [1, 2, 3, 4, 5]), # work only with depthwise and lossguide
-        "max_leaves": scope.int(hp.qloguniform("max_leaves", np.log(2), np.log(512), q=1)),
-        "max_depth": hp.choice("max_depth", [16, 20, 30, 50, 100]), # in catboost the depth must be always set (16 is default with lossguide)
         "learning_rate": hp.loguniform("learning_rate", np.log(0.001), np.log(0.1)),
         "leaf_estimation_iterations": scope.int(hp.qloguniform("lei", np.log(1), np.log(10), q=1)),
         "l2_leaf_reg": hp.loguniform("l2_leaf_reg", np.log(1e-4), np.log(5)),
@@ -297,16 +283,10 @@ class TuningParams:
     # Lightgmb offer less variability in terms of algo variants in many/all
     # aspects of a GBDT framework. Therefore we use the only variant available 
     # with strong and weak regularization.
-    # Similar to catboost and xgboost we tune the max_bin using a choice between
-    # default and a list of smaller values.
+    # We do not try other weak learners (dart and rf) to be consistent with 
+    # the other gbdts.
     
-    
-    ### TODO: reduce max_leaves from 512 to 128 (with 512 n. leaves > n. samples in most cases)
-    ### TODO: include 5 for "min_child_samples" since this was the original intention
-    ### and to have uniformity with other gbdts
-
-
-    
+     
     # we list also the library defaults that we use just to be explicit
     LGBM_FIXED_PARAMS = {
         "n_estimators": 1000, # higher than default 100
@@ -334,14 +314,14 @@ class TuningParams:
     # strong-regularized configuration
     LGMB_C0 = {
         "learning_rate": hp.loguniform("learning_rate", np.log(0.001), np.log(0.1)),
-        "num_leaves": scope.int(hp.qloguniform("num_leaves", np.log(2), np.log(512), 1)),
-        "max_bin": hp.choice("max_bin", [255, hp.choice("max_bin_positive", list(range(20, 250, 20)))]),
-        "min_data_in_bin": hp.choice("min_data_in_bin", list(range(1, 11))),
+        "num_leaves": scope.int(hp.qloguniform("num_leaves", np.log(2), np.log(128), 1)),
+        "max_bin": hp.choice("max_bin", [5, 10, 20, 30, 50, 100, 150, 255]),
+        "min_data_in_bin": hp.choice("min_data_in_bin", list(range(1, 6))),
         "reg_alpha": hp.loguniform("reg_alpha", np.log(0.001), np.log(5)),
         "reg_lambda": hp.loguniform("reg_lambda", np.log(0.001), np.log(5)),
         "min_split_gain": hp.loguniform("min_split_gain", np.log(0.001), np.log(5)),
         "min_child_weight": hp.loguniform("min_child_weight", np.log(0.001), np.log(5)),
-        "min_child_samples": hp.choice("min_child_samples", list(range(1, 5))),
+        "min_child_samples": hp.choice("min_child_samples", list(range(1, 6))),
         "extra_trees": hp.choice("extra_trees", [False, True]),
         "subsample": hp.choice("subsample", [0.8, 0.9, 1]),
         "subsample_freq": hp.choice("subsample_freq", [1]), # subsample every tree
@@ -353,14 +333,14 @@ class TuningParams:
     # with small datasets
     LGMB_C1 = {
         "learning_rate": hp.loguniform("learning_rate", np.log(0.001), np.log(0.1)),
-        "num_leaves": scope.int(hp.qloguniform("num_leaves", np.log(2), np.log(512), 1)),
-        "max_bin": hp.choice("max_bin", [255, hp.choice("max_bin_positive", list(range(20, 250, 20)))]),
-        "min_data_in_bin": hp.choice("min_data_in_bin", list(range(1, 11))),
+        "num_leaves": scope.int(hp.qloguniform("num_leaves", np.log(2), np.log(128), 1)),
+        "max_bin": hp.choice("max_bin", [5, 10, 20, 30, 50, 100, 150, 254]),
+        "min_data_in_bin": hp.choice("min_data_in_bin", list(range(1, 6))),
         "reg_lambda": hp.choice("reg_lambda", [0, hp.loguniform("lambda_positive", np.log(0.001), np.log(5))]),
         "reg_alpha": hp.choice("reg_alpha", [0, hp.loguniform("alpha_positive", np.log(0.001), np.log(5))]),
         "min_split_gain": hp.choice("min_split_gain", [0, hp.loguniform("min_split_gain_positive", np.log(0.001), np.log(5))]),
         "min_child_weight": hp.choice("min_child_weight", [0, hp.loguniform("min_child_weight_positive", np.log(0.001), np.log(5))]),
-        "min_child_samples": hp.choice("min_child_samples", list(range(1, 5))),
+        "min_child_samples": hp.choice("min_child_samples", list(range(1, 6))),
         "extra_trees": hp.choice("extra_trees", [False, True]),
         "subsample": hp.choice("subsample", [0.8, 0.9, 1]),
         "subsample_freq": hp.choice("subsample_freq", [1, 2, 3, 4, 5]),
