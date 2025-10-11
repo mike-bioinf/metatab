@@ -430,7 +430,7 @@ class SearchCV:
                 promissingness of the candidate points.
 
         Returns:
-            list[dict[str, Any]]: 
+            list[dict[str,Any]]: 
             A list of dict where each dict is a point in the tune space.
         '''     
         rng_candidates = np.random.default_rng(self.seed)

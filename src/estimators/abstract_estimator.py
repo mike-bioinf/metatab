@@ -93,7 +93,7 @@ class AbstractBaseEstimator(ABC):
     
 
     # to override if needed by concrete classes
-    def get_best_hps(self) -> dict | None:
+    def get_best_hps(self) -> dict:
         '''
         Get the best HPs resulting from tuning.
         Raise an error if estimator_ is not a SearchCV instance.
@@ -104,7 +104,7 @@ class AbstractBaseEstimator(ABC):
 
     
     # to override if needed by concrete classes
-    def get_search_losses(self) -> np.ndarray | None:
+    def get_search_losses(self) -> np.ndarray:
         '''
         Get the tuning search losses.
         Raise an error if estimator_ is not a SearchCV instance.
@@ -114,7 +114,7 @@ class AbstractBaseEstimator(ABC):
         return np.array(self.estimator_.search_losses_)
       
 
-    def get_refit_time(self) -> float | None:
+    def get_refit_time(self) -> float:
         '''
         Get the refit time of the best tuning configuration.
         Raise an error if estimator_ is not a SearchCV instance.

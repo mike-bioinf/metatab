@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import warnings
+import numpy as np
 import pandas as pd
 from copy import deepcopy
 from pathlib import Path
@@ -36,7 +38,7 @@ def log_iteration(pars: dict, fold: int, repetition: int, logger: logging.Logger
 
 
 
-def get_repetition_fold(iteration: int, pars: dict) -> tuple: 
+def get_repetition_fold(iteration: int, pars: dict) -> tuple[int|NAType, int]: 
     '''
     Utility to get the repetition and fold info based 
     on the current iteration and splitting mode.
@@ -123,3 +125,15 @@ def create_json_configuration_file(pars: dict, filepath: str | Path) -> None:
     
     with open(filepath, "w") as f:
         json.dump(copy_pars, f, indent=4)
+
+
+
+def silent_nanmin(a: np.ndarray) -> np.ndarray:
+    '''numpy nanmin version which do not raise a warning when all array elements are nan'''
+    with warnings.catch_warnings():
+        warnings.filterwarnings(
+            action="ignore", 
+            message=".*All-NaN slice encountered.*",
+            category=RuntimeWarning
+        )
+        return np.nanmin(a)

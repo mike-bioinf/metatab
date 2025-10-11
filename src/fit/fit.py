@@ -16,7 +16,6 @@ from metatab_utils.helper_programs import (
     adjust_tune_configuration_arg_,
     adjust_early_stopping_rounds_,
     pick_estimator_class,
-    fix_estimator_fixed_params_in_fit_program_,
     check_y_is_integer_encoded,
     create_logger, 
 )
@@ -61,19 +60,31 @@ def main():
         tune_configuration=pars["tune_configuration"]
     )
     
-    fix_estimator_fixed_params_in_fit_program_(estimator, pars)
+    if pars["estimator"] == "autotabpfn":
+        out_file = pars["output_path"]
+        # here we use the basename of the out file to have unique directory names
+        models_dir = out_file.parent / f"autogluon_fitted_models_{out_file.stem}"
+        estimator.set_directory_save_models(models_dir, create_dir=True)
+
     estimator.fit(X_train, y_train)
     logger.debug("Estimator fitted on training data.")
     
     # we set y_train and fit_dataset_name since are requested by the predict program 
     estimator._y_train_ = y_train
     estimator._fit_dataset_name_ = fit_dataset_name
-
+    
+    if pars["estimator"] == "finetunetabpfn":
+        out_file = pars["output_path"]
+        estimator.save_finetune_stats(
+            txt_filepath=out_file.parent / f"df_finetune_{out_file.stem}.txt",
+            json_filepath=out_file.parent / f"stats_finetune_{out_file.stem}.txt"
+        )
+    
     estimator.save(pars["output_path"], check_is_fitted=True)
     logger.debug(f"Estimator serialized in '{pars["output_path"]}'.")
 
 
 
+
 if __name__ == "__main__":
     main()
-    

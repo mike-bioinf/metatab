@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+import shutil
 import warnings
 import json
 import pandas as pd
@@ -46,7 +48,6 @@ def suppress_sklearn_and_tabpfn_warnings(func):
     return wrapper
 
 
-
 def create_tabpfn_estimator(
     preprocessing: Literal["base", "density_filter", "pca"], 
     tabpfn_params: dict,
@@ -67,6 +68,7 @@ def create_tabpfn_estimator(
 
 
 
+
 class MyTabPFNClassifier(AbstractBaseEstimator):
     '''
     Class that wraps the base TabPFNClassifier.
@@ -82,7 +84,8 @@ class MyTabPFNClassifier(AbstractBaseEstimator):
     @suppress_sklearn_and_tabpfn_warnings
     def fit(self, X: pd.DataFrame, y: pd.Series) -> "MyTabPFNClassifier":
         fixed_params = super().update_fixed_params(up_seed=True, up_n_threads=True, copy=True)
-        self.estimator_ = create_tabpfn_estimator(self.preprocessing, fixed_params, "oversample")
+        # undersample to be uniform with the other tabpfn estimator classes.
+        self.estimator_ = create_tabpfn_estimator(self.preprocessing, fixed_params, "undersample")
         self.estimator_.fit(X, y)
         return self
         
@@ -119,19 +122,28 @@ class MyTunedTabPFNClassifier(AbstractBaseEstimator):
 
 
 
+
 class MyAutoTabPFNClassifier(AbstractBaseEstimator):
     '''
     Autogluon ensemble (stacking + Caruana selection) of tabpfn classifiers.
-    
+
+    AutoGluon requires a directory path to store the models it generates during ensembling.
+    To handle this, we define a class-level attribute `path_save_models`, which serves as the default save location.
+    A method `set_directory_save_models` is provided to set a custom save path at the instance level.
+    If an instance-level path is specified, it takes precedence over the class-level default during the fit process.
+    This design allows users to define a custom save path when needed while maintaining a default fallback location.
+        
     Attributes
     ----------------
     estimator_ (AutoTabPFNClassifier|Pipeline): Fitted AutoTabPFNClassifier or Pipeline instance.
     '''
     fixed_params = DefaultParams.AUTOTABPFN_DEFAULT_PARAMS
+    path_save_models : str | Path | None = None  # autogluon default
 
     @suppress_sklearn_and_tabpfn_warnings
     def fit(self, X: pd.DataFrame, y: pd.Series) -> "MyAutoTabPFNClassifier":
         fixed_params = self.update_fixed_params(up_seed=True, copy=True)
+        fixed_params = self._add_path_save_models_to_params(fixed_params)
         self.estimator_ = self._create_autotabpfn_estimator(self.preprocessing, fixed_params)
         # to suppress automatic categorical features inferring
         fit_args = {"autotabpfnclassifier__categorical_feature_indices": []}\
@@ -139,6 +151,47 @@ class MyAutoTabPFNClassifier(AbstractBaseEstimator):
             else {"categorical_feature_indices": []}
         self.estimator_.fit(X, y, **fit_args)
         return self
+    
+
+    def set_directory_save_models(
+        self,
+        path: str | Path, 
+        create_dir = True
+    ) -> None:   
+        '''
+        Set internally the directory where the fitted tabpfn models are saved.
+        Allows its creation also.
+        '''
+        if create_dir: os.makedirs(path, exist_ok=True)
+        self.path_save_models = path
+
+
+    def _add_path_save_models_to_params(
+        self,
+        params: dict,
+        copy = False
+    ) -> dict:
+        params = deepcopy(params) if copy else params
+        if ["phe_init_args"] not in params.keys():
+            params["phe_init_args"] = {}
+        params["phe_init_args"]["path"] = self.path_save_models
+        return params
+
+
+    def delete_save_models_directory(self) -> None:
+        '''
+        Delete the save models directory with all files inside.
+        Does NOT work when the directory path is managed by autogluon, 
+        i.e. when `path_save_models` is None.
+        '''
+        if self.path_save_models is not None:
+            path_save_models = Path(self.path_save_models) \
+                if isinstance(self.path_save_models, str) \
+                else self.path_save_models
+            if path_save_models.exists():
+                # we not handle errors here but let them propagate
+                shutil.rmtree(path_save_models)
+
     
     @staticmethod
     def _create_autotabpfn_estimator(
@@ -157,7 +210,7 @@ class MyAutoTabPFNClassifier(AbstractBaseEstimator):
             )
         else:
             raise ValueError("Unsupported preprocessing.")
-     
+  
 
 
 

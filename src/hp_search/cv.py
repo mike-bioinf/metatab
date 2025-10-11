@@ -20,8 +20,8 @@ if TYPE_CHECKING:
 
 class CrossValidator:
     '''
-    Handles the execution of cross-validation procedures 
-    and manages the storage and saving of results.
+    Handles the execution of the cross-validation procedures
+    of classifier or pipeline objects.
     
     Parameters:
         clf_or_pipe (Classifier | Pipeline):

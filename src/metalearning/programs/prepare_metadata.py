@@ -114,7 +114,11 @@ def main():
     del df_search["fold"]
     del df_search["repeat"]
     
-    df_search_agg = aggregate_df_search(df_search, remove_groupby_column=True)
+    df_search_agg = aggregate_df_search(
+        df_search,
+        groupby_column="search_iter",
+        remove_groupby_column=True
+    )
         
     # z-normalize the loss column
     loss_col = df_search_agg["loss"]
