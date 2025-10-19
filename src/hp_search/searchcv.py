@@ -4,18 +4,25 @@ import pandas as pd
 from pathlib import Path
 from copy import deepcopy
 from functools import partial
-from typing import Literal, Any
+from typing import Literal
 from sklearn.pipeline import Pipeline
 from sklearn.utils.validation import check_is_fitted
 from hyperopt import Trials, STATUS_OK, STATUS_FAIL, tpe, rand, fmin, space_eval
 from hyperopt.pyll.stochastic import sample
 from estimators.constants import Classifier
 from estimators.utils import fit_with_early_stop_on_validation_set
-from hp_search.utils import ConfigSearchCV, set_params_into_clf
 from hp_search.cv import CrossValidator
-from metalearning.metafeatures import extract_metafeatures
+from metalearning.metafeatures import CustomMFE
 from metalearning.database.utils import query_surrogate_framework
 from metalearning.acquisition_funcs import compute_upper_confidence_bound
+from metalearning.surrogate_worker import SurrogateWorker
+from metalearning.sampler import HyperoptRandomSampler
+
+from hp_search.utils import (
+    ConfigSearchCV, 
+    set_params_into_clf, 
+    apply_hyperopt_corrections_to_sampled_point
+)
 
 
 
@@ -220,8 +227,6 @@ class SearchCV:
                 raise ValueError(
                     "'type_clf_or_pipe_preprocessing' cannot be None with 'meta' algo."
                 )
-            self._metafeatures = extract_metafeatures(X, y)
-            self._surrogate_framework = query_surrogate_framework(self.clf_or_pipe)
             self._fit_with_meta_points()
         
         elif self.algo in ["random", "tpe"]:
@@ -254,7 +259,7 @@ class SearchCV:
                 self.best_estimator_ = best_estimator.fit(X, y, **self.fit_classifier_kwargs)
                 self.refit_time_ = time.time() - start_refit_time
             
-            return self
+        return self
 
 
 
@@ -263,11 +268,35 @@ class SearchCV:
         Optimize using the meta-inferred points only.
         Set the `best_params_` attribute.
         '''
-        points = self._propose_meta_points(
-            n_candidate_points=5000,
+        # we currently use only this acquisition function
+        acquisition_func = partial(
+            compute_upper_confidence_bound,
+            k="infer",
+            mean_direction="lower_is_better", # we currently optimize only the logloss
+            n_points=self.n_iter
+        )
+
+        surrogate_worker = SurrogateWorker(
+            sampler=HyperoptRandomSampler(),
+            mfe=CustomMFE(seed=self.seed),
+            # TODO: the database does not support "es" models 
+            surrogate_framework=query_surrogate_framework(self.clf_or_pipe),
+            acquisition_func=acquisition_func
+        )
+
+        surrogate_worker.fit(
+            X=self._X,
+            y=self._y,
+            hp_space=self.params_distributions,
+            seed=self.seed
+        )
+
+        points = surrogate_worker.propose_n_best(
+            n_candidate_points=10000,
             # with "meta" algo n_iter set the number of evaluated points
-            n_points_to_propose=self.n_iter,
-            acquisition_function="UCB"
+            n_best=self.n_iter,
+            # add the preprocessing to the meta-data
+            mfe_extract_kwargs={"add_features": {"preprocessing": self.type_clf_or_pipe_preprocessing}}
         )
 
         # we do not evaluate the single point since is the best by definition
@@ -299,7 +328,7 @@ class SearchCV:
         # with n_iter to 1 the sampling is always random 
         # and the drawn point is the best by definition
         if self.n_iter == 1:
-            self.best_params_ = self._apply_hyperopt_corrections_to_sampled_point(
+            self.best_params_ = apply_hyperopt_corrections_to_sampled_point(
                 sample(self.params_distributions, np.random.default_rng(self.seed))
             )
             return None
@@ -334,7 +363,7 @@ class SearchCV:
         )
 
         # hyperopt tracks the uncorrected params
-        self.best_params_ = self._apply_hyperopt_corrections_to_sampled_point(
+        self.best_params_ = apply_hyperopt_corrections_to_sampled_point(
             space_eval(self.params_distributions, best)
         )
 
@@ -350,17 +379,17 @@ class SearchCV:
         Fit using the input tune space point.
 
         Parameters:
-        params (dict): dict of hps to use (tune space point).
-        apply_hyperopt_corrections (bool):
-            Whether to apply the hyperopt corrections to the point.
-        returns_type (Literal["hyperopt", "simple"]):
-            Whether returns a hyperopt compatible result or a simpler one.
-            In the first case the function returns a dict with hyperopt
-            compatible info, in the second only the loss.
+            params (dict): dict of hps to use (tune space point).
+            apply_hyperopt_corrections (bool):
+                Whether to apply the hyperopt corrections to the point.
+            returns_type (Literal["hyperopt", "simple"]):
+                Whether returns a hyperopt compatible result or a simpler one.
+                In the first case the function returns a dict with hyperopt
+                compatible info, in the second only the loss.
         '''
         try:
             if apply_hyperopt_corrections:
-                params = self._apply_hyperopt_corrections_to_sampled_point(params)
+                params = apply_hyperopt_corrections_to_sampled_point(params)
 
             loss, df_cv_info = self.cross_validator.fit(
                 X=self._X, 
@@ -408,88 +437,6 @@ class SearchCV:
             else:
                 return np.nan
 
-
-
-    def _propose_meta_points(
-        self,
-        n_candidate_points: int,
-        n_points_to_propose: int,
-        acquisition_function: Literal["UCB"]
-    ) -> list[dict[str, Any]]:
-        '''
-        Propose the most promising points on the tune space
-        based on a surrogate model and an acquisition function.
-
-        Parameters:
-            n_candidate_points (int): 
-                Number of points to draw as candidates.
-            n_points_to_propose (int): 
-                Number of points returned by the utility.
-            acquisition_function (Literal["UCB"]): 
-                Select the function evaluating the 
-                promissingness of the candidate points.
-
-        Returns:
-            list[dict[str,Any]]: 
-            A list of dict where each dict is a point in the tune space.
-        '''     
-        rng_candidates = np.random.default_rng(self.seed)
-        
-        candidate_points = [
-            self._apply_hyperopt_corrections_to_sampled_point(
-                sample(self.params_distributions, rng_candidates)
-            )
-            for _ in range(n_candidate_points)
-        ]
-     
-        df_candidate_points = pd.DataFrame(candidate_points)
-        df_candidate_points["preprocessing"] = self.type_clf_or_pipe_preprocessing
-
-        for metafeature, value in self._metafeatures.items():
-            df_candidate_points[metafeature] = value
-
-        pred_values, pred_uncertainty = self._surrogate_framework.predict(df_candidate_points)
-        
-        if acquisition_function == "UCB":
-            promisingness = compute_upper_confidence_bound(
-                pred_values, 
-                pred_uncertainty,
-                k="infer", 
-                mean_direction="lower_is_better", # we currently use only the logloss
-                n_points=n_points_to_propose
-            )
-        else:
-            raise ValueError(f"'acquisition_function' must be equal to 'UCB'.")
-
-        # argsort works in the increasing order (last index --> index of the greatest value)
-        top_idx = np.argsort(promisingness, stable=True)[-n_points_to_propose:]
-        selected_points = [candidate_points[idx] for idx in top_idx]
-        return selected_points
-        
-
-
-    @staticmethod
-    def _apply_hyperopt_corrections_to_sampled_point(params: dict[str, Any]) -> dict[str, Any]:
-        '''
-        Apply general hyperopt level correction to the sampled params.
-        These corrections come from specific quirks of hyperopt.
-        The corrections are done in place.
-
-        In particular the following aspects are addressed:
-        - automatic conversion of sampled list to tuple. 
-            To distinguish between original and converted tuple we cast 
-            the specific parameters explicitly.
-        '''
-        tuple_to_list_parameters = [
-            "inference_config__PREPROCESS_TRANSFORMS"
-        ]
-        
-        for param_to_convert in tuple_to_list_parameters:
-            if param_to_convert in params.keys():
-                params[param_to_convert] = list(params[param_to_convert])
-
-        return params
-    
 
 
     def _build_df_search(self) -> pd.DataFrame:    

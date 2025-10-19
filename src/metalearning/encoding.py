@@ -1,7 +1,21 @@
 """
 In this module we set the encoding (preprocessing) to apply to the meta-data obtained 
 from the different estimators, considering ONLY the default estimators tune spaces.
+
+Some general indications:
+- We expect some metafeatures to contain full nan values. This is because pymfe does not
+automatically filter the structurally incompatible metafeature-summary_func combinations.
+These are addressed in practice by the VarianceThreshold step which is able to remove 
+full nan features.
+- We expect some metafeatures to contain data-dependent nan, i.e. nan values that
+compares only on some cases. We do not take care of this nan values since
+the RandomForestRegressor (our surrogate model) is able to natively handle them.
+- Some hyperparameters have nan values that should be converted to None. 
+This is due to pandas IO behaviour. Either the case we resolve this by implementing 
+the NanToNone transformer which is able to work on specific columns only.
+In this way we avoid to erroneously apply this conversion on the metafeatures.
 """
+
 import numpy as np
 import pandas as pd
 from typing import Literal, Any
@@ -19,7 +33,7 @@ from hp_search.tabpfn_search_space import (
 
 
 
-class NanToNone(BaseEstimator, TransformerMixin):
+class NanToNone(TransformerMixin, BaseEstimator):
     '''
     Scikit-like transformer to convert nan to None.
     Works only on pandas DataFrames (no numpy arrays).
@@ -50,8 +64,7 @@ class NanToNone(BaseEstimator, TransformerMixin):
 
 
 
-
-class ColToStr(BaseEstimator, TransformerMixin):
+class ColToStr(TransformerMixin, BaseEstimator):
     '''
     Scikit-like transformer casting DataFrame columns 
     to object-dtyped columns and column values to str type.
@@ -120,6 +133,7 @@ def create_preprocessing_encoding() -> ColumnTransformer:
 
 
 
+
 HPS_ENCODING_SCHEME_RANDOM_FOREST = [
     NanToNone("max_features", check_on_fit=True), 
     ColToStr("max_features", check_on_fit=True),
@@ -137,7 +151,6 @@ HPS_ENCODING_SCHEME_RANDOM_FOREST = [
     ),
     VarianceThreshold()
 ]
-
 
 
 HPS_ENCODING_SCHEME_TABPFN = [
@@ -187,7 +200,6 @@ HPS_ENCODING_SCHEME_TABPFN = [
 ]
 
 
-
 ## TODO: complete once defined default tuning space
 HPS_ENCODING_SCHEME = {
     "random_forest": HPS_ENCODING_SCHEME_RANDOM_FOREST,
@@ -198,12 +210,11 @@ HPS_ENCODING_SCHEME = {
 }
 
 
-
 def get_encoding_scheme(
         estimator: Literal["random_forest", "xgb", "catboost", "lgbm", "tabpfn"]
     ) -> list:
     '''
     Get a deepcopy of the encoding scheme of the HP feature space designed for the input estimator.
-    The encoding scheme consists in a ordered list of sklearn transformer to insert in a Pipeline object.
+    The encoding scheme consists in a ordered list of sklearn transformers to insert in a Pipeline object.
     '''
     return deepcopy(HPS_ENCODING_SCHEME[estimator])

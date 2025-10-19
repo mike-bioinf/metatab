@@ -264,8 +264,6 @@ def _pick_params_distributions_configuration(pars: dict) -> dict:
     match (estimator, conf):
         case ("random_forest", "c0"):
             return TuningParams.RF_C0
-        case ("random_forest", "c1"):
-            return TuningParams.RF_C1
         
         case ("xgb" | "es_xgb", "c0"):
             return TuningParams.XGB_C0

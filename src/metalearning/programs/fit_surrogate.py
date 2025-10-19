@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import sys
 import argparse
+import warnings
 import joblib
 import pandas as pd
 from typing import TYPE_CHECKING
@@ -104,7 +105,12 @@ def main():
     X = meta_data.drop(columns=y_col)
     y = meta_data[y_col]
 
-    surrogate_framework.fit(X, y)
+    # filter variance threshold warnings on full na slices
+    with warnings.catch_warnings():
+        warnings.filterwarnings(action="ignore", message="Degrees of freedom <= 0 for slice.*", category=RuntimeWarning)
+        warnings.filterwarnings(action="ignore",message="All-NaN slice encountered", category=RuntimeWarning)
+        surrogate_framework.fit(X, y)
+    
     logger.debug("Surrogate framework fitted on meta-data.")
 
     with open(pars["output_file"], "wb") as f:

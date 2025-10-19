@@ -8,9 +8,10 @@ In addition to the seach data, the program needs external info, in detail:
 import sys
 import argparse
 import logging
+import warnings
 import pandas as pd
 from metatab_utils.data_loader import DataLoader
-from metalearning.metafeatures import extract_metafeatures
+from metalearning.metafeatures import CustomMFE
 
 from metatab_utils.helper_programs import (
     create_logger,
@@ -40,6 +41,9 @@ def parse_args(args):
 
     p.add_argument("-p", "--preprocessing", required=True, choices=["base", "density_filter", "pca"],
                    help="One must specify the preprocessing option used to generate the search data.")
+    
+    p.add_argument("-s", "--seed", default=42, type=int, 
+                    help="Seed used to control the randomness inherent to some metafeatures")
     
     p.add_argument("--create-outdir", action="store_true", help="Create the output directory if does not exists.")
 
@@ -129,9 +133,13 @@ def main():
     df_search_agg["preprocessing"] = pars["preprocessing"]
     
     # add metafeatures
-    metafeatures = extract_metafeatures(X, y)
-    for metafeature, value in metafeatures.items():
-        df_search_agg[metafeature] = value
+    mfe = CustomMFE(seed=pars["seed"])
+    metafeatures = mfe.fit(X, y).extract()
+
+     # we create a copy since the original df is not optimized in memory due to assign
+    with warnings.catch_warnings():
+        warnings.filterwarnings(action="ignore", category=pd.errors.PerformanceWarning)
+        df_search_agg = df_search_agg.assign(**metafeatures).copy()
 
     # save
     df_search_agg.to_csv(pars["output_file"], sep="\t", index=False)

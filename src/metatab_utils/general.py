@@ -1,6 +1,6 @@
 import pandas as pd
 from copy import deepcopy
-from typing import  Any
+from typing import Any, Callable
 
 
 
@@ -85,3 +85,24 @@ def add_broadcasted_objects_as_column(
             else [v] * n_rows
 
     return df
+
+
+
+def ensure_or_create(obj: Any, constructor: Callable[[], Any]) -> Any:
+    """
+    Return `obj` if it evaluates to True, 
+    otherwise create and return a new instance by calling `constructor`.
+
+    This is useful for safely initializing optional arguments, e.g.:
+        my_dict = ensure_or_create(existing_dict, dict)
+
+    Parameters:
+        obj (Any):
+            The object to check.
+        constructor (Callable[[], Any]):
+            A zero-argument callable used to create a new object if `obj` is falsy.
+
+    Returns:
+        Any: The original object if truthy, otherwise a newly constructed one.
+    """
+    return obj if obj else constructor()

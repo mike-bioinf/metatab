@@ -56,6 +56,29 @@ class ConfigSearchCV:
 
 
 
+def apply_hyperopt_corrections_to_sampled_point(params: dict[str, Any]) -> dict[str, Any]:
+    '''
+    Apply general hyperopt level correction to the sampled params.
+    These corrections come from specific quirks of hyperopt.
+    The corrections are done in place.
+
+    In particular the following aspects are addressed:
+    - automatic conversion of sampled list to tuple. 
+        To distinguish between original and converted tuple we cast 
+        the specific parameters explicitly.
+    '''
+    tuple_to_list_parameters = [
+        "inference_config__PREPROCESS_TRANSFORMS"
+    ]
+    
+    for param_to_convert in tuple_to_list_parameters:
+        if param_to_convert in params.keys():
+            params[param_to_convert] = list(params[param_to_convert])
+
+    return params
+
+
+
 def set_params_into_clf(
     clf_or_pipe: Classifier | Pipeline, 
     params: dict[str, Any],

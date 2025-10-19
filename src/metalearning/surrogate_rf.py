@@ -9,13 +9,16 @@ from sklearn.utils.validation import check_is_fitted
 class SurrogateRandomForestRegressor(RegressorMixin, BaseEstimator):
     '''
     Class that implements a regression random forest that predicts values 
-    and their uncertainty as the standard deviation of the forest trees predicted values.
+    and their uncertainty as the standard deviation of the forest trees predictions.
 
     The parameters are the ones accepted by "RandomForestRegressor" sklearn class, 
     with the same default values except for:
     - n_estimators: from 100 to 1000
-    - min_samples_split: from 2 to 10
-    - min_samples_leaf: from 1 to 3
+    - min_samples_split: from 2 to 20
+    - min_samples_leaf: from 1 to 5
+
+    The last 2 changes help in avoid overfitting, which in this case should mean
+    predicting performance scores based on a small number of meta-observations.
 
     Attributes:
     ------------------
@@ -27,8 +30,8 @@ class SurrogateRandomForestRegressor(RegressorMixin, BaseEstimator):
         n_estimators=1000,
         criterion='squared_error', 
         max_depth=None, 
-        min_samples_split=10, 
-        min_samples_leaf=3, 
+        min_samples_split=20, 
+        min_samples_leaf=5, 
         min_weight_fraction_leaf=0.0, 
         max_features=1.0, 
         max_leaf_nodes=None, 

@@ -37,8 +37,8 @@ def query_surrogate_framework(clf_or_pipe: Classifier | Pipeline) -> Pipeline:
 
     Returns:
         Pipeline: 
-        The surrogate framework, i.e. the surrogate model plus 
-        the preprocessing pipeline for the given classifier.
+        The surrogate framework, i.e. the pipeline of preprocessing steps 
+        plus the surrogate model.
     '''
     clf = clf_or_pipe[-1] if isinstance(clf_or_pipe, Pipeline) else clf_or_pipe
 

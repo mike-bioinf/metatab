@@ -25,31 +25,21 @@ HPS_MIXED_TYPES = [
 
 class TuningParams:
     '''
-    Class that contains the configurations of parameters to tune,
-    and the configuration of parameters to set to fixed values,
-    referred as fixed params, for all estimators. 
-    Note that the last ones can be set to values different from the library defaults.
+    Class that contains the configurations of parameters to tune, and the configuration 
+    of parameters to set to fixed values (referred as fixed params) for all estimators. 
+    Note that the fixed ones can be set to values that differ from the library defaults.
     '''
 
-    ### RANDOM FOREST --------------------------------------------------------
+    ### RANDOM FOREST ------------------------------------------------------------------------------
     RANDOM_FOREST_FIXED_PARAMS = {
         "n_estimators": 1000
     }
 
     RF_C0 = {
         "max_features": hp.choice("max_features", [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, None, "sqrt", "log2"]),
-        "min_samples_split": hp.choice("min_samples_split", list(range(2, 21))),
+        "min_samples_split": hp.choice("min_samples_split", list(range(2, 16))),
         "min_samples_leaf": hp.choice("min_samples_leaf", [1, 2, 3, 4, 5]),
-        "max_samples": hp.choice("max_samples", [0.6, 0.7, 0.8, 0.9, 1.0])
-    }
-
-    # extended version of C0
-    RF_C1 = {
-        "max_features": hp.choice("max_features", [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, None, "sqrt", "log2"]),
-        "min_samples_split": hp.choice("min_samples_split", list(range(2, 21))),
-        "min_samples_leaf": hp.choice("min_samples_leaf", [1, 2, 3, 4, 5]),
-        "max_samples": hp.choice("max_samples", [0.6, 0.7, 0.8, 0.9, 1.0]),
-        "bootstrap": hp.choice("bootstrap", [False, True]),
+        "max_samples": hp.choice("max_samples", [0.7, 0.8, 0.9, 1.0]),
         "min_impurity_decrease": hp.choice("min_impurity_decrease", [0, hp.loguniform("mid_positive", np.log(1e-5), np.log(1e-3))])
     }
 
@@ -364,7 +354,7 @@ class TuningParams:
 # Dict of default tuning spaces for each tunable estimator.
 # The default spaces are identified based on our paper preanalysis
 DEFAULT_ESTIMATORS_TUNE_SPACES = {
-    "random_forest": ("c1", TuningParams.RF_C1),
+    "random_forest": ("c1", TuningParams.RF_C0),
     "xgb": ("c0", TuningParams.XGB_C0), 
     "es_xgb": ("c0", TuningParams.XGB_C0), 
     "catboost": ("c0", TuningParams.CATBOOST_C0), 
