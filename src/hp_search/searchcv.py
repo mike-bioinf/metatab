@@ -12,17 +12,18 @@ from hyperopt.pyll.stochastic import sample
 from estimators.constants import Classifier
 from estimators.utils import fit_with_early_stop_on_validation_set
 from hp_search.cv import CrossValidator
+from hp_search.constants import ESTIMATOR_TYPE
+from hp_search.point_corrector import PointCorrector
 from metalearning.metafeatures import CustomMFE
 from metalearning.database.utils import query_surrogate_framework
 from metalearning.acquisition_funcs import compute_upper_confidence_bound
 from metalearning.surrogate_worker import SurrogateWorker
 from metalearning.sampler import HyperoptRandomSampler
+from hp_search.utils import ConfigSearchCV, set_params_into_clf
 
-from hp_search.utils import (
-    ConfigSearchCV, 
-    set_params_into_clf, 
-    apply_hyperopt_corrections_to_sampled_point
-)
+
+from estimators.params import HPS_MIXED_TYPED
+from metatab_utils.general import add_broadcasted_objects_as_column
 
 
 
@@ -48,6 +49,10 @@ class SearchCV:
             Classifier or Pipeline object with a classifier as head, 
             which hps have to be optimized.
         
+        type_estimator (Literal["random_forest", "xgb", "es_xgb", "catboost", "es_catboost", "lgbm", "es_lgbm", "tabpfn"]):
+            Type of estimator. "Combines" the clf and early stop info.
+            Info needed in meta-optimization (`meta` algo).
+            
         type_clf_or_pipe_preprocessing (Literal["base", "density_filter", "pca"] | None):
             Type of preprocessing used for the clf_or_pipe object.
             Needed only by the `meta` algo to propose candidate points.
@@ -146,6 +151,7 @@ class SearchCV:
         self,
         *,
         clf_or_pipe: Classifier | Pipeline,
+        type_estimator: ESTIMATOR_TYPE,
         type_clf_or_pipe_preprocessing: Literal["base", "density_filter", "pca"] | None,
         algo: Literal["random", "tpe", "meta"],
         params_distributions: dict,
@@ -165,6 +171,7 @@ class SearchCV:
         save_realtime_df_search_filepath: None | str | Path = None
     ):
         self.clf_or_pipe=clf_or_pipe
+        self.type_estimator=type_estimator
         self.type_clf_or_pipe_preprocessing=type_clf_or_pipe_preprocessing
         self.algo=algo
         self.params_distributions=params_distributions
@@ -210,6 +217,10 @@ class SearchCV:
         '''
         self._X = X
         self._y = y
+
+        self._point_corrector = PointCorrector()
+        self._set_point_to_model_corrections()
+        
         self._dfs_info_iter: list[pd.DataFrame] = []
         self.search_losses_: list[float] = []
 
@@ -231,7 +242,7 @@ class SearchCV:
         
         elif self.algo in ["random", "tpe"]:
             self._fit_with_standard_algo()
-        
+
         else:
             raise ValueError("Unsupported optimization algorithm.")
                 
@@ -278,9 +289,9 @@ class SearchCV:
 
         surrogate_worker = SurrogateWorker(
             sampler=HyperoptRandomSampler(),
+            point_corrector=PointCorrector(),
             mfe=CustomMFE(seed=self.seed),
-            # TODO: the database does not support "es" models 
-            surrogate_framework=query_surrogate_framework(self.clf_or_pipe),
+            surrogate_framework=query_surrogate_framework(self.type_estimator),
             acquisition_func=acquisition_func
         )
 
@@ -301,25 +312,27 @@ class SearchCV:
 
         # we do not evaluate the single point since is the best by definition
         if len(points) == 1:
-            self.best_params_ = points[0]
+            self.best_params_ = self._point_corrector.correct_point(
+                points[0],
+                **self._point_to_model_corrections
+            )
             return None
 
         for point in points:
-            _ = self._fit_point(
-                point,
-                apply_hyperopt_corrections=False,  # the proposed points are already corrected
-                returns_type="simple"
-            )
+            _ = self._fit_point(point, returns_type="simple")
 
         losses = np.array(self.search_losses_)
 
         if np.isnan(losses).all():
             raise ValueError("All search iterations have failed.")
         
-        self.best_params_ = points[np.nanargmin(losses)]
+        self.best_params_ = self._point_corrector.correct_point(
+            points[np.nanargmin(losses)],
+            **self._point_to_model_corrections
+        )
+
+
     
-
-
     def _fit_with_standard_algo(self) -> None:
         '''
         Optimize HPs with the random or tpe algo.
@@ -328,8 +341,9 @@ class SearchCV:
         # with n_iter to 1 the sampling is always random 
         # and the drawn point is the best by definition
         if self.n_iter == 1:
-            self.best_params_ = apply_hyperopt_corrections_to_sampled_point(
-                sample(self.params_distributions, np.random.default_rng(self.seed))
+            self.best_params_ = self._point_corrector.correct_point(
+                point=sample(self.params_distributions, np.random.default_rng(self.seed)),
+                **self._point_to_model_corrections
             )
             return None
 
@@ -346,11 +360,7 @@ class SearchCV:
         else:
             raise ValueError("Unsupported optimization algorithm.")
 
-        fit_point_fn = partial(
-            self._fit_point,
-            apply_hyperopt_corrections=True,
-            returns_type="hyperopt"
-        )
+        fit_point_fn = partial(self._fit_point, returns_type="hyperopt")
 
         best = fmin(
             fn=fit_point_fn,
@@ -363,8 +373,9 @@ class SearchCV:
         )
 
         # hyperopt tracks the uncorrected params
-        self.best_params_ = apply_hyperopt_corrections_to_sampled_point(
-            space_eval(self.params_distributions, best)
+        self.best_params_ = self._point_corrector.correct_point(
+            space_eval(self.params_distributions, best),
+            **self._point_to_model_corrections
         )
 
 
@@ -372,43 +383,64 @@ class SearchCV:
     def _fit_point(
         self, 
         params: dict,
-        apply_hyperopt_corrections: bool,
         returns_type: Literal["hyperopt", "simple"]
     ) -> dict | float:
         '''
         Fit using the input tune space point.
 
         Parameters:
-            params (dict): dict of hps to use (tune space point).
-            apply_hyperopt_corrections (bool):
-                Whether to apply the hyperopt corrections to the point.
+            params (dict): 
+                Dict of hps to use (tune space point). Must be not corrected.
             returns_type (Literal["hyperopt", "simple"]):
                 Whether returns a hyperopt compatible result or a simpler one.
                 In the first case the function returns a dict with hyperopt
                 compatible info, in the second only the loss.
         '''
         try:
-            if apply_hyperopt_corrections:
-                params = apply_hyperopt_corrections_to_sampled_point(params)
+            params_to_model = self._point_corrector.correct_point(
+                params, 
+                **self._point_to_model_corrections
+            )
 
             loss, df_cv_info = self.cross_validator.fit(
                 X=self._X, 
                 y=self._y,
-                params=params,
+                params=params_to_model,
                 agg="mean",
                 collect_info=self.build_df_search
             )
 
-            # the code should not fail a single time from here, 
-            # but if it happens then we have external bug/problems
-            # masked as failed optimization iteration.
-            # (for example no space and then yes on disk)
-            if self.build_df_search:
-                self._dfs_info_iter.append(df_cv_info)
-                # here a bit inefficient since we rebuild multiple times
-                if self.save_realtime_df_search_filepath:
-                    self.df_search_ = self._build_df_search()
-                    self.df_search_.to_csv(self.save_realtime_df_search_filepath, sep="\t", index=False)
+            # The code should not fail a single time from here, 
+            # but if it happens then we have external bug/problems that can be confused with 
+            # failed optimization iteration (for example no space and then yes on disk).
+            # We don't tolerate these errors since external to the optimization procedure.
+            try:
+                if self.build_df_search:
+                    # this is to avoid edge behaviour when these dfs are concatenated with pd.concat: 
+                    # - block value coercion.
+                    # - block warning for concatenating full na columns.
+                    df_cv_info = add_broadcasted_objects_as_column(
+                        df=df_cv_info, 
+                        dictionary=params, # we add the original not corrected point
+                        convert_bool_to_str=False,
+                        convert_none_to_str=False,
+                        force_object_datatype=HPS_MIXED_TYPED,
+                        check_matching_keys_cols=True,
+                        check_non_builtin_types=True,
+                        copy=False
+                    )
+                    
+                    self._dfs_info_iter.append(df_cv_info)
+                    
+                    # here a bit inefficient since we rebuild multiple times
+                    if self.save_realtime_df_search_filepath:
+                        self.df_search_ = self._build_df_search()
+                        self.df_search_.to_csv(self.save_realtime_df_search_filepath, sep="\t", index=False)
+            
+            except Exception as e:
+                raise ValueError(
+                    f"Encountered the following error during df_search building or saving process: {e}"
+                )
 
             # this line must be placed after the df_search building code
             self.search_losses_.append(loss)
@@ -439,13 +471,31 @@ class SearchCV:
 
 
 
+    def _set_point_to_model_corrections(self) -> None:
+        '''
+        Defines and sets the arguments that the PointCollector must use to apply 
+        the correction to the points before they are passed to the models for the fitting procedure.
+        '''
+        if self.type_estimator == "tabpfn":
+            self._point_to_model_corrections = {
+                "apply_hypeopt_corrections": True,
+                "estimator": "tabpfn",
+                "estimator_corrections": "all"
+            }
+        else:
+            self._point_to_model_corrections = {
+                "apply_hypeopt_corrections": True
+            }
+
+
+
     def _build_df_search(self) -> pd.DataFrame:    
         # add search iter column and concat
         for i in range(len(self._dfs_info_iter)):
             self._dfs_info_iter[i]["search_iter"] = i
         return pd.concat(self._dfs_info_iter, axis=0, ignore_index=True)
 
-    
+
 
     def predict_proba(self, X: pd.DataFrame, **kwargs) -> np.ndarray:
         check_is_fitted(self, "best_estimator_")

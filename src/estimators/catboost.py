@@ -20,6 +20,7 @@ class MyCatBoostClassifier(GBDTBaseEstimator):
         super().__init__(
             preprocessing, seed, n_threads, early_stopping_rounds, tune_configuration,
             classifier_cls=CatBoostClassifier,
+            type_estimator="catboost",
             callbacks_on_fixed_params=[_adjust_catboost_loss_function_and_num_classes],
             n_threads_parameter="thread_count",
             early_stopping=False
@@ -37,6 +38,7 @@ class MyESCatBoostClassifier(GBDTBaseEstimator):
         super().__init__(
             preprocessing, seed, n_threads, early_stopping_rounds, tune_configuration,
             classifier_cls=CatBoostClassifier,
+            type_estimator="es_catboost",
             callbacks_on_fixed_params=[
                 _adjust_catboost_loss_function_and_num_classes, 
                 _adjust_es_catboost_logloss_metric
@@ -57,6 +59,7 @@ class MyTunedCatBoostClassifier(GBDTBaseEstimator):
         super().__init__(
             preprocessing, seed, n_threads, early_stopping_rounds, tune_configuration,
             classifier_cls=CatBoostClassifier,
+            type_estimator="catboost",
             callbacks_on_fixed_params=[_adjust_catboost_loss_function_and_num_classes],
             n_threads_parameter="thread_count",
             early_stopping=False
@@ -74,6 +77,7 @@ class MyTunedESCatBoostClassifier(GBDTBaseEstimator):
         super().__init__(
             preprocessing, seed, n_threads, early_stopping_rounds, tune_configuration,
             classifier_cls=CatBoostClassifier,
+            type_estimator="es_catboost",
             callbacks_on_fixed_params=[
                 _adjust_catboost_loss_function_and_num_classes, 
                 _adjust_es_catboost_logloss_metric

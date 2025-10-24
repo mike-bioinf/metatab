@@ -56,6 +56,7 @@ class MyTunedRandomForestClassifier(AbstractBaseEstimator):
                 classifier_params=fixed_params
             ),
             type_clf_or_pipe_preprocessing=self.preprocessing,
+            type_estimator="random_forest",
             algo=self.tune_configuration["algo"],
             params_distributions=self.tune_configuration["params_distributions"],
             random_state_parameter="random_state",

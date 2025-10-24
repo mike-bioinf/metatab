@@ -12,6 +12,50 @@ from tabpfn.model_loading import _user_cache_dir, download_model
 
 
 
+
+TABPFN_CHECKPOINTS = [
+   "tabpfn-v2-classifier-finetuned-zk73skhh.ckpt", # is the new default
+    "tabpfn-v2-classifier.ckpt", # old default
+    "tabpfn-v2-classifier-od3j1g5m.ckpt",
+    "tabpfn-v2-classifier-gn2p4bpt.ckpt",
+    "tabpfn-v2-classifier-znskzxi4.ckpt",
+    "tabpfn-v2-classifier-llderlii.ckpt",
+    "tabpfn-v2-classifier-vutqq28w.ckpt"
+]
+
+
+
+def download_and_return_tabpfn_checkpoints(ckpts: str | list[str]) -> list[str]:
+    '''
+    Download the input tabpfn checkpoints in the user cache directory
+    identified by the PriorLabs `_user_cache_dir` utility.
+    Returns the list of checkpoint absolute paths as strings.   
+    '''
+    ckpts = ckpts if isinstance(ckpts, list) else [ckpts]
+    # get the absolute path where models live or will be downloaded
+    local_dir = _user_cache_dir(sys.platform, appname="tabpfn").resolve()
+    # we assure that the folder exists
+    local_dir.mkdir(parents=True, exist_ok=True)
+
+    ckpts_paths = []
+
+    for ckpt in ckpts:
+        ckpt_file = local_dir / ckpt
+        if not ckpt_file.exists():
+            download_result = download_model(
+                to=ckpt_file, # here we must include the ckpt filename
+                version="v2",
+                which="classifier",
+                model_name=ckpt
+            )    
+            if download_result != "ok":
+                raise RuntimeError(f"Download failed for {ckpt}: {download_result}")
+        ckpts_paths.append(str(ckpt_file))
+
+    return ckpts_paths
+
+
+
 def enumerate_preprocess_transforms() -> list[list[dict]]:
     '''
     Generate a list of sublists of dicts of preprocessing instructions.
@@ -56,49 +100,9 @@ def enumerate_preprocess_transforms() -> list[list[dict]]:
 
 
 
-def return_clf_paths_list() -> list[str]:
-    '''
-    Ensure all TabPFN v2 classifier checkpoints exist in the cache directory.
-    Downloads any missing models using PriorLabs functions.
-    Returns the list of absolute paths to classifier checkpoints as strings.
-    '''
-    # return the absolute path where models live or will be downloaded
-    local_dir = _user_cache_dir(sys.platform, appname="tabpfn").resolve()
-    # we assure that the folder exists
-    local_dir.mkdir(parents=True, exist_ok=True)
-
-    ckpts = [
-        "tabpfn-v2-classifier-finetuned-zk73skhh.ckpt", # is the new default
-        "tabpfn-v2-classifier.ckpt", # old default
-        "tabpfn-v2-classifier-od3j1g5m.ckpt",
-        "tabpfn-v2-classifier-gn2p4bpt.ckpt",
-        "tabpfn-v2-classifier-znskzxi4.ckpt",
-        "tabpfn-v2-classifier-llderlii.ckpt",
-        "tabpfn-v2-classifier-vutqq28w.ckpt",
-    ]
-    
-    model_paths = []
-
-    for ckpt in ckpts:
-        ckpt_file = local_dir / ckpt
-        if not ckpt_file.exists():
-            download_result = download_model(
-                to=ckpt_file, # here we must include the ckpt filename
-                version="v2",
-                which="classifier",
-                model_name=ckpt
-            )    
-            if download_result != "ok":
-                raise RuntimeError(f"Download failed for {ckpt}: {download_result}")
-        model_paths.append(str(ckpt_file))
-
-    return model_paths
-
-
-
 TABPFN_TUNE_SPACE = {
     ## model parameters
-    "model_path": hp.choice("model_path", return_clf_paths_list()),
+    "model_path": hp.choice("model_path", TABPFN_CHECKPOINTS),
     "n_estimators": hp.choice("n_estimators", [8, 12, 16]),
     "average_before_softmax": hp.choice("average_before_softmax", [True, False]),
     "softmax_temperature": hp.choice("softmax_temperature", [0.75, 0.8, 0.9, 0.95, 1.0]),

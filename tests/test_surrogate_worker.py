@@ -1,14 +1,14 @@
 import pytest
 import pandas as pd
 from functools import partial
+from sklearn.datasets import make_classification
 from estimators.params import TuningParams
+from hp_search.point_corrector import PointCorrector
 from metalearning.surrogate_worker import SurrogateWorker
 from metalearning.sampler import HyperoptRandomSampler
 from metalearning.metafeatures import CustomMFE
 from metalearning.acquisition_funcs import compute_upper_confidence_bound
-from sklearn.datasets import make_classification
-from metalearning.database.utils import SURROGATE_DATABASE, load_surrogate_framework
-
+from metalearning.database.utils import query_surrogate_framework
 
 
 
@@ -24,7 +24,7 @@ def create_data() -> tuple[pd.DataFrame, pd.Series]:
 
 def test_surrogate_worker_works_in_general(create_data):
     X, y = create_data
-    surrogate_framework = load_surrogate_framework(SURROGATE_DATABASE["lgbm"])
+    surrogate_framework = query_surrogate_framework("lgbm")
 
     partial_compute_upper_confidence_bound = partial(
         compute_upper_confidence_bound,
@@ -35,6 +35,7 @@ def test_surrogate_worker_works_in_general(create_data):
     surrogate_worker = SurrogateWorker(
         sampler=HyperoptRandomSampler(),
         mfe=CustomMFE(seed=0),
+        point_corrector=PointCorrector(),
         surrogate_framework=surrogate_framework,
         acquisition_func=partial_compute_upper_confidence_bound
     )

@@ -20,7 +20,7 @@ def log_program_setting(pars: dict, logger: logging.Logger, name_dataset: str) -
     '''Logs info about the program input parameters/setting at debug level'''
     if pars["tune"]:
         logger.debug(
-            f"\nLaunching tuned {pars["tune_configuration"]["configuration"]} {pars["estimator"]} on {name_dataset}!"
+            f"\nLaunching tuned {pars["estimator"]} with '{pars["tune_configuration"]["configuration"]}' space on {name_dataset}!"
         )
     else:
        logger.debug(f"\nLaunching {pars["estimator"]} on {name_dataset}!")

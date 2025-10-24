@@ -7,13 +7,14 @@ dependencies = [
     "pandas>=2.2.3",
     "scikit-learn>=1.2.0,<1.7",
     "hyperopt>=0.2.7",
+    "pymfe>=0.4.4",
     "torch>=2.6.0",
     "xgboost>=3.0.2",
     "catboost>=1.2.8",
     "lightgbm>=4.6.0",
-    "joblib==1.5.1",  # the exact version assures the deserialization of the surrogate random forests database
+    "joblib==1.5.1",  # the exact version assures the deserialization of the surrogate models
     "ray>=2.31.0,<2.45.0",  # for autotabpfn that relies on autogluon
-    "tabpfn==2.1.3",  # our finetune program relies on this specific version
+    "tabpfn==2.1.3",  # our finetune program and checkpoint download procss rely on this specific version
     # install directly from github the finetunetabpfn package
     # "finetunetabpfn@git+https://github.com/mike-bioinf/finetunetabpfn.git@main"
 ]
@@ -21,6 +22,11 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest"]
+paper = [
+    "seaborn>=0.13.2",
+    "matplotlib>=3.10.3",
+    "adjustText>=1.3.0"
+]
 
 
 [project.scripts]

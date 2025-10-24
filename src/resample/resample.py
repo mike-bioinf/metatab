@@ -119,6 +119,7 @@ def main():
         fit_time = time() - t
         logger.debug("\t-Estimator fitted on input data.")
         logger.debug(f"\t-Fit time in minutes: {round(fit_time/60, 2)}")
+        
         fit_preprocessing_dict: dict = estimator.collect_fit_preprocessing_info()
         manager_estimator.execute_post_fit_routine()
 

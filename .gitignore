@@ -165,3 +165,5 @@ idelete.ipynb
 interactive.ipynb
 debug_code
 old_code.py
+data
+tests/data
