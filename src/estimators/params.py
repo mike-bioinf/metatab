@@ -16,8 +16,14 @@ DEFAULT_TUNE_CONFIGURATION = {
 
 ## TODO: we do not differentiate between same-named parameters for different estimators. This is "manually" guaranteed.
 # List of HPs that assume mixed typed values.
-HPS_MIXED_TYPES = [
-    "max_features"
+HPS_MIXED_TYPED = [
+    "max_features",
+    # this two tabpfn HP are listed here to avoid the FutureWarning raised by pandas concat:
+    # """The behavior of DataFrame concatenation with empty or all-NA entries is deprecated. 
+    # In a future version, this will no longer exclude empty or all-NA columns when determining the result dtypes. 
+    # To retain the old behavior, exclude the relevant entries before the concat operation."""
+    "inference_config__OUTLIER_REMOVAL_STD",
+    "inference_config__SUBSAMPLE_SAMPLES"
 ]
 
 
@@ -354,7 +360,7 @@ class TuningParams:
 # Dict of default tuning spaces for each tunable estimator.
 # The default spaces are identified based on our paper preanalysis
 DEFAULT_ESTIMATORS_TUNE_SPACES = {
-    "random_forest": ("c1", TuningParams.RF_C0),
+    "random_forest": ("c0", TuningParams.RF_C0),
     "xgb": ("c0", TuningParams.XGB_C0), 
     "es_xgb": ("c0", TuningParams.XGB_C0), 
     "catboost": ("c0", TuningParams.CATBOOST_C0), 

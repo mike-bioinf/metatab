@@ -24,6 +24,9 @@ class GBDTBaseEstimator(AbstractBaseEstimator):
     Parameters:
         classifier_cls (Classifier): Classifier class.
 
+        estimator_type (Literal["random_forest", "xgb", "es_xgb", "catboost", "es_catboost", "lgbm", "es_lgbm", "tabpfn"]):
+            Type of estimator. Needed by SearchCV class.
+
         n_threads_parameter (str): 
             Name of the parameter controlling the 
             number of threads to use to fit the estimator.
@@ -61,6 +64,7 @@ class GBDTBaseEstimator(AbstractBaseEstimator):
         tune_configuration: None | dict,
         *,
         classifier_cls: Classifier,
+        type_estimator: Literal["random_forest", "xgb", "es_xgb", "catboost", "es_catboost", "lgbm", "es_lgbm", "tabpfn"],
         n_threads_parameter: str,
         callbacks_on_fixed_params: list[Callable[[dict, pd.Series, bool], dict]] | None = None, 
         early_stopping: bool = False,
@@ -70,6 +74,7 @@ class GBDTBaseEstimator(AbstractBaseEstimator):
     ):
         super().__init__(preprocessing, seed, n_threads, early_stopping_rounds, tune_configuration)
         self.classifier_cls = classifier_cls
+        self.type_estimator = type_estimator
         self.callbacks_on_fixed_params = callbacks_on_fixed_params
         self.n_threads_parameter = n_threads_parameter
         self.early_stopping = early_stopping
@@ -96,6 +101,7 @@ class GBDTBaseEstimator(AbstractBaseEstimator):
         if self.tune_configuration:
             self.estimator_ = SearchCV(
                 clf_or_pipe=pipe,
+                type_estimator=self.type_estimator,
                 type_clf_or_pipe_preprocessing=self.preprocessing,
                 algo=self.tune_configuration["algo"],
                 params_distributions=self.tune_configuration["params_distributions"],

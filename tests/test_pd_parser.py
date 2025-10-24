@@ -5,7 +5,7 @@ from metatab_utils.prediction import PredictionDataframe
 
 
 def test_parsing_works():
-    path = Path(__file__).parents[1] / "data/pred_dataframe.txt"
+    path = Path(__file__).parent / "data/pred_dataframe.txt"
     df_pred = PredictionDataframe()
     df_pred.build_from_file(path, sep="\t")
     array = df_pred.df["pred_proba"].iloc[0]

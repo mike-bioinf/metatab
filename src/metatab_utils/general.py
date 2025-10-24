@@ -55,11 +55,10 @@ def add_broadcasted_objects_as_column(
         pd.DataFrame: The new/updated dataframe.
     '''
     df = deepcopy(df) if copy else df
-    dict_keys = dictionary.keys()
 
     if check_matching_keys_cols:
         for col in df.columns:
-            if col in dict_keys:
+            if col in dictionary.keys():
                 raise ValueError(f"'{col}' triggers a key-column match.")
 
     if check_non_builtin_types:
@@ -106,3 +105,22 @@ def ensure_or_create(obj: Any, constructor: Callable[[], Any]) -> Any:
         Any: The original object if truthy, otherwise a newly constructed one.
     """
     return obj if obj else constructor()
+
+
+
+
+def enlist(obj: Any, none_as_is: bool = True) -> list|None:
+    '''
+    Set the obj in a list if not already a list.
+
+    Parameters:
+        obj (Any): Object to enlist.
+        none_as_is (bool, optional): Whether to leave None as is.
+    
+    Returns:
+        list|None: A list or None object.
+    '''
+    if none_as_is:
+        return obj if isinstance(obj, list) or (obj is None and none_as_is) else [obj]
+    else:
+        return obj if isinstance(obj, list) else [obj]

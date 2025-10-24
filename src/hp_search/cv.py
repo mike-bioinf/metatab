@@ -7,8 +7,6 @@ from typing import TYPE_CHECKING, Literal
 from sklearn.model_selection import RepeatedStratifiedKFold
 from sklearn.metrics import log_loss
 from estimators.utils import fit_with_early_stop_on_validation_set
-from estimators.params import HPS_MIXED_TYPES
-from metatab_utils.general import add_broadcasted_objects_as_column
 from hp_search.utils import set_params_into_clf
 
 if TYPE_CHECKING:
@@ -156,28 +154,13 @@ class CrossValidator:
 
         array_cv_losses = np.array(cv_losses)
         agg_loss = np.mean(array_cv_losses) if agg == "mean" else np.sum(array_cv_losses)
-        out = [agg_loss]
         
         if collect_info:
-            df_info = pd.DataFrame(cv_results)
-            # this is to block coercion when these dfs are concatenated with pd.concat.
-            df_info = add_broadcasted_objects_as_column(
-                df=df_info, 
-                dictionary=params,
-                convert_bool_to_str=False,
-                convert_none_to_str=False,
-                force_object_datatype=HPS_MIXED_TYPES,
-                check_matching_keys_cols=True,
-                check_non_builtin_types=True,
-                copy=False
-            )
-            out.append(df_info)
+            return (agg_loss, pd.DataFrame(cv_results))
         else:
-            out.append(None)
+            return (agg_loss, None)
         
-        return tuple(out)
-
-
+    
     def _compute_loss_score(self, y_pred: np.ndarray, y_true: np.ndarray) -> float:
         if self.metric == "logloss":
             return log_loss(y_true, y_pred)

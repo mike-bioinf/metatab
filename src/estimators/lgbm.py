@@ -38,6 +38,7 @@ class MyLGBMClassifier(GBDTBaseEstimator):
         super().__init__(
             preprocessing, seed, n_threads, early_stopping_rounds, tune_configuration,
             classifier_cls=LGBMClassifier,
+            type_estimator="lgbm",
             callbacks_on_fixed_params=[_adjust_lgbm_objective_and_num_classes],
             n_threads_parameter="n_jobs",
             early_stopping=False
@@ -62,6 +63,7 @@ class MyESLGBMClassifier(GBDTBaseEstimator):
         super().__init__(
             preprocessing, seed, n_threads, early_stopping_rounds, tune_configuration,
             classifier_cls=LGBMClassifier,
+            type_estimator="es_lgbm",
             callbacks_on_fixed_params=[
                 _adjust_lgbm_objective_and_num_classes, 
                 _adjust_eslgbm_logloss_metric
@@ -86,6 +88,7 @@ class MyTunedLGBMClassifier(GBDTBaseEstimator):
         super().__init__(
             preprocessing, seed, n_threads, early_stopping_rounds, tune_configuration,
             classifier_cls=LGBMClassifier,
+            type_estimator="lgbm",
             callbacks_on_fixed_params=[_adjust_lgbm_objective_and_num_classes],
             n_threads_parameter="n_jobs",
             early_stopping=False
@@ -111,6 +114,7 @@ class MyTunedESLGBMClassifier(GBDTBaseEstimator):
         super().__init__(
             preprocessing, seed, n_threads, early_stopping_rounds, tune_configuration,
             classifier_cls=LGBMClassifier,
+            type_estimator="es_lgbm",
             callbacks_on_fixed_params=[
                 _adjust_lgbm_objective_and_num_classes, 
                 _adjust_eslgbm_logloss_metric

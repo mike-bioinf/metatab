@@ -11,19 +11,22 @@ if TYPE_CHECKING:
     from sklearn.pipeline import Pipeline
     from metalearning.sampler import HyperoptRandomSampler
     from metalearning.metafeatures import CustomMFE
-    
+    from hp_search.point_corrector import PointCorrector
+
 
 
 
 class SurrogateWorker:
     '''
-    Class that integrates the hp sampler, metafeature extractor, surrogate framework, 
+    Class that integrates the hp sampler, point corrector, metafeature extractor, surrogate framework, 
     and acquisition functions to manage the generation and evaluation of meta-points. 
     It supports various strategies (propose_* methods) for selecting the meta-points.
 
     Parameters:
         sampler (HyperoptRandomSampler):
             Sampler that allows to sample hp points from a space.
+        point_corrector (PointCorrector):
+            Corrector of the sampled points.
         mfe (CustomMFE):
             CustomMFE to extract data metafeatures.
         surrogate_framework (Pipeline): 
@@ -34,11 +37,13 @@ class SurrogateWorker:
     def __init__(
         self,
         sampler: HyperoptRandomSampler,
+        point_corrector: PointCorrector,
         mfe: CustomMFE,
         surrogate_framework: Pipeline,
         acquisition_func: Callable[[Any], np.ndarray]
     ):
         self.sampler=sampler
+        self.point_corrector=point_corrector
         self.mfe=mfe
         self.surrogate_framework=surrogate_framework
         self.acquisition_func=acquisition_func
@@ -76,9 +81,9 @@ class SurrogateWorker:
         self, 
         n_candidate_points: int, 
         n_best: int,
+        point_corrector_kwargs: None | dict = None,
         mfe_fit_kwargs: None | dict = None,
         mfe_extract_kwargs: None | dict = None,
-        sampler_kwargs: None | dict = None,
         acquisition_func_kwargs: None | dict = None
     ) -> list[dict[str, Any]]:
         '''
@@ -93,15 +98,15 @@ class SurrogateWorker:
             n_best (int): 
                 Number of points returned by the utility.
             
-            mfe_fit_kwargs (None | dict):
+            point_corrector_kwargs (None | dict, optional):
+                Kwargs to pass to the PointCorrector `correct_point` method.
+
+            mfe_fit_kwargs (None | dict, optional):
                 Kwargs to pass to the mfe `fit` method.
             
-            mfe_extract_kwargs (None | dict):
+            mfe_extract_kwargs (None | dict, optional):
                 Kwargs to pass to the mfe `extract` method.
-
-            sampler_kwargs (None | dict):
-                Kwargs to pass to the sampler `sample_points` method.
-
+            
             acquisition_func_kwargs (None | dict):
                 Kwargs to pass to the acquisition function callable.
 
@@ -109,13 +114,17 @@ class SurrogateWorker:
             list[dict[str,Any]]: The list of the best points.
         '''
         check_is_fitted(self, "is_fitted_")
+
+        point_corrector_kwargs = ensure_or_create(point_corrector_kwargs, dict)
+        mfe_fit_kwargs = ensure_or_create(mfe_fit_kwargs, dict)
+        mfe_extract_kwargs = ensure_or_create(mfe_extract_kwargs, dict)
         acquisition_func_kwargs = ensure_or_create(acquisition_func_kwargs, dict)
 
         metadata, candidate_points = self._generate_meta_data(
             n_candidate_points=n_candidate_points, 
+            point_corrector_kwargs=point_corrector_kwargs,
             mfe_fit_kwargs=mfe_fit_kwargs,
-            mfe_extract_kwargs=mfe_extract_kwargs,
-            sampler_kwargs=sampler_kwargs
+            mfe_extract_kwargs=mfe_extract_kwargs
         )
        
         pred_values, pred_uncertainty = self.surrogate_framework.predict(metadata)        
@@ -129,10 +138,10 @@ class SurrogateWorker:
 
     def _generate_meta_data(
         self,
-        n_candidate_points: int, 
-        mfe_fit_kwargs: None | dict,
-        mfe_extract_kwargs: None | dict,
-        sampler_kwargs: None | dict
+        n_candidate_points: int,
+        point_corrector_kwargs: dict,
+        mfe_fit_kwargs: dict,
+        mfe_extract_kwargs: dict,
     ) -> tuple[pd.DataFrame, list[dict]]:
         '''
         Generate the meta-data, i.e. sampled hps + data metafeatures.
@@ -140,14 +149,10 @@ class SurrogateWorker:
         Importantly the meta-data and candidate points order matches, meaning
         that the first row is built upon the first point in the list and so on.
         '''
-        mfe_extract_kwargs = ensure_or_create(mfe_extract_kwargs, dict)
-        mfe_fit_kwargs = ensure_or_create(mfe_fit_kwargs, dict)
-        sampler_kwargs = ensure_or_create(sampler_kwargs, dict)
-
-        candidate_points = self.sampler.fit(self.hp_space, self.seed).sample_points(
-            n_candidate_points, 
-            **sampler_kwargs
-        )
+        candidate_points = [
+            self.point_corrector.correct_point(sample, **point_corrector_kwargs)
+            for sample in self.sampler.fit(self.hp_space, self.seed).sample_points(n_candidate_points)
+        ]
         
         df_candidate_points = pd.DataFrame(candidate_points)
         metafeatures = self.mfe.fit(self.X, self.y, **mfe_fit_kwargs).extract(**mfe_extract_kwargs)

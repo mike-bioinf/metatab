@@ -3,6 +3,11 @@ In this module we set the encoding (preprocessing) to apply to the meta-data obt
 from the different estimators, considering ONLY the default estimators tune spaces.
 
 Some general indications:
+- For the gbdts the "es" version uses the same tune space of the base ones.
+This means that we define just one encoding for both.
+- We must transform some numerical or mixed typed columns to str since we want to encode 
+them though the sklearn ordinal or onehot encoders, which require input categories of the
+same type.
 - We expect some metafeatures to contain full nan values. This is because pymfe does not
 automatically filter the structurally incompatible metafeature-summary_func combinations.
 These are addressed in practice by the VarianceThreshold step which is able to remove 
@@ -10,7 +15,7 @@ full nan features.
 - We expect some metafeatures to contain data-dependent nan, i.e. nan values that
 compares only on some cases. We do not take care of this nan values since
 the RandomForestRegressor (our surrogate model) is able to natively handle them.
-- Some hyperparameters have nan values that should be converted to None. 
+- Some hyperparameters have nan values that should be converted back to None. 
 This is due to pandas IO behaviour. Either the case we resolve this by implementing 
 the NanToNone transformer which is able to work on specific columns only.
 In this way we avoid to erroneously apply this conversion on the metafeatures.
@@ -18,18 +23,17 @@ In this way we avoid to erroneously apply this conversion on the metafeatures.
 
 import numpy as np
 import pandas as pd
-from typing import Literal, Any
 from copy import deepcopy
+from typing import Literal, Any
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.preprocessing import OrdinalEncoder, OneHotEncoder
 from sklearn.feature_selection import VarianceThreshold
 from sklearn.compose import ColumnTransformer
 
 from hp_search.tabpfn_search_space import (
-    enumerate_preprocess_transforms, 
-    return_clf_paths_list
+    enumerate_preprocess_transforms,
+    TABPFN_CHECKPOINTS
 )
-
 
 
 
@@ -46,14 +50,12 @@ class NanToNone(TransformerMixin, BaseEstimator):
         self.columns = columns
         self.check_on_fit = check_on_fit
 
-
-    def fit(self, X: pd.DataFrame, y: None) -> "NanToNone":
+    def fit(self, X: pd.DataFrame, y: None = None) -> "NanToNone":
         self._list_columns = self.columns if isinstance(self.columns, list) else [self.columns]
         if self.check_on_fit:
             _check_X_type(X)
             _check_columns_presence(X, self._list_columns)
         return self
-
 
     def transform(self, X: pd.DataFrame, y: None = None) -> pd.DataFrame:
         _check_X_type(X)
@@ -78,14 +80,12 @@ class ColToStr(TransformerMixin, BaseEstimator):
         self.columns = columns
         self.check_on_fit = check_on_fit
 
-
     def fit(self, X: pd.DataFrame, y: None = None) -> "ColToStr":
         self._list_columns = self.columns if isinstance(self.columns, list) else [self.columns]
         if self.check_on_fit:
             _check_X_type(X)
             _check_columns_presence(X, self._list_columns)
         return self
-    
 
     def transform(self, X: pd.DataFrame, y: None = None) -> pd.DataFrame:
         _check_X_type(X)
@@ -94,17 +94,17 @@ class ColToStr(TransformerMixin, BaseEstimator):
         X_copy = X_copy.astype({col: "str" for col in self._list_columns})
         return X_copy
 
+    
 
-
-def _check_columns_presence(X: pd.DataFrame, cols: list[str]) -> None:
-    for col in cols:
+def _check_columns_presence(X: pd.DataFrame, columns: list[str]) -> None:
+    for col in columns:
         if col not in X.columns:
             raise ValueError(f"'{col}' column not found in X.")
 
 
 def _check_X_type(X: Any) -> None:
     if not isinstance(X, pd.DataFrame):
-        raise TypeError("X must be a pandas DataFrame.")
+        raise TypeError("X must be a pandas DataFrame.")    
 
 
 
@@ -175,10 +175,10 @@ HPS_ENCODING_SCHEME_TABPFN = [
                 "onehot",
                 OneHotEncoder(
                     categories=[
-                        # we save the lists as string in the meta-data so it should work 
-                        [str(list_of_dicts) for list_of_dicts in enumerate_preprocess_transforms()],
+                        # we have the lists as tuple string representation in the metadata 
+                        [str(tuple(list_of_dicts)) for list_of_dicts in enumerate_preprocess_transforms()],
                         ["None", "7.0", "9.0", "12.0"],
-                        return_clf_paths_list()
+                        TABPFN_CHECKPOINTS
                     ]
                 ),
                 [
@@ -200,19 +200,74 @@ HPS_ENCODING_SCHEME_TABPFN = [
 ]
 
 
-## TODO: complete once defined default tuning space
+HPS_ENCODING_SCHEME_XGB = [
+    ColumnTransformer(
+        transformers=[
+            (
+                "ordinal",
+                OrdinalEncoder(
+                    categories=[
+                        ["depthwise"],
+                        ["exact"]
+                    ]
+                ),
+                [
+                    "grow_policy",
+                    "tree_method"
+                ]
+            ),
+            PREPROCESSING_COLUMN_ENCODING
+        ],
+        **COLUMN_TRANSFORMER_FIXED_PARAMS
+    ),
+    VarianceThreshold()
+]
+
+
+HPS_ENCODING_SCHEME_CATBOOST = [
+    ColumnTransformer(
+        transformers=[
+            (
+                "ordinal",
+                OrdinalEncoder(
+                    categories=[
+                        ["Cosine"],
+                        ["SymmetricTree"],
+                        ["Plain"]
+                    ]
+                ),
+                [
+                    "score_function",
+                    "grow_policy",
+                    "boosting_type"
+                ]
+            ),
+            PREPROCESSING_COLUMN_ENCODING
+        ],
+        **COLUMN_TRANSFORMER_FIXED_PARAMS
+    ),
+    VarianceThreshold()
+]
+
+
+HPS_ENCODING_SCHEME_LGBM = [
+    create_preprocessing_encoding(),
+    VarianceThreshold()
+]
+
+
 HPS_ENCODING_SCHEME = {
     "random_forest": HPS_ENCODING_SCHEME_RANDOM_FOREST,
-    "xgb": [create_preprocessing_encoding()], ## to complete
-    "catboost": [create_preprocessing_encoding()],  ## to complete
-    "lgbm": [create_preprocessing_encoding(), VarianceThreshold()],
+    "xgb": HPS_ENCODING_SCHEME_XGB,
+    "catboost": HPS_ENCODING_SCHEME_CATBOOST,
+    "lgbm": HPS_ENCODING_SCHEME_LGBM,
     "tabpfn": HPS_ENCODING_SCHEME_TABPFN
 }
 
 
 def get_encoding_scheme(
-        estimator: Literal["random_forest", "xgb", "catboost", "lgbm", "tabpfn"]
-    ) -> list:
+    estimator: Literal["random_forest", "xgb", "catboost", "lgbm", "tabpfn"]
+) -> list:
     '''
     Get a deepcopy of the encoding scheme of the HP feature space designed for the input estimator.
     The encoding scheme consists in a ordered list of sklearn transformers to insert in a Pipeline object.

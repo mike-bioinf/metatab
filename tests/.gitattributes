@@ -1,0 +1,2 @@
+# avoid to track differences in txt files making commits more clear
+*.txt -diff

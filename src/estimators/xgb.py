@@ -20,6 +20,7 @@ class MyXGBClassifier(GBDTBaseEstimator):
         super().__init__(
             preprocessing, seed, n_threads, early_stopping_rounds, tune_configuration,
             classifier_cls=XGBClassifier,
+            type_estimator="xgb",
             callbacks_on_fixed_params=[_adjust_xgb_objective_and_num_classes],
             n_threads_parameter="n_jobs",
             early_stopping=False
@@ -40,6 +41,7 @@ class MyESXGBClassifier(GBDTBaseEstimator):
         super().__init__(
             preprocessing, seed, n_threads, early_stopping_rounds, tune_configuration,
             classifier_cls=XGBClassifier,
+            type_estimator="es_xgb",
             callbacks_on_fixed_params=[
                 _adjust_xgb_objective_and_num_classes, 
                 _adjust_esxgb_logloss_metric
@@ -61,6 +63,7 @@ class MyTunedXGBClassifier(GBDTBaseEstimator):
         super().__init__(
             preprocessing, seed, n_threads, early_stopping_rounds, tune_configuration,
             classifier_cls=XGBClassifier,
+            type_estimator="xgb",
             callbacks_on_fixed_params=[_adjust_xgb_objective_and_num_classes],
             n_threads_parameter="n_jobs",
             early_stopping=False
@@ -78,6 +81,7 @@ class MyTunedESXGBClassifier(GBDTBaseEstimator):
         super().__init__(
             preprocessing, seed, n_threads, early_stopping_rounds, tune_configuration,
             classifier_cls=XGBClassifier,
+            type_estimator="es_xgb",
             callbacks_on_fixed_params=[
                 _adjust_xgb_objective_and_num_classes, 
                 _adjust_esxgb_logloss_metric
