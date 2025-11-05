@@ -7,6 +7,7 @@ from hp_search.point_corrector import PointCorrector
 from metalearning.surrogate_worker import SurrogateWorker
 from metalearning.sampler import HyperoptRandomSampler
 from metalearning.metafeatures import CustomMFE
+from metalearning.generator import MetadataGenerator
 from metalearning.acquisition_funcs import compute_upper_confidence_bound
 from metalearning.database.utils import query_surrogate_framework
 
@@ -32,10 +33,14 @@ def test_surrogate_worker_works_in_general(create_data):
         mean_direction="lower_is_better"
     )
 
-    surrogate_worker = SurrogateWorker(
+    meta_generator = MetadataGenerator(
         sampler=HyperoptRandomSampler(),
-        mfe=CustomMFE(seed=0),
         point_corrector=PointCorrector(),
+        mfe=CustomMFE(seed=0)
+    )
+
+    surrogate_worker = SurrogateWorker(
+        metadata_generator=meta_generator,
         surrogate_framework=surrogate_framework,
         acquisition_func=partial_compute_upper_confidence_bound
     )

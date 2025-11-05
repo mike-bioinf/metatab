@@ -3,13 +3,14 @@ from __future__ import annotations
 import pandas as pd
 from copy import deepcopy
 from typing import Literal, Callable, TYPE_CHECKING
+from sklearn.pipeline import Pipeline
+from estimators.types import TREE_ESTIMATOR_TYPE
 from estimators.abstract_estimator import AbstractBaseEstimator
 from estimators.utils import create_default_pipeline, fit_with_early_stop_on_validation_set
 from hp_search.searchcv import SearchCV
-from sklearn.pipeline import Pipeline
 
 if TYPE_CHECKING:
-    from estimators.constants import Classifier
+    from estimators.types import Classifier
 
 
 
@@ -24,7 +25,7 @@ class GBDTBaseEstimator(AbstractBaseEstimator):
     Parameters:
         classifier_cls (Classifier): Classifier class.
 
-        estimator_type (Literal["random_forest", "xgb", "es_xgb", "catboost", "es_catboost", "lgbm", "es_lgbm", "tabpfn"]):
+        estimator_type (TREE_ESTIMATOR_TYPE):
             Type of estimator. Needed by SearchCV class.
 
         n_threads_parameter (str): 
@@ -64,7 +65,7 @@ class GBDTBaseEstimator(AbstractBaseEstimator):
         tune_configuration: None | dict,
         *,
         classifier_cls: Classifier,
-        type_estimator: Literal["random_forest", "xgb", "es_xgb", "catboost", "es_catboost", "lgbm", "es_lgbm", "tabpfn"],
+        type_estimator: TREE_ESTIMATOR_TYPE,
         n_threads_parameter: str,
         callbacks_on_fixed_params: list[Callable[[dict, pd.Series, bool], dict]] | None = None, 
         early_stopping: bool = False,

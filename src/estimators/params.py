@@ -2,6 +2,7 @@ import numpy as np
 from hyperopt import hp
 from hyperopt.pyll.base import scope
 from hp_search.tabpfn_search_space import TABPFN_TUNE_SPACE
+from estimators.types import TUNABLE_ESTIMATOR_TYPE
 
 
 
@@ -274,6 +275,22 @@ class TuningParams:
         "rsm": hp.choice("rsm", [0.6, 0.7, 0.8, 0.9, 1])
     }
 
+    # C0 with "Ordered" boosting type
+    CATBOOST_C6 = {
+        "score_function": hp.choice("score_function", ["Cosine"]),
+        "grow_policy": hp.choice("grow_policy", ["SymmetricTree"]),
+        "boosting_type": hp.choice("boosting_type", ["Ordered"]),
+        "max_bin": hp.choice("max_bin", [5, 10, 20, 30, 50, 100, 150, 254]),
+        "max_depth": hp.choice("max_depth", list(range(1, 9))),
+        "learning_rate": hp.loguniform("learning_rate", np.log(0.001), np.log(0.1)),
+        "leaf_estimation_iterations": scope.int(hp.qloguniform("lei", np.log(1), np.log(10), q=1)),
+        "l2_leaf_reg": hp.loguniform("l2_leaf_reg", np.log(1e-4), np.log(5)),
+        "bagging_temperature": hp.uniform("bagging_temperature", 0, 1),
+        "random_strength": hp.quniform("random_strength", 1, 11, 1),
+        "rsm": hp.choice("rsm", [0.6, 0.7, 0.8, 0.9, 1])
+    }
+
+
 
     ### LIGHTGBM -----------------------------------------------------------
     # Lightgmb offer less variability in terms of algo variants in many/all
@@ -357,6 +374,7 @@ class TuningParams:
 
 
 
+
 # Dict of default tuning spaces for each tunable estimator.
 # The default spaces are identified based on our paper preanalysis
 DEFAULT_ESTIMATORS_TUNE_SPACES = {
@@ -369,6 +387,56 @@ DEFAULT_ESTIMATORS_TUNE_SPACES = {
     "es_lgbm": ("c0", TuningParams.LGMB_C0),
     "tabpfn": ("c0", TuningParams.TABPFN_C0)
 }
+
+
+
+def pick_estimator_space(space: str, estimator: TUNABLE_ESTIMATOR_TYPE) -> dict:
+     match (estimator, space):
+        case ("random_forest", "c0"):
+            return TuningParams.RF_C0
+        
+        case ("xgb" | "es_xgb", "c0"):
+            return TuningParams.XGB_C0
+        case ("xgb" | "es_xgb", "c1"):
+            return TuningParams.XGB_C1
+        case ("xgb" | "es_xgb", "c2"):
+            return TuningParams.XGB_C2
+        case ("xgb" | "es_xgb", "c3"):
+            return TuningParams.XGB_C3
+        case ("xgb" | "es_xgb", "c4"):
+            return TuningParams.XGB_C4
+        
+        case ("catboost" | "es_catboost", "c0"):
+            return TuningParams.CATBOOST_C0
+        case ("catboost" | "es_catboost", "c1"):
+            return TuningParams.CATBOOST_C1
+        case ("catboost" | "es_catboost", "c2"):
+            return TuningParams.CATBOOST_C2
+        case ("catboost" | "es_catboost", "c3"):
+            return TuningParams.CATBOOST_C3
+        case ("catboost" | "es_catboost", "c4"):
+            return TuningParams.CATBOOST_C4
+        case ("catboost" | "es_catboost", "c5"):
+            return TuningParams.CATBOOST_C5
+        case ("catboost" | "es_catboost", "c6"):
+            return TuningParams.CATBOOST_C6
+
+        case ("lgbm" | "es_lgbm", "c0"):
+            return TuningParams.LGMB_C0
+        case ("lgbm" | "es_lgbm", "c1"):
+            return TuningParams.LGMB_C1
+
+        case ("tabpfn", "c0"):
+            return TuningParams.TABPFN_C0
+        
+        case (_, "default"):
+            return DEFAULT_ESTIMATORS_TUNE_SPACES[estimator][1]
+            
+        case _:
+            raise ValueError(
+                f"Unsupported configuration '{space}' for '{estimator}' estimator."
+            )
+
 
 
 

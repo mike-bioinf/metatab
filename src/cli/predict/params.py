@@ -19,8 +19,7 @@ def parse_args(args):
                     help="Name of the target feature column. Must be provided if --input-mode is equal to 'df'.")
     
     p.add_argument("-x", "--x-uniform", action="store_true",
-                   help="Uniform the test data feature space to the one seen by the estimator at fit level," \
-                   "before doing predictions.")
+                   help="Uniform the test data feature space to the one seen by the estimator at fit level, before doing predictions")
 
     p.add_argument("-o", "--output-dir", default=".",        
                    help="""Path of the folder in which the output file is created.
@@ -31,9 +30,3 @@ def parse_args(args):
     p.add_argument("--create-outdir", action="store_true", help="Create the output directory if does not exists.")
     
     return p.parse_args(args)
-
-
-
-def check_args(pars: dict) -> None:
-    '''General check on arguments'''
-    check_target_feature(pars)

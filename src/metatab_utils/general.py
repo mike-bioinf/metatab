@@ -108,7 +108,6 @@ def ensure_or_create(obj: Any, constructor: Callable[[], Any]) -> Any:
 
 
 
-
 def enlist(obj: Any, none_as_is: bool = True) -> list|None:
     '''
     Set the obj in a list if not already a list.
@@ -124,3 +123,39 @@ def enlist(obj: Any, none_as_is: bool = True) -> list|None:
         return obj if isinstance(obj, list) or (obj is None and none_as_is) else [obj]
     else:
         return obj if isinstance(obj, list) else [obj]
+    
+
+
+def strip_level_from_columns(df: pd.DataFrame, level: int | str | list[int] | list[str]) -> pd.DataFrame:
+    '''
+    Strips level from the columns MultiIndex.
+    
+    Parameters:
+        df (pd.DataFrame): DataFrame with a MultiIndex columns.
+        level (int | str | list[int] | list[str]): Level/s to remove.
+    
+    Returns:
+        pd.DataFrame:
+        A copy of df with the new columns index.
+    '''
+    df_stripped = df.copy()
+    df_stripped.columns = df.columns.droplevel(level)
+    return df_stripped
+
+
+
+def select_level_from_columns(df: pd.DataFrame, level: int | str) -> pd.DataFrame:
+    '''
+    Set a specific level from a columns MultiIndex as the new Index.
+
+    Parameters:
+        df (pd.DataFrame): DataFrame with a MultiIndex columns.
+        level (int | str): Level to use as the new Index.
+    
+    Returns:
+        pd.DataFrame:
+        A copy of df with the new columns index.
+    '''
+    df_new = df.copy()
+    df_new.columns = df.columns.get_level_values(level)
+    return df_new

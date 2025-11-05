@@ -15,7 +15,6 @@ def check_number_resample_cv_rounds(
     Checks the number of cv rounds for every group identified by the group_columns.
 
     Parameters:
-        
         df (pd.DataFrame): 
             Dataframe on which perform the check.
         
@@ -36,7 +35,7 @@ def check_number_resample_cv_rounds(
         
 
 
-def check_nan_in_resample_hpo_dataframe(df_hpo: pd.DataFrame, regex_loss_columns: "str" = "loss*") -> None:
+def check_nan_in_resample_hpo_dataframe(df_hpo: pd.DataFrame, regex_loss_columns: str = "loss*") -> None:
     '''
     Check on the presence of failed optimization iteration in the tuning process.
     The function is intented to work on the "hpo" dataframe, i.e. the dataframe 

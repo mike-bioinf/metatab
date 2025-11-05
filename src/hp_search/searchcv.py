@@ -9,19 +9,18 @@ from sklearn.pipeline import Pipeline
 from sklearn.utils.validation import check_is_fitted
 from hyperopt import Trials, STATUS_OK, STATUS_FAIL, tpe, rand, fmin, space_eval
 from hyperopt.pyll.stochastic import sample
-from estimators.constants import Classifier
+from estimators.types import Classifier
 from estimators.utils import fit_with_early_stop_on_validation_set
 from hp_search.cv import CrossValidator
-from hp_search.constants import ESTIMATOR_TYPE
+from estimators.types import TUNABLE_ESTIMATOR_TYPE
 from hp_search.point_corrector import PointCorrector
 from metalearning.metafeatures import CustomMFE
 from metalearning.database.utils import query_surrogate_framework
 from metalearning.acquisition_funcs import compute_upper_confidence_bound
 from metalearning.surrogate_worker import SurrogateWorker
 from metalearning.sampler import HyperoptRandomSampler
+from metalearning.generator import MetadataGenerator
 from hp_search.utils import ConfigSearchCV, set_params_into_clf
-
-
 from estimators.params import HPS_MIXED_TYPED
 from metatab_utils.general import add_broadcasted_objects_as_column
 
@@ -49,7 +48,7 @@ class SearchCV:
             Classifier or Pipeline object with a classifier as head, 
             which hps have to be optimized.
         
-        type_estimator (Literal["random_forest", "xgb", "es_xgb", "catboost", "es_catboost", "lgbm", "es_lgbm", "tabpfn"]):
+        type_estimator (TUNABLE_ESTIMATOR_TYPE):
             Type of estimator. "Combines" the clf and early stop info.
             Info needed in meta-optimization (`meta` algo).
             
@@ -151,7 +150,7 @@ class SearchCV:
         self,
         *,
         clf_or_pipe: Classifier | Pipeline,
-        type_estimator: ESTIMATOR_TYPE,
+        type_estimator: TUNABLE_ESTIMATOR_TYPE,
         type_clf_or_pipe_preprocessing: Literal["base", "density_filter", "pca"] | None,
         algo: Literal["random", "tpe", "meta"],
         params_distributions: dict,
@@ -287,10 +286,14 @@ class SearchCV:
             n_points=self.n_iter
         )
 
-        surrogate_worker = SurrogateWorker(
+        meta_generator = MetadataGenerator(
             sampler=HyperoptRandomSampler(),
             point_corrector=PointCorrector(),
             mfe=CustomMFE(seed=self.seed),
+        )
+
+        surrogate_worker = SurrogateWorker(
+            metadata_generator=meta_generator,
             surrogate_framework=query_surrogate_framework(self.type_estimator),
             acquisition_func=acquisition_func
         )

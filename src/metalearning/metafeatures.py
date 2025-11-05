@@ -1,12 +1,13 @@
 '''
 For all the compute functions defined in this module we are assuming in input a full numeric dataframe.
 '''
+import re
 import pandas as pd
 from typing import Iterable, Any
 from sklearn.utils.validation import check_is_fitted
 from preprocessing.utils import get_density_scores
 from pymfe.mfe import MFE
-from metatab_utils.general import ensure_or_create
+from metatab_utils.general import ensure_or_create, enlist
 
 
 
@@ -76,6 +77,9 @@ class CustomMFE:
     - We can compute additional sparsity metafeatures. These are simple metafeatures 
     on which the summarization function are not applied. They can be computed on the
     original data only (if transformation want to be applied an error is raised).
+    - The "landmarking" group is suppressed since it is equivalent to "relative".
+    The relative versions are selected since more robust in our scenario where 
+    we collect the info on multiple datasets with different difficulty.
     - We implement only the "base" `extract` utility.
     - Different default values for `groups`, `summary`, `score` and `suppress_warnings` parameters.
 
@@ -99,7 +103,10 @@ class CustomMFE:
         suppress_warnings: bool = True,
         seed: int | None = None
     ):
-        cleaned_groups, cleaned_features = self._handle_additional_sparse_options(groups, features)
+        self.map_group_metafeature = self._create_map_group_metafeature()
+        cleaned_groups = self._clean_groups_input_from_landmarking(groups)
+        cleaned_groups, cleaned_features = self._handle_additional_sparse_options(cleaned_groups, features)
+
         if cleaned_groups:
             self.mfe = MFE(
                 groups=cleaned_groups,
@@ -119,6 +126,28 @@ class CustomMFE:
             self.mfe = None
 
 
+    @staticmethod
+    def _clean_groups_input_from_landmarking(groups: str | list[str]) -> list[str]:
+        '''
+        Here we take care of the "landmarking" group suppression,
+        and expand the wildcard to the groups which they refer.
+        '''
+        if isinstance(groups, str):
+            if groups == "all":
+                return  [g for g in MFE().valid_groups() if g != "landmarking"] + ["additional_sparse"]
+            elif groups == "default":
+                return ["general", "info-theory", "statistical", "model-based", "relative"] + ["additional_sparse"]
+            else:
+                return enlist(groups)
+        
+        else:
+            if "landmarking" in groups:
+                raise ValueError(
+                    "'landmarking' group is not valid. Require the 'relative' group instead."
+                )    
+            return groups
+
+
     def _handle_additional_sparse_options(self, groups, features) -> tuple[list[str], list[str]]:
         '''
         Handles the additional sparse and features options.
@@ -127,10 +156,9 @@ class CustomMFE:
         - Sets the `additional_sparse_metafeatures` attribute, the list of the additional metafeatures to compute (can be empty).
         - Returns "cleaned" `groups` and `features` for MFE class.
         '''
-        groups = [groups] if isinstance(groups, str) else groups
-        features = [features] if isinstance(features, str) else features
-
-        are_sparse_groups_requested = any([g in ("all", "additional_sparse") for g in groups])
+        features = enlist(features)
+        
+        is_sparse_group_requested = any([g == "additional_sparse" for g in groups])
 
         are_sparse_metafeatures_requested = (
             any([sparse_feature in features for sparse_feature in MAP_SPARSE_METAFEATURES.keys()]) or
@@ -138,15 +166,15 @@ class CustomMFE:
         )
    
         # raise an error if sparse groups are specified but no sparse metafeature
-        # you must not do the opposite since the features scope is set by groups
-        if are_sparse_groups_requested and not are_sparse_metafeatures_requested:
+        # you must not check the opposite since the features scope is set by groups
+        if is_sparse_group_requested and not are_sparse_metafeatures_requested:
             raise ValueError(
                 "Sparse additional metafeatures requested with missing compatible 'groups' specification."
             )
         
         # the scope of features is set by groups,
         # so if not sparse groups then no sparse features even with "all"
-        if are_sparse_groups_requested:
+        if is_sparse_group_requested:
             if "all" in features:
                 self.additional_sparse_metafeatures = list(MAP_SPARSE_METAFEATURES.keys())
             else:
@@ -225,17 +253,20 @@ class CustomMFE:
         verbose: int = 0,
         enable_parallel: bool = False,
         suppress_warnings: bool = True,
-        out_type = dict,
         add_features: None | dict = None,
         **kwargs
-    ) -> dict:
+    ) -> tuple[dict, list]:
         '''
         Extract metafeatures.
         Take the same set of parameters of the MFE class extract method with the expections:
-        - `out_type` is fixed to dict.
         - `suppress_warnings` is set by default to True.
         - `add_features` is a new parameter that allows to add metafeatures that do not depend on data. 
-        Returns the metafeatures in a dict.
+        - `out_type` parameter is removed since internally fixed to dict.
+        
+        Returns:
+          tuple[dict,list]: A binary tuple with:
+          1. The extracted metafeatures in a dict name:value.
+          2. The group info indicating the metafeatures original groups. 
         '''
         check_is_fitted(self, "is_fitted_")
         add_features = ensure_or_create(add_features, dict)
@@ -246,7 +277,7 @@ class CustomMFE:
                 verbose=verbose, 
                 enable_parallel=enable_parallel, 
                 suppress_warnings=suppress_warnings, 
-                out_type=out_type, 
+                out_type=dict, 
                 **kwargs
             )
 
@@ -261,7 +292,24 @@ class CustomMFE:
             sparse_out[smtf] = MAP_SPARSE_METAFEATURES[smtf](self._X)
         
         out = {**out, **sparse_out}
-        
+
+        # extract info about original groups
+        original_groups = []
+
+        for mft in out.keys():
+            # removing the summary func part to avoid potential erroneous matching
+            # for "relative" metafeatures only the root is needed for group attribution
+            mft = re.sub("\\..*", "", mft)
+            found = False
+            for group, reference_mtfs in self.map_group_metafeature.items():
+                for reference_mft in reference_mtfs:
+                    if re.match(mft, reference_mft):
+                        original_groups.append(group)
+                        found = True
+                        break 
+                if found:
+                    break
+
         # check name collision and then add
         if add_features:
             for k in add_features.keys():
@@ -270,5 +318,27 @@ class CustomMFE:
                         f"The additional feature name '{k}' is colliding with existing metafeatures."
                     )
             out = {**out, **add_features}
+            original_groups.extend(["external"] * len(add_features))
 
-        return out
+        return out, original_groups
+    
+
+    @staticmethod
+    def _create_map_group_metafeature() -> dict:
+        '''
+        Creates the group-feature map indicating the 
+        group in which the different metafeatures belong.
+        '''
+        mfe = MFE()
+        map = {}
+
+        for group in mfe.valid_groups():
+            map[group] = list(mfe.valid_metafeatures(group))
+
+        # remove "landmarking" group which is suppressed in favor of "relative"
+        del map["landmarking"]
+
+        # adding additional sparse metafeatures to statistical group
+        map["statistical"].extend(MAP_SPARSE_METAFEATURES.keys())
+        
+        return map

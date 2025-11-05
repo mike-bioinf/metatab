@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     import pandas as pd
     from sklearn.decomposition import PCA
     from preprocessing.density_selector import DensityFeatureSelector
-    from estimators.constants import Classifier
+    from estimators.types import Classifier
 
 
 
@@ -27,9 +27,9 @@ class AbstractBaseEstimator(ABC):
     the 'estimator_' attribute in it, storing the object fitted on the input data.
     This can be a Classifier, Pipeline or SearchCV object.
     
-    They must also have implement the "fixed_params" class attribute,
-    that is a dict with the fixed/default classifier parameters.
-    This is not checked/enforced in the code (attention !!!).
+    They must also implement the "fixed_params" class attribute,
+    the dict with the fixed/default classifier parameters.
+    !!! Attention: this is not checked/enforced in the code.
     
 
     Parameters:
@@ -130,7 +130,7 @@ class AbstractBaseEstimator(ABC):
             raise TypeError("estimator_ is not a SearchCV instance.")
         if refit and not self.estimator_.refit_with_best_hps:
             raise ValueError(
-                "SearchCv instance has refitting option disabled."
+                "SearchCv instance has the refitting option disabled."
             )
     
 

@@ -43,7 +43,7 @@ def test_cross_validator_fitting_procedure_not_raise_expections():
 
 
 
-def test_cross_validatori_works_as_expected():
+def test_cross_validator_works_as_expected():
     _, df_info, _ = fit_cross_validator(create_cross_validator())
     assert df_info.shape[0] == 3, "Wrong number of rows for df_info"
 

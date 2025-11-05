@@ -134,7 +134,7 @@ def main():
     
     # add metafeatures
     mfe = CustomMFE(seed=pars["seed"])
-    metafeatures = mfe.fit(X, y).extract()
+    metafeatures, _ = mfe.fit(X, y).extract()
 
      # we create a copy since the original df is not optimized in memory due to assign
     with warnings.catch_warnings():

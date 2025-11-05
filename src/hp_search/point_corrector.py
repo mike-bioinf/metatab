@@ -3,7 +3,7 @@ from typing import Literal, Callable
 from copy import deepcopy
 from tabpfn.model_loading import _user_cache_dir
 from metatab_utils.general import enlist
-from hp_search.constants import ESTIMATOR_TYPE
+from estimators.types import TUNABLE_ESTIMATOR_TYPE
 
 
 
@@ -20,7 +20,7 @@ def add_root_path_to_tabfpn_ckpt(point: dict) -> dict:
 # The keys of the estimator inner dict define the corrections, in the sense that these
 # names are the one accepted and recognized by the 'estimator_corrections' argument 
 # of the 'correct_point' method of the PointCorrector class.
-SUPPORTED_ESTIMATOR_CORRECTIONS: dict[str, dict[str, Callable[[dict], dict]]] = {
+ESTIMATOR_SUPPORTED_CORRECTIONS: dict[str, dict[str, Callable[[dict], dict]]] = {
     "tabpfn": {
         "model_path": add_root_path_to_tabfpn_ckpt
     },
@@ -50,7 +50,7 @@ class PointCorrector:
         self,
         point: dict,
         apply_hypeopt_corrections: bool = False,
-        estimator: ESTIMATOR_TYPE | None = None,
+        estimator: TUNABLE_ESTIMATOR_TYPE | None = None,
         estimator_corrections: str | list[str] | Literal["all"] | None = None
     ):
         '''
@@ -64,7 +64,7 @@ class PointCorrector:
             apply_hypeopt_corrections (bool, optional): 
                 Whether to apply the hyperopt general corrections to the point.
             
-            estimator: (ESTIMATOR_TYPE | None, optional):
+            estimator: (TUNABLE_ESTIMATOR_TYPE | None, optional):
                 The type of estimator to which the point refers.
                 This info is needed to select the right set of corrections.
             
@@ -73,7 +73,7 @@ class PointCorrector:
                 They are taken from a pre-defined map.
                 - "all": apply all supported corrections for the given estimator.
                 - str: name of the single correction.
-                - list[str]: list of correction names to apply.
+                - list[str]: list of correction names.
                 - None: no corrections is applied.
 
         Returns:
@@ -89,14 +89,23 @@ class PointCorrector:
          
         # apply estimator corrections
         if estimator is not None:
-            selected_estimator_corrections = SUPPORTED_ESTIMATOR_CORRECTIONS[estimator]
+            selected_estimator_corrections = ESTIMATOR_SUPPORTED_CORRECTIONS[estimator]
             
             # select the desired corrections
             if estimator_corrections != "all":
+                estimator_corrections = enlist(estimator_corrections)
+
+                # check for not supported corrections
+                for correction in estimator_corrections:
+                    if correction not in selected_estimator_corrections.keys():
+                        raise KeyError(
+                            f"'{correction}' is not a pre-defined correction for '{estimator}' estimator."
+                        )
+
                 selected_estimator_corrections = {
-                    k:v 
+                    k:v
                     for k, v in selected_estimator_corrections.items()
-                    if k in enlist(estimator_corrections)
+                    if k in estimator_corrections
                 }
 
             # apply corrections

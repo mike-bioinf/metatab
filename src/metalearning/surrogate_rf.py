@@ -96,6 +96,12 @@ class SurrogateRandomForestRegressor(RegressorMixin, BaseEstimator):
         Returns a binary tuple of numpy arrays.
         '''
         check_is_fitted(self, "forest_")
+        # we convert X to numpy since the trees of the forest are internally trained 
+        # on numpy arrays and therefore they raise the warning:
+        # "X has feature names, but DecisionTreeRegressor was fitted without feature names" 
+        # when used for inference on dataframe.
+        if isinstance(X, pd.DataFrame):
+            X = X.to_numpy()
         # tree_preds has shape (tree, pred)
         tree_preds = np.array([tree.predict(X) for tree in self.forest_.estimators_])
         # we compute the unbiased standard deviation with ddof = 1

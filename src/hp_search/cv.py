@@ -11,7 +11,7 @@ from hp_search.utils import set_params_into_clf
 
 if TYPE_CHECKING:
     from sklearn.pipeline import Pipeline
-    from estimators.constants import Classifier
+    from estimators.types import Classifier
     
     
 

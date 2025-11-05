@@ -21,14 +21,12 @@ the NanToNone transformer which is able to work on specific columns only.
 In this way we avoid to erroneously apply this conversion on the metafeatures.
 """
 
-import numpy as np
-import pandas as pd
 from copy import deepcopy
-from typing import Literal, Any
-from sklearn.base import BaseEstimator, TransformerMixin
+from typing import Literal
 from sklearn.preprocessing import OrdinalEncoder, OneHotEncoder
 from sklearn.feature_selection import VarianceThreshold
 from sklearn.compose import ColumnTransformer
+from metalearning.encode.transformers import NanToNone, ColToStr
 
 from hp_search.tabpfn_search_space import (
     enumerate_preprocess_transforms,
@@ -37,89 +35,23 @@ from hp_search.tabpfn_search_space import (
 
 
 
-class NanToNone(TransformerMixin, BaseEstimator):
-    '''
-    Scikit-like transformer to convert nan to None.
-    Works only on pandas DataFrames (no numpy arrays).
-
-    Parameters:
-        columns (str | list[str]): Columns on which apply the transformation.
-        check_on_fit (bool): Whether execute the data checks at fit level.
-    '''
-    def __init__(self, columns: str | list[str], check_on_fit: bool):
-        self.columns = columns
-        self.check_on_fit = check_on_fit
-
-    def fit(self, X: pd.DataFrame, y: None = None) -> "NanToNone":
-        self._list_columns = self.columns if isinstance(self.columns, list) else [self.columns]
-        if self.check_on_fit:
-            _check_X_type(X)
-            _check_columns_presence(X, self._list_columns)
-        return self
-
-    def transform(self, X: pd.DataFrame, y: None = None) -> pd.DataFrame:
-        _check_X_type(X)
-        _check_columns_presence(X, self._list_columns)
-        X_copy = deepcopy(X)
-        X_copy[self._list_columns] = X_copy[self._list_columns].replace({np.nan: None})
-        return X_copy
-
-
-
-class ColToStr(TransformerMixin, BaseEstimator):
-    '''
-    Scikit-like transformer casting DataFrame columns 
-    to object-dtyped columns and column values to str type.
-    Works only on DataFrame (no numpy arrays).
-
-    Parameters:
-        columns (str | list[str]): Columns to transform.
-        check_on_fit (bool): Whether execute the data checks at fit level.
-    '''
-    def __init__(self, columns: str | list[str], check_on_fit: bool):
-        self.columns = columns
-        self.check_on_fit = check_on_fit
-
-    def fit(self, X: pd.DataFrame, y: None = None) -> "ColToStr":
-        self._list_columns = self.columns if isinstance(self.columns, list) else [self.columns]
-        if self.check_on_fit:
-            _check_X_type(X)
-            _check_columns_presence(X, self._list_columns)
-        return self
-
-    def transform(self, X: pd.DataFrame, y: None = None) -> pd.DataFrame:
-        _check_X_type(X)
-        _check_columns_presence(X, self._list_columns)
-        X_copy = deepcopy(X)
-        X_copy = X_copy.astype({col: "str" for col in self._list_columns})
-        return X_copy
-
-    
-
-def _check_columns_presence(X: pd.DataFrame, columns: list[str]) -> None:
-    for col in columns:
-        if col not in X.columns:
-            raise ValueError(f"'{col}' column not found in X.")
-
-
-def _check_X_type(X: Any) -> None:
-    if not isinstance(X, pd.DataFrame):
-        raise TypeError("X must be a pandas DataFrame.")    
-
-
-
 
 COLUMN_TRANSFORMER_FIXED_PARAMS = {
     "remainder": "passthrough",
-    "n_jobs": 1, # avoid cluster cores problem
-    "force_int_remainder_cols": False, # to suppress a FutureWarning
-    "sparse_threshold": 0  # to avoid output conversion to sparse matrix objects 
+    # avoid cluster cores/threads problem
+    "n_jobs": 1,
+    # use False to suppress a FutureWarning (the parameters will be deprecated in sklearn v 1.9)
+    "force_int_remainder_cols": False,
+    # avoid output conversion to sparse matrix objects
+    "sparse_threshold": 0,
+    # avoid the addition of the name of the transformed used to generate the new column
+    "verbose_feature_names_out": False
 }
 
 
 PREPROCESSING_COLUMN_ENCODING = (
     "preprocessing_column", 
-    OneHotEncoder(categories=[["base", "pca", "density_filter"]]),
+    OneHotEncoder(categories=[["base", "pca", "density_filter"]], sparse_output=False),
     ["preprocessing"]
 )
 
@@ -142,7 +74,10 @@ HPS_ENCODING_SCHEME_RANDOM_FOREST = [
             (
                 "onehot",
                 # we cast and save this col as str
-                OneHotEncoder(categories=[["0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9", "None", "sqrt", "log2"]]), 
+                OneHotEncoder(
+                    categories=[["0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9", "None", "sqrt", "log2"]],
+                    sparse_output=False
+                ), 
                 ["max_features"]
             ),
             PREPROCESSING_COLUMN_ENCODING
@@ -179,7 +114,8 @@ HPS_ENCODING_SCHEME_TABPFN = [
                         [str(tuple(list_of_dicts)) for list_of_dicts in enumerate_preprocess_transforms()],
                         ["None", "7.0", "9.0", "12.0"],
                         TABPFN_CHECKPOINTS
-                    ]
+                    ],
+                    sparse_output=False
                 ),
                 [
                     "inference_config__PREPROCESS_TRANSFORMS", 

@@ -16,7 +16,7 @@ from estimators.constants import (
 from estimators.params import (
     DEFAULT_TUNE_CONFIGURATION,
     DEFAULT_ESTIMATORS_TUNE_SPACES,
-    TuningParams
+    pick_estimator_space
 )
 
 from estimators import (
@@ -159,7 +159,7 @@ def check_tune_configuration(pars: dict, logger: logging.Logger) -> None:
                 (estimator == "tabpfn" and preprocessing != "density_filter") or
                 (estimator != "tabpfn" and preprocessing != "base")
             )
-        ):
+    ):
         logger.debug(
             "'meta' tuning algo is less effective when the following estimator-preprocessing couples are NOT respected:" +
             " tabpfn --> density_filter," +
@@ -260,50 +260,7 @@ def try_parse_specs_into_dict(specs: str, error_message_specs: str) -> dict[str,
 def _pick_params_distributions_configuration(pars: dict) -> dict:
     conf = pars["tune_configuration"]["configuration"]
     estimator = pars["estimator"]
-
-    match (estimator, conf):
-        case ("random_forest", "c0"):
-            return TuningParams.RF_C0
-        
-        case ("xgb" | "es_xgb", "c0"):
-            return TuningParams.XGB_C0
-        case ("xgb" | "es_xgb", "c1"):
-            return TuningParams.XGB_C1
-        case ("xgb" | "es_xgb", "c2"):
-            return TuningParams.XGB_C2
-        case ("xgb" | "es_xgb", "c3"):
-            return TuningParams.XGB_C3
-        case ("xgb" | "es_xgb", "c4"):
-            return TuningParams.XGB_C4
-        
-        case ("catboost" | "es_catboost", "c0"):
-            return TuningParams.CATBOOST_C0
-        case ("catboost" | "es_catboost", "c1"):
-            return TuningParams.CATBOOST_C1
-        case ("catboost" | "es_catboost", "c2"):
-            return TuningParams.CATBOOST_C2
-        case ("catboost" | "es_catboost", "c3"):
-            return TuningParams.CATBOOST_C3
-        case ("catboost" | "es_catboost", "c4"):
-            return TuningParams.CATBOOST_C4
-        case ("catboost" | "es_catboost", "c5"):
-            return TuningParams.CATBOOST_C5
-
-        case ("lgbm" | "es_lgbm", "c0"):
-            return TuningParams.LGMB_C0
-        case ("lgbm" | "es_lgbm", "c1"):
-            return TuningParams.LGMB_C1
-
-        case ("tabpfn", "c0"):
-            return TuningParams.TABPFN_C0
-        
-        case (_, "default"):
-            return DEFAULT_ESTIMATORS_TUNE_SPACES[estimator][1]
-            
-        case _:
-            raise ValueError(
-                f"Unsupported configuration '{conf}' for '{estimator}' estimator."
-            )
+    return pick_estimator_space(conf, estimator)
 
 
 

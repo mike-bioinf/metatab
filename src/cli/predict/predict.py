@@ -7,17 +7,18 @@ import pickle
 import numpy as np
 from metatab_utils.data_loader import DataLoader
 from metatab_utils.prediction import PredictionDataframe
-from predict.params import parse_args, check_args
+from cli.predict.params import parse_args
 from estimators import Estimator
 
 from metatab_utils.helper_programs import (
     adjust_io_paths_, 
     manage_output_path,
-    check_y_is_integer_encoded, 
+    check_y_is_integer_encoded,
+    check_target_feature, 
     create_logger
 )
 
-from predict.helper import (
+from cli.predict.helper import (
     check_type_deserialized_object,
     check_estimator_is_fitted
 )
@@ -26,7 +27,7 @@ from predict.helper import (
 
 def main():
     pars = vars(parse_args(sys.argv[1:]))
-    check_args(pars)
+    check_target_feature(pars)
 
     adjust_io_paths_(pars, "input_data", "output_dir")
     manage_output_path(pars, "output_dir", True)

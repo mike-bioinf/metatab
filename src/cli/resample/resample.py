@@ -8,7 +8,7 @@ from time import time
 from estimators import Estimator
 from metatab_utils.prediction import PredictionDataframe
 from metatab_utils.data_loader import DataLoader
-from resample.manager_estimator_workflow import GeneralManagerEstimatorWorkflowResample
+from cli.resample.manager_estimator_workflow import GeneralManagerEstimatorWorkflowResample
 
 from metatab_utils.helper_programs import (
     check_fit_resample_args,
@@ -22,12 +22,12 @@ from metatab_utils.helper_programs import (
     check_y_is_integer_encoded
 )
 
-from resample.params import (
+from cli.resample.params import (
     parse_args,
     adjust_splitting_specs_
 )
 
-from resample.helper import (
+from cli.resample.helper import (
     get_repetition_fold,
     pick_splitter,
     log_iteration,

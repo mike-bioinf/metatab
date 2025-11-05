@@ -6,7 +6,7 @@ from tabpfn import TabPFNClassifier
 from sklearn.pipeline import Pipeline
 
 if TYPE_CHECKING:
-    from estimators.constants import Classifier
+    from estimators.types import Classifier
 
 
 

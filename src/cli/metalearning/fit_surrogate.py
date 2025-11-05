@@ -13,7 +13,7 @@ import pandas as pd
 from typing import TYPE_CHECKING
 from sklearn.pipeline import make_pipeline
 from metalearning.surrogate_rf import SurrogateRandomForestRegressor
-from metalearning.encoding import get_encoding_scheme
+from metalearning.encode.encode import get_encoding_scheme
 
 from metatab_utils.helper_programs import (
     adjust_io_paths_,
@@ -100,7 +100,7 @@ def main():
     
     preprocessor = get_encoding_scheme(pars["estimator"])
     surrogate_rf = SurrogateRandomForestRegressor(n_jobs=pars["nthreads"], random_state=pars["seed"])
-    surrogate_framework = make_pipeline(*preprocessor, surrogate_rf)
+    surrogate_framework = make_pipeline(*preprocessor, surrogate_rf).set_output(transform="pandas")
    
     X = meta_data.drop(columns=y_col)
     y = meta_data[y_col]

@@ -1,24 +1,3 @@
-from typing import TypeAlias, Union
-from sklearn.ensemble import RandomForestClassifier
-from xgboost import XGBClassifier
-from catboost import CatBoostClassifier
-from tabpfn import TabPFNClassifier
-from tabpfn_extensions.post_hoc_ensembles.sklearn_interface import AutoTabPFNClassifier
-### TODO: resolve circular import 
-# from estimators.tabpfn import SingleDatasetAesFineTunedTabpfnClassifier
-
-
-
-Classifier: TypeAlias = Union[
-    RandomForestClassifier,
-    XGBClassifier,
-    CatBoostClassifier,
-    TabPFNClassifier, 
-    AutoTabPFNClassifier, 
-    #SingleDatasetAesFineTunedTabpfnClassifier
-]
-
-
 EARLY_STOPPED_ESTIMATORS = [
     "es_xgb",
     "es_catboost",
@@ -31,7 +10,18 @@ NON_TUNABLE_ESTIMATORS = [
     "finetunetabpfn"
 ]
 
+
 PCA_INCOMPATIBLE_ESTIMATORS = [
     "autotabpfn",
     "finetunetabpfn"
+]
+
+
+GBDT_ESTIMATORS = [
+    "xgb",
+    "es_xgb",
+    "lgbm",
+    "es_lgbm",
+    "catboost",
+    "es_catboost"
 ]

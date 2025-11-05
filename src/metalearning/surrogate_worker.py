@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import warnings
 import numpy as np
 import pandas as pd
 from typing import Callable, Any, TYPE_CHECKING
@@ -9,26 +8,19 @@ from metatab_utils.general import ensure_or_create
 
 if TYPE_CHECKING:
     from sklearn.pipeline import Pipeline
-    from metalearning.sampler import HyperoptRandomSampler
-    from metalearning.metafeatures import CustomMFE
-    from hp_search.point_corrector import PointCorrector
-
+    from metalearning.generator import MetadataGenerator
 
 
 
 class SurrogateWorker:
     '''
-    Class that integrates the hp sampler, point corrector, metafeature extractor, surrogate framework, 
+    Class that integrates the metadata generator, surrogate framework, 
     and acquisition functions to manage the generation and evaluation of meta-points. 
     It supports various strategies (propose_* methods) for selecting the meta-points.
 
     Parameters:
-        sampler (HyperoptRandomSampler):
-            Sampler that allows to sample hp points from a space.
-        point_corrector (PointCorrector):
-            Corrector of the sampled points.
-        mfe (CustomMFE):
-            CustomMFE to extract data metafeatures.
+        metadata_generator (MetadataGenerator):
+            Instance to generate metadata.
         surrogate_framework (Pipeline): 
             Fitted suggorate framework to infer the quality of meta-points.
         acquisition_func (Callable): 
@@ -36,15 +28,11 @@ class SurrogateWorker:
     '''
     def __init__(
         self,
-        sampler: HyperoptRandomSampler,
-        point_corrector: PointCorrector,
-        mfe: CustomMFE,
+        metadata_generator: MetadataGenerator,
         surrogate_framework: Pipeline,
         acquisition_func: Callable[[Any], np.ndarray]
     ):
-        self.sampler=sampler
-        self.point_corrector=point_corrector
-        self.mfe=mfe
+        self.metadata_generator=metadata_generator
         self.surrogate_framework=surrogate_framework
         self.acquisition_func=acquisition_func
 
@@ -69,10 +57,7 @@ class SurrogateWorker:
         Returns:
             SurrogateWorker: The fitted instance.
         '''
-        self.X=X
-        self.y=y
-        self.hp_space=hp_space
-        self.seed=seed
+        self.metadata_generator.fit(X, y, hp_space, seed)
         self.is_fitted_=True
         return self
 
@@ -114,14 +99,10 @@ class SurrogateWorker:
             list[dict[str,Any]]: The list of the best points.
         '''
         check_is_fitted(self, "is_fitted_")
-
-        point_corrector_kwargs = ensure_or_create(point_corrector_kwargs, dict)
-        mfe_fit_kwargs = ensure_or_create(mfe_fit_kwargs, dict)
-        mfe_extract_kwargs = ensure_or_create(mfe_extract_kwargs, dict)
         acquisition_func_kwargs = ensure_or_create(acquisition_func_kwargs, dict)
 
-        metadata, candidate_points = self._generate_meta_data(
-            n_candidate_points=n_candidate_points, 
+        metadata, candidate_points = self.metadata_generator.generate(
+            n_points=n_candidate_points,
             point_corrector_kwargs=point_corrector_kwargs,
             mfe_fit_kwargs=mfe_fit_kwargs,
             mfe_extract_kwargs=mfe_extract_kwargs
@@ -134,32 +115,3 @@ class SurrogateWorker:
         top_idx = np.argsort(promisingness, stable=True)[-n_best:]
         selected_points = [candidate_points[idx] for idx in top_idx]
         return selected_points
-
-
-    def _generate_meta_data(
-        self,
-        n_candidate_points: int,
-        point_corrector_kwargs: dict,
-        mfe_fit_kwargs: dict,
-        mfe_extract_kwargs: dict,
-    ) -> tuple[pd.DataFrame, list[dict]]:
-        '''
-        Generate the meta-data, i.e. sampled hps + data metafeatures.
-        Returns the meta-data plus the list of candidate hp points used to build it.
-        Importantly the meta-data and candidate points order matches, meaning
-        that the first row is built upon the first point in the list and so on.
-        '''
-        candidate_points = [
-            self.point_corrector.correct_point(sample, **point_corrector_kwargs)
-            for sample in self.sampler.fit(self.hp_space, self.seed).sample_points(n_candidate_points)
-        ]
-        
-        df_candidate_points = pd.DataFrame(candidate_points)
-        metafeatures = self.mfe.fit(self.X, self.y, **mfe_fit_kwargs).extract(**mfe_extract_kwargs)
-        
-        # we create a copy since the original df is not optimized in memory due to assign
-        with warnings.catch_warnings():
-            warnings.filterwarnings(action="ignore", category=pd.errors.PerformanceWarning)
-            df_candidate_points = df_candidate_points.assign(**metafeatures).copy()
-
-        return df_candidate_points, candidate_points

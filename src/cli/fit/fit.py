@@ -6,7 +6,7 @@ The program saves the fitted and serialized model in a binary file via pickle.
 import sys
 from estimators import Estimator
 from metatab_utils.data_loader import DataLoader
-from fit.params import parse_args
+from cli.fit.params import parse_args
 
 from metatab_utils.helper_programs import (
     adjust_io_paths_, 

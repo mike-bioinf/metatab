@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 from typing import TYPE_CHECKING
-from resample.helper import get_resample_iteration_signature
+from cli.resample.helper import get_resample_iteration_signature
 
 if TYPE_CHECKING:
     from pathlib import Path

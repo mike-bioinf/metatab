@@ -4,7 +4,7 @@ import joblib
 from typing import TYPE_CHECKING
 from importlib import resources
 from sklearn.pipeline import Pipeline
-from hp_search.constants import ESTIMATOR_TYPE
+from estimators.types import TUNABLE_ESTIMATOR_TYPE
 
 if TYPE_CHECKING:
     from importlib.resources.abc import Traversable
@@ -16,8 +16,8 @@ SURROGATE_DATABASE_PATH = resources.files("metalearning.database.database")
 
 SURROGATE_DATABASE = {
     "random_forest": SURROGATE_DATABASE_PATH.joinpath("surrogate_framework_for_rf.joblib"),
-    "xgb": SURROGATE_DATABASE_PATH.joinpath("surrogate_framework_for_xgboost.joblib"),
-    "es_xgb": SURROGATE_DATABASE_PATH.joinpath("surrogate_framework_for_es_xgboost.joblib"),
+    "xgb": SURROGATE_DATABASE_PATH.joinpath("surrogate_framework_for_xgb.joblib"),
+    "es_xgb": SURROGATE_DATABASE_PATH.joinpath("surrogate_framework_for_es_xgb.joblib"),
     "catboost": SURROGATE_DATABASE_PATH.joinpath("surrogate_framework_for_catboost.joblib"),
     "es_catboost": SURROGATE_DATABASE_PATH.joinpath("surrogate_framework_for_es_catboost.joblib"),
     "lgbm": SURROGATE_DATABASE_PATH.joinpath("surrogate_framework_for_lgbm.joblib"),
@@ -26,8 +26,8 @@ SURROGATE_DATABASE = {
 }
 
 
-def query_surrogate_framework(type_estimator: ESTIMATOR_TYPE) -> Pipeline:
-    '''Retrieve the fitted surrogate pipeline give the input type_estimator'''
+def query_surrogate_framework(type_estimator: TUNABLE_ESTIMATOR_TYPE) -> Pipeline:
+    '''Retrieve the fitted surrogate pipeline given the type_estimator'''
     return load_surrogate_framework(SURROGATE_DATABASE[type_estimator]) 
 
     
