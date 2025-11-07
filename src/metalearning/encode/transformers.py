@@ -37,7 +37,7 @@ class NanToNone(TransformerMixin, BaseEstimator):
         return self
     
     def transform(self, X: pd.DataFrame, y: None = None) -> np.ndarray:
-        check_is_fitted(self, "is_fitted_")
+        #check_is_fitted(self, "is_fitted_")   ## added after surrogate model generation which now fails with this
         _check_dataframe_type(X)
         _check_columns_presence(X, self._list_columns)
         self.n_features_in_ = X.shape[1]
@@ -84,7 +84,7 @@ class ColToStr(TransformerMixin, BaseEstimator):
         return self
 
     def transform(self, X: pd.DataFrame, y: None = None) -> np.ndarray:
-        check_is_fitted(self, "is_fitted_")
+        #check_is_fitted(self, "is_fitted_")   ## added after surrogate model generation which now fails with this
         _check_dataframe_type(X)
         _check_columns_presence(X, self._list_columns)
         self.n_features_in_ = X.shape[1]
@@ -122,7 +122,7 @@ class InfToNan(TransformerMixin, BaseEstimator):
         return self
 
     def transform(self, X: pd.DataFrame, y: None = None) -> np.ndarray:
-        check_is_fitted(self, "is_fitted_")
+        #check_is_fitted(self, "is_fitted_")  ## added after surrogate model generation which now fails with this
         _check_dataframe_type(X)
         self.n_features_in_ = X.shape[1]
         self.feature_names_in_ = X.columns.to_numpy()

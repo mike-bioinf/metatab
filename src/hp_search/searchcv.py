@@ -312,7 +312,10 @@ class SearchCV:
         )
 
         points = surrogate_worker.propose_n_best(
-            n_candidate_points=10000,
+            # using more than 1500 points allows us to evaluate all the points in our prior
+            # we add also a small portion of new ones (500)
+            # in general drawning too many points can reduce their divergence and hurt performance
+            n_candidate_points=2000,
             # with "meta" algo n_iter set the number of evaluated points
             n_best=self.n_iter,
             # add the preprocessing to the meta-data
