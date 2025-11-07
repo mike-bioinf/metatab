@@ -55,7 +55,7 @@ class PointCorrector:
     ):
         '''
         Apply the specified corrections to a hyperparameter point.       
-        THe hyperopt corrections are always applied first.
+        The hyperopt corrections are always applied first.
 
         Parameters:
             point (dict): 
@@ -77,7 +77,7 @@ class PointCorrector:
                 - None: no corrections is applied.
 
         Returns:
-            dict: A corrected copy of the point.
+            dict: The corrected copy of the point.
         '''
         self._check_ambiguous_estimator_setting(estimator, estimator_corrections)
         

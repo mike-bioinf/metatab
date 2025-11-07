@@ -25,3 +25,29 @@ GBDT_ESTIMATORS = [
     "catboost",
     "es_catboost"
 ]
+
+
+TUNABLE_ESTIMATORS = [
+    "random_forest",
+    "xgb",
+    "es_xgb",
+    "lgbm",
+    "es_lgbm",
+    "catboost",
+    "es_catboost",
+    "tabpfn"
+]
+
+
+ALL_ESTIMATORS_TYPE = [
+    "random_forest",
+    "xgb",
+    "es_xgb",
+    "lgbm",
+    "es_lgbm",
+    "catboost",
+    "es_catboost",
+    "tabpfn",
+    "autotabpfn",
+    "finetunetabpfn"
+]

@@ -7,6 +7,7 @@ import sys
 from estimators import Estimator
 from metatab_utils.data_loader import DataLoader
 from cli.fit.params import parse_args
+from metalearning.database.utils import set_surrogate_database
 
 from metatab_utils.helper_programs import (
     adjust_io_paths_, 
@@ -15,6 +16,7 @@ from metatab_utils.helper_programs import (
     check_tune_configuration,
     adjust_tune_configuration_arg_,
     adjust_early_stopping_rounds_,
+    adjust_meta_database_,
     pick_estimator_class,
     check_y_is_integer_encoded,
     create_logger, 
@@ -33,6 +35,8 @@ def main():
     adjust_tune_configuration_arg_(pars)
     adjust_early_stopping_rounds_(pars)
     check_tune_configuration(pars, logger)
+    adjust_meta_database_(pars)
+    set_surrogate_database(pars["meta_database"])
     
     dl = DataLoader()
 

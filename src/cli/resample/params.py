@@ -77,6 +77,11 @@ def parse_args(args):
                    Note that all estimators fitted during the splitting procedure are saved.
                    The filenames follow the generic structure: {estimator}_{repetition}{fold}.
                    In case of 'holdout' splitting mode the "{repetition}{fold}" part is replaced by a sequential number.""")
+    
+    p.add_argument("--meta-database", default=None,
+                   help="""Not intended for users. This parameter allows to pass as a str dict representation
+                   "'estimator':'path_model'" the database of surrogate models to use in the metalearning scenarios.
+                   This override the internal one, which is used instead when the argument is None.""")
 
     p.add_argument("--nthreads", default=16, type=int, 
                    help="Number of CPU threads to use to fit the estimators. Defaults to 16.")

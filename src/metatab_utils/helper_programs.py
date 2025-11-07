@@ -65,6 +65,13 @@ def adjust_paths_(pars: dict, *args) -> None:
 
 
 
+def adjust_meta_database_(pars: dict) -> None:
+    '''Adjust the "meta_database" argument in place'''
+    if pars["meta_database"] is not None:
+        pars["meta_database"] = try_parse_specs_into_dict(pars["meta_database"], "meta-database")
+
+
+
 def manage_output_path(pars: dict, output_arg: str, is_folder: bool) -> None:
     '''
     Control whether the output folder exists and whether to create it if not.

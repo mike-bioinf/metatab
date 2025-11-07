@@ -8,6 +8,7 @@ from time import time
 from estimators import Estimator
 from metatab_utils.prediction import PredictionDataframe
 from metatab_utils.data_loader import DataLoader
+from metalearning.database.utils import set_surrogate_database
 from cli.resample.manager_estimator_workflow import GeneralManagerEstimatorWorkflowResample
 
 from metatab_utils.helper_programs import (
@@ -17,6 +18,7 @@ from metatab_utils.helper_programs import (
     adjust_io_paths_,
     adjust_tune_configuration_arg_,
     adjust_early_stopping_rounds_,
+    adjust_meta_database_,
     pick_estimator_class,
     create_logger, 
     check_y_is_integer_encoded
@@ -54,6 +56,8 @@ def main():
     adjust_tune_configuration_arg_(pars)
     adjust_early_stopping_rounds_(pars)
     check_tune_configuration(pars, logger)
+    adjust_meta_database_(pars)
+    set_surrogate_database(pars["meta_database"])
 
     if pars["save_estimators"]:
         os.makedirs(pars["output_dir"] / "estimators", exist_ok=True)

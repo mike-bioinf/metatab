@@ -32,12 +32,13 @@ class SearchCV:
     Class that implements HPs optimization via random search or
     tpe methods with (repeated) cross-validation.
 
-    Allows a meta-learning informed search via surrogate models using "meta" algo.
+    Allows a meta-learning informed search via surrogate models using the "meta" algo.
 
     Allows early stop on validation set at fit time, only if the classifier
     implements this feature in its API via the "eval_set interface".
 
     It optionally refit the classifier/pipeline with the best hyperparameters.
+
     Exposes the "predict_proba" method of the refitted object.
 
     The search is not parallelized even when the "random" algo is selected. 
@@ -275,21 +276,26 @@ class SearchCV:
 
     def _fit_with_meta_points(self) -> None:
         '''
-        Optimize using the meta-inferred points only.
+        Optimize using the meta-inferred points only.        
         Set the `best_params_` attribute.
         '''
         # we currently use only this acquisition function
         acquisition_func = partial(
             compute_upper_confidence_bound,
-            k="infer",
+            k="infer_low", # we use the more conservative approach since tuning gives only one point
             mean_direction="lower_is_better", # we currently optimize only the logloss
             n_points=self.n_iter
         )
 
+        # Note: we use the fixed seed of 42 for the surrogate framework and its components
+        # since this is the one used in the metadata generation process.
+        # This allows that that some or all the points used in our prior 
+        # are drawn as candidates by our surrogate framework.
+        ## TODO: is this approach good?
         meta_generator = MetadataGenerator(
             sampler=HyperoptRandomSampler(),
             point_corrector=PointCorrector(),
-            mfe=CustomMFE(seed=self.seed),
+            mfe=CustomMFE(seed=42),
         )
 
         surrogate_worker = SurrogateWorker(
@@ -302,7 +308,7 @@ class SearchCV:
             X=self._X,
             y=self._y,
             hp_space=self.params_distributions,
-            seed=self.seed
+            seed=42
         )
 
         points = surrogate_worker.propose_n_best(

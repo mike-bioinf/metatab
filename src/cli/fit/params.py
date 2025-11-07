@@ -54,6 +54,12 @@ def parse_args(args):
                    help="""Seed used to control randomness.
                    In particular it controls the randomness inherent to the estimators, splitting and tuning procedures.""")
 
+
+    p.add_argument("--meta-database", default=None,
+                   help="""Not intended for users. This parameter allows to pass as a str dict representation
+                   "'estimator':'path_model'" the database of surrogate models to use in the metalearning scenarios.
+                   This override the internal one, which is used instead when the argument is None.""")
+
     p.add_argument("--nthreads", default=16, type=int, 
                    help="Number of CPU threads to use to fit the estimator. Defaults to 16.")
     

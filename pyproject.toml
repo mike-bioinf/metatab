@@ -38,6 +38,7 @@ metatab-resample = "cli.resample.resample:main"
 metatab-opt-search = "cli.metalearning.opt_search:main"
 metatab-prepare-metadata = "cli.metalearning.prepare_metadata:main"
 metatab-fit-surrogate = "cli.metalearning.fit_surrogate:main"
+metatab-fit-surrogate-loo = "cli.metalearning.fit_surrogate_loo:main"
 
 
 [build-system]

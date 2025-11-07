@@ -3,18 +3,26 @@ In this module we set the encoding (preprocessing) to apply to the meta-data obt
 from the different estimators, considering ONLY the default estimators tune spaces.
 
 Some general indications:
-- For the gbdts the "es" version uses the same tune space of the base ones.
-This means that we define just one encoding for both.
+- For the gbdts the "es" versions uses the same tune space of the base ones.
+This means that we can define just one encoding for both.
+
 - We must transform some numerical or mixed typed columns to str since we want to encode 
-them though the sklearn ordinal or onehot encoders, which require input categories of the
-same type.
+them though the sklearn ordinal or onehot encoders, which require input categories of homogenous type.
+
+- We expect some metafeatures to goes to +-inf due to our dataset statistical properties.
+We deal with this by employing the InfToNan transformer, which transform the +/-inf values
+to nan. This is good solution since our surrogate model (RandomForestRegressor) si able
+to natively learn and handle nan value, both at training and inference time.
+
 - We expect some metafeatures to contain full nan values. This is because pymfe does not
 automatically filter the structurally incompatible metafeature-summary_func combinations.
 These are addressed in practice by the VarianceThreshold step which is able to remove 
 full nan features.
+
 - We expect some metafeatures to contain data-dependent nan, i.e. nan values that
 compares only on some cases. We do not take care of this nan values since
 the RandomForestRegressor (our surrogate model) is able to natively handle them.
+
 - Some hyperparameters have nan values that should be converted back to None. 
 This is due to pandas IO behaviour. Either the case we resolve this by implementing 
 the NanToNone transformer which is able to work on specific columns only.
@@ -22,11 +30,11 @@ In this way we avoid to erroneously apply this conversion on the metafeatures.
 """
 
 from copy import deepcopy
-from typing import Literal
 from sklearn.preprocessing import OrdinalEncoder, OneHotEncoder
 from sklearn.feature_selection import VarianceThreshold
 from sklearn.compose import ColumnTransformer
-from metalearning.encode.transformers import NanToNone, ColToStr
+from metalearning.encode.transformers import NanToNone, ColToStr, InfToNan
+from estimators.types import TUNABLE_ESTIMATOR_TYPE
 
 from hp_search.tabpfn_search_space import (
     enumerate_preprocess_transforms,
@@ -69,6 +77,7 @@ def create_preprocessing_encoding() -> ColumnTransformer:
 HPS_ENCODING_SCHEME_RANDOM_FOREST = [
     NanToNone("max_features", check_on_fit=True), 
     ColToStr("max_features", check_on_fit=True),
+    InfToNan(check_on_fit=True),
     ColumnTransformer(
         transformers=[
             (
@@ -104,6 +113,7 @@ HPS_ENCODING_SCHEME_TABPFN = [
         ],
         check_on_fit=True
     ),
+    InfToNan(check_on_fit=True),
     ColumnTransformer(
         transformers=[
             (  
@@ -137,6 +147,7 @@ HPS_ENCODING_SCHEME_TABPFN = [
 
 
 HPS_ENCODING_SCHEME_XGB = [
+    InfToNan(check_on_fit=True),
     ColumnTransformer(
         transformers=[
             (
@@ -161,6 +172,7 @@ HPS_ENCODING_SCHEME_XGB = [
 
 
 HPS_ENCODING_SCHEME_CATBOOST = [
+    InfToNan(check_on_fit=True),
     ColumnTransformer(
         transformers=[
             (
@@ -187,23 +199,27 @@ HPS_ENCODING_SCHEME_CATBOOST = [
 
 
 HPS_ENCODING_SCHEME_LGBM = [
+    InfToNan(check_on_fit=True),
     create_preprocessing_encoding(),
     VarianceThreshold()
 ]
 
 
+# The "es" estimator version uses the same encoding 
+# of their "base" counterpart, since they share the tune spaces
 HPS_ENCODING_SCHEME = {
     "random_forest": HPS_ENCODING_SCHEME_RANDOM_FOREST,
     "xgb": HPS_ENCODING_SCHEME_XGB,
+    "es_xgb": HPS_ENCODING_SCHEME_XGB,
     "catboost": HPS_ENCODING_SCHEME_CATBOOST,
+    "es_catboost": HPS_ENCODING_SCHEME_CATBOOST,
     "lgbm": HPS_ENCODING_SCHEME_LGBM,
+    "es_lgbm": HPS_ENCODING_SCHEME_LGBM,
     "tabpfn": HPS_ENCODING_SCHEME_TABPFN
 }
 
 
-def get_encoding_scheme(
-    estimator: Literal["random_forest", "xgb", "catboost", "lgbm", "tabpfn"]
-) -> list:
+def get_encoding_scheme(estimator: TUNABLE_ESTIMATOR_TYPE) -> list:
     '''
     Get a deepcopy of the encoding scheme of the HP feature space designed for the input estimator.
     The encoding scheme consists in a ordered list of sklearn transformers to insert in a Pipeline object.

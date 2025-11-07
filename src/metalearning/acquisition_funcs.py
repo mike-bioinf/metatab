@@ -6,7 +6,7 @@ from typing import Literal
 def compute_upper_confidence_bound(
     mean: np.ndarray, 
     uncertainty: np.ndarray, 
-    k: float | Literal["infer"],
+    k: float | Literal["infer_low", "infer_high"],
     mean_direction: Literal["higher_is_better", "lower_is_better"],
     n_points: int | None = None
 ) -> np.ndarray:
@@ -27,9 +27,12 @@ def compute_upper_confidence_bound(
             If lower_is_better then a -1 is multiplied to the mean,
             assuring the higher_is_better direction of the UCB score.
 
-        k (float | Literal["infer"]): 
+        k (float | Literal["infer_low", "infer_high"]): 
             Factor that control the trade off between mean and uncertainty,
-            aka exploitation/exploration.
+            aka exploitation/exploration. If "infer_low" or "infer_high", 
+            we let the factor to be proportional to "n_points",
+            since when we propose multiple points we want them to be 
+            more diverse and uncertain.
         
         n_points (int | None, optional): 
             Number of points that will be proposed.
@@ -41,6 +44,9 @@ def compute_upper_confidence_bound(
     if isinstance(k, str) and n_points is None:
         raise ValueError("To infer 'k' n_points must be provided (currently None).")
     
+    if isinstance(k, str) and k not in ["infer_low", "infer_high"]:
+        raise ValueError(f"k string '{k}' is not admitted.")
+
     if isinstance(k, (float, int)) and n_points is not None:
         raise ValueError("k is passed as a number with n_points not None. Ambiguous setting.")
 
@@ -49,28 +55,43 @@ def compute_upper_confidence_bound(
             "mean_direction can assume only two possible values: 'higher_is_better' or 'lower_is_better'."
         )
 
-    k = k if isinstance(k, (float | int)) else _infer_k_factor(n_points)
+    k = k if isinstance(k, (float | int)) else _infer_k_factor(n_points, k)
     mean = mean if mean_direction == "higher_is_better" else -1*mean
     return mean + k * uncertainty
 
 
 
-def _infer_k_factor(n_points: int) -> float:
-    '''
-    We let the k factor to be proportional to "n_points",
-    since when we propose multiple points we want them to be 
-    more diverse and uncertain.
-    '''
+def _infer_k_factor(n_points: int, strategy: Literal["infer_low", "infer_high"]) -> float:
+    return _infer_k_factor_high(n_points) \
+        if strategy == "infer_high" \
+        else _infer_k_factor_low(n_points)
+
+
+
+def _infer_k_factor_high(n_points: int) -> float:
+    '''Infer the k factor on "n_points" using a less conservative approach.'''
     if n_points <= 0:
         raise ValueError("n_points must be positive.")
-    elif n_points == 1:
-        # we take the best performance-wise ignoring the uncertainty
-        k = 0
     elif n_points <= 5:
-        k = 1
+        k = 1.0
     elif n_points <= 10:
         k = 1.2
     else:
         k = 1.8
     
+    return k
+
+
+
+def _infer_k_factor_low(n_points: int) -> float:
+    '''Infer the k factor on "n_points" using a more conservative approach.'''
+    if n_points <= 0:
+        raise ValueError("n_points must be positive.")
+    elif n_points <=5:
+        k = 0.5
+    elif n_points <= 10:
+        k = 0.8
+    else:
+        k = 1.0
+
     return k

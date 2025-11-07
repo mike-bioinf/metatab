@@ -71,7 +71,7 @@ def aggregate_df_search(
     '''
     Abstract the logic to aggregate the df search.
     Apply mean aggregation on the loss column and first aggregation on the others.
-    Returns the aggragated dataframe.
+    Returns the aggregated dataframe.
     '''
     agg_dict = {}
     for col in df_search.columns:
@@ -136,7 +136,7 @@ def main():
     mfe = CustomMFE(seed=pars["seed"])
     metafeatures, _ = mfe.fit(X, y).extract()
 
-     # we create a copy since the original df is not optimized in memory due to assign
+    # we create a copy since the original df is not optimized in memory due to assign
     with warnings.catch_warnings():
         warnings.filterwarnings(action="ignore", category=pd.errors.PerformanceWarning)
         df_search_agg = df_search_agg.assign(**metafeatures).copy()

@@ -99,6 +99,14 @@ class SurrogateWorker:
             list[dict[str,Any]]: The list of the best points.
         '''
         check_is_fitted(self, "is_fitted_")
+
+        self._check_proposed_not_exceed_candidates(
+            n_candidate_points,
+            n_best,
+            "n_candidate_points",
+            "n_best"
+        )
+
         acquisition_func_kwargs = ensure_or_create(acquisition_func_kwargs, dict)
 
         metadata, candidate_points = self.metadata_generator.generate(
@@ -111,7 +119,168 @@ class SurrogateWorker:
         pred_values, pred_uncertainty = self.surrogate_framework.predict(metadata)        
         promisingness = self.acquisition_func(pred_values, pred_uncertainty, **acquisition_func_kwargs)
 
-        # argsort works in the increasing order (last index --> index of the greatest value)
-        top_idx = np.argsort(promisingness, stable=True)[-n_best:]
-        selected_points = [candidate_points[idx] for idx in top_idx]
-        return selected_points
+        # argsort works in increasing order, so we reverse to have best --> worst direction
+        top_idx = np.argsort(promisingness, stable=True)[::-1][:n_best]
+        return [candidate_points[idx] for idx in top_idx]
+    
+
+    def propose_random_from_top(
+        self, 
+        n_candidate_points: int,
+        n_proposed: int,
+        top: int,
+        point_corrector_kwargs: None | dict = None,
+        mfe_fit_kwargs: None | dict = None,
+        mfe_extract_kwargs: None | dict = None,
+        acquisition_func_kwargs: None | dict = None,
+        seed: int = 0
+    ) -> list[dict[str, Any]]:
+        '''
+        Get the best points from the top positions randomly without duplication.
+        This propose strategy let to randomly draw `n_proposed` points from the `top`
+        positions of `n_candidate_points` in a random way without duplication.
+
+        Parameters:
+            n_candidate_points (int): 
+                Number of points to draw as candidates.
+
+            n_proposed (int): 
+                Number of points returned by the utility.
+
+            top (int):
+                Number of top points from which draw the random proposed ones.
+            
+            point_corrector_kwargs (None | dict, optional):
+                Kwargs to pass to the PointCorrector `correct_point` method.
+
+            mfe_fit_kwargs (None | dict, optional):
+                Kwargs to pass to the mfe `fit` method.
+            
+            mfe_extract_kwargs (None | dict, optional):
+                Kwargs to pass to the mfe `extract` method.
+            
+            acquisition_func_kwargs (None | dict):
+                Kwargs to pass to the acquisition function callable.
+
+        Returns:
+            list[dict[str,Any]]: The list of the best points.
+        '''
+        check_is_fitted(self, "is_fitted_")
+
+        self._check_proposed_not_exceed_candidates(
+            n_candidate_points, 
+            n_proposed,
+            "n_candidate_points",
+            "n_proposed"
+        )
+
+        if top > n_candidate_points:
+            raise ValueError(f"'{top}' cannot be greater than {n_candidate_points}.")
+
+        if n_proposed > top:
+            raise ValueError(f"'{n_proposed}' cannot be greater than '{top}'.")
+        
+        metadata, candidate_points = self.metadata_generator.generate(
+            n_points=n_candidate_points,
+            point_corrector_kwargs=point_corrector_kwargs,
+            mfe_fit_kwargs=mfe_fit_kwargs,
+            mfe_extract_kwargs=mfe_extract_kwargs
+        )
+
+        # we can skip inference in this scenario
+        if n_proposed == n_candidate_points:
+            return candidate_points
+
+        acquisition_func_kwargs = ensure_or_create(acquisition_func_kwargs, dict)
+        pred_values, pred_uncertainty = self.surrogate_framework.predict(metadata)        
+        promisingness = self.acquisition_func(pred_values, pred_uncertainty, **acquisition_func_kwargs)
+
+        # argsort works in increasing order, so we reverse to have best --> worst direction
+        top_idx = np.argsort(promisingness, stable=True)[::-1][:top]
+        top_points = [candidate_points[idx] for idx in top_idx]
+
+        # we can skip random drawing in this scenario
+        if top == n_proposed:
+            return top_points
+        
+        rng = np.random.default_rng(seed)
+        selected_idx = rng.choice(top, size=n_proposed, replace=False)
+        return [top_points[idx] for idx in selected_idx]
+
+
+    def propose_best_uniform(
+        self, 
+        n_candidate_points: int,
+        n_steps: int,
+        step_size: int,
+        point_corrector_kwargs: None | dict = None,
+        mfe_fit_kwargs: None | dict = None,
+        mfe_extract_kwargs: None | dict = None,
+        acquisition_func_kwargs: None | dict = None
+    ):
+        '''
+        Get the best `n_steps` points using a fixed `step_size`.
+        This propose strategy can be think of ordering the points
+        in the best --> worst direction, and then selecting an item
+        every step_size elements, for n_steps times. 
+        The utility therefore returns n_steps points.
+
+        Parameters:
+            n_candidate_points (int): 
+                Number of points to draw as candidates.
+
+            n_steps (int): 
+                Number of points returned by the utility.
+
+            step_size (int):
+                Size of the step.
+            
+            point_corrector_kwargs (None | dict, optional):
+                Kwargs to pass to the PointCorrector `correct_point` method.
+
+            mfe_fit_kwargs (None | dict, optional):
+                Kwargs to pass to the mfe `fit` method.
+            
+            mfe_extract_kwargs (None | dict, optional):
+                Kwargs to pass to the mfe `extract` method.
+            
+            acquisition_func_kwargs (None | dict):
+                Kwargs to pass to the acquisition function callable.
+
+        Returns:
+            list[dict[str,Any]]: The list of the best points.
+        '''
+        check_is_fitted(self, "is_fitted_")
+        working_range = n_steps * step_size
+        
+        if working_range > n_candidate_points:
+            raise ValueError("'n_steps * step_size' cannot be greater than 'n_candidate_points'.")
+
+        metadata, candidate_points = self.metadata_generator.generate(
+            n_points=n_candidate_points,
+            point_corrector_kwargs=point_corrector_kwargs,
+            mfe_fit_kwargs=mfe_fit_kwargs,
+            mfe_extract_kwargs=mfe_extract_kwargs
+        )
+        
+        acquisition_func_kwargs = ensure_or_create(acquisition_func_kwargs, dict)
+        pred_values, pred_uncertainty = self.surrogate_framework.predict(metadata)        
+        promisingness = self.acquisition_func(pred_values, pred_uncertainty, **acquisition_func_kwargs)
+        
+        # argsort works in increasing order, so we reverse to have best --> worst direction
+        ordered_idx = np.argsort(promisingness, stable=True)[::-1]
+        ordered_points = [candidate_points[idx] for idx in ordered_idx]
+        return ordered_points[:working_range:step_size]
+
+
+    @staticmethod
+    def _check_proposed_not_exceed_candidates(
+        n_candidates: int, 
+        n_proposed: int,
+        n_candidates_param: str,
+        n_proposed_param: str
+    ) -> None:
+        if n_candidates < n_proposed:
+            raise ValueError(
+                f"'{n_candidates_param}' cannot be less than '{n_proposed_param}'."
+            )
