@@ -99,6 +99,16 @@ class SearchCV:
             If None (default) an empty dict is created.
             The dict keys must be already adapted to the pipeline if any.
         
+        meta_optimization_strategy (None | Literal["best", "random_from_best", "uniform_from_best"], optional):
+            Control the strategy used by the metalearning framework to select points.
+            It has no effect when `algo` is different from "meta".
+            In detail the following `SurrogateWorker` utilities are used:
+            - "best": `propose_n_best`
+            - "random_from_best": `propose_random_from_top`
+            - "uniform_from_best": `propose_best_uniform`
+            See the specific method for more details.
+            If None, the parameter is set via the global `ConfigSearchCV` configuration class.
+
         raise_error_during_search (None | bool, optional):
             Whether to ignore the errors during the search.
             If None, the parameter is set via the global `ConfigSearchCV` configuration class.
@@ -165,6 +175,7 @@ class SearchCV:
         eval_set_parameter: str = "eval_set",
         validation_set_size: float = 0.3,
         fit_classifier_kwargs: None | dict = None,
+        meta_optimization_strategy: None | Literal["best", "random_from_best", "uniform_from_best"] = None,
         raise_error_during_search: None | bool = None,
         build_df_search: None | bool = None,
         refit_with_best_hps: None | bool = None,
@@ -200,6 +211,10 @@ class SearchCV:
         )
 
         # controlled by ConfigSearchCV
+        self.meta_optimization_strategy: Literal["best", "random_from_best", "uniform_from_best"] = ConfigSearchCV.get_setting(
+            meta_optimization_strategy,
+            "meta_optimization_strategy"
+        )
         self.raise_error_during_search: bool = ConfigSearchCV.get_setting(raise_error_during_search, "raise_error_during_search")
         self.build_df_search: bool = ConfigSearchCV.get_setting(build_df_search, "build_df_search")        
         self.refit_with_best_hps: bool = ConfigSearchCV.get_setting(refit_with_best_hps, "refit_with_best_hps")
@@ -287,15 +302,10 @@ class SearchCV:
             n_points=self.n_iter
         )
 
-        # Note: we use the fixed seed of 42 for the surrogate framework and its components
-        # since this is the one used in the metadata generation process.
-        # This allows that that some or all the points used in our prior 
-        # are drawn as candidates by our surrogate framework.
-        ## TODO: is this approach good?
         meta_generator = MetadataGenerator(
             sampler=HyperoptRandomSampler(),
             point_corrector=PointCorrector(),
-            mfe=CustomMFE(seed=42),
+            mfe=CustomMFE(),
         )
 
         surrogate_worker = SurrogateWorker(
@@ -304,6 +314,10 @@ class SearchCV:
             acquisition_func=acquisition_func
         )
 
+        # Note: we use the fixed seed of 42 for the surrogate framework and its components.
+        # This seed is the one used to generate the prior on which the surrogate has been trained,
+        # meaning that we use "real" evaluated points as candidates.
+        ## TODO: change approach? 
         surrogate_worker.fit(
             X=self._X,
             y=self._y,
@@ -311,16 +325,46 @@ class SearchCV:
             seed=42
         )
 
-        points = surrogate_worker.propose_n_best(
-            # using more than 1500 points allows us to evaluate all the points in our prior
-            # we add also a small portion of new ones (500)
-            # in general drawning too many points can reduce their divergence and hurt performance
-            n_candidate_points=2000,
-            # with "meta" algo n_iter set the number of evaluated points
-            n_best=self.n_iter,
-            # add the preprocessing to the meta-data
-            mfe_extract_kwargs={"add_features": {"preprocessing": self.type_clf_or_pipe_preprocessing}}
-        )
+        # 1500 are the points used in our prior for all estimators (for now)
+        # In general drawning too many points can reduce their divergence and therefore hurt performance
+        # TODO: use "new" points also?
+        n_candidate_points = max(1500, self.n_iter)
+
+        # add the preprocessing to the meta-data
+        mfe_extract_kwargs = {"add_features": {"preprocessing": self.type_clf_or_pipe_preprocessing}}
+
+        if self.meta_optimization_strategy == "best":
+            points = surrogate_worker.propose_n_best(
+                n_candidate_points=n_candidate_points, 
+                n_best=self.n_iter, 
+                mfe_extract_kwargs=mfe_extract_kwargs
+            )
+
+        elif self.meta_optimization_strategy == "random_from_best":
+            points = surrogate_worker.propose_random_from_top(
+                n_candidate_points=n_candidate_points,
+                n_proposed=self.n_iter,
+                # we use a FIXED ratio of 1 to 3 when possible, meaning we give "3 choices for point"
+                top=min(self.n_iter * 3, n_candidate_points),
+                mfe_extract_kwargs=mfe_extract_kwargs,
+                # we use the seed of the instance to allow variability
+                seed=self.seed
+            )
+        
+        elif self.meta_optimization_strategy == "uniform_from_best":
+            # we use a FIXED step of 3 when possible
+            step_size = 3 if (n_candidate_points / self.n_iter) > 3 else 1
+            points = surrogate_worker.propose_uniform_from_top(
+                n_candidate_points=n_candidate_points,
+                n_steps=self.n_iter,
+                step_size=step_size,
+                mfe_extract_kwargs=mfe_extract_kwargs
+            )
+
+        else:
+            raise ValueError(
+                "meta_optimation_strategy must be one of: 'best', 'random_from_best', 'uniform_from_best'."
+            )
 
         # we do not evaluate the single point since is the best by definition
         if len(points) == 1:

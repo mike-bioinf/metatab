@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 
 def set_surrogate_database(database: None | dict[str, str]) -> None:
     '''
-    Set globally the surrogate database as "_SURROGATE_DATABASE" object.
+    Set globally the surrogate database referred as "_SURROGATE_DATABASE".
     '''
     global _SURROGATE_DATABASE
     

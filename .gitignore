@@ -167,4 +167,5 @@ debug_code
 old_code.py
 data
 tests/data
-src/metalearning/database/database/*
+## the surrogate models are too big to be pushed on github
+src/metalearning/database/database/* 

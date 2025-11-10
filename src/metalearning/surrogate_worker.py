@@ -162,6 +162,9 @@ class SurrogateWorker:
             acquisition_func_kwargs (None | dict):
                 Kwargs to pass to the acquisition function callable.
 
+            seed (int, optional):
+                Control the randomness of the point selection procedure.   
+
         Returns:
             list[dict[str,Any]]: The list of the best points.
         '''
@@ -208,7 +211,7 @@ class SurrogateWorker:
         return [top_points[idx] for idx in selected_idx]
 
 
-    def propose_best_uniform(
+    def propose_uniform_from_top(
         self, 
         n_candidate_points: int,
         n_steps: int,

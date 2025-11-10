@@ -86,7 +86,7 @@ class CustomMFE:
     The class accepts the same set of parameters of the MFE class, with the following expections:
     - We can specify the `additional_sparse` group in `groups` parameter.
     - We can specify the MAP_SPARSE_METAFEATURES keys in `features` parameter.
-    - `random_state` is renamed as `seed`.
+    - `random_state` is renamed as `seed` with a default value of 42.
     '''
     def __init__(
         self,
@@ -101,7 +101,7 @@ class CustomMFE:
         lm_sample_frac: float = 1,
         hypparam_model_dt: dict[str, Any] | None = None,
         suppress_warnings: bool = True,
-        seed: int | None = None
+        seed: int = 42
     ):
         self.map_group_metafeature = self._create_map_group_metafeature()
         cleaned_groups = self._clean_groups_input_from_landmarking(groups)

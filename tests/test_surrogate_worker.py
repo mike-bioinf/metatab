@@ -55,10 +55,10 @@ def test_surrogate_worker_propose_n_best_method():
     assert points == ["first", "second", "third"], "propose_n_best returns the wrong points"
 
 
-def test_surrogate_worker_propose_best_uniform():
+def test_surrogate_worker_propose_uniform_from_top():
     surrogate_worker = create_dummy_surrogate_worker()
 
-    points = surrogate_worker.propose_best_uniform(
+    points = surrogate_worker.propose_uniform_from_top(
         n_candidate_points=1000, # ignored but must be greater than "n_steps * step_size"
         n_steps=2,
         step_size=3

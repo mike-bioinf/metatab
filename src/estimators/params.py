@@ -280,7 +280,8 @@ class TuningParams:
         "score_function": hp.choice("score_function", ["Cosine"]),
         "grow_policy": hp.choice("grow_policy", ["SymmetricTree"]),
         "boosting_type": hp.choice("boosting_type", ["Ordered"]),
-        "max_bin": hp.choice("max_bin", [5, 10, 20, 30, 50, 100, 150, 254]),
+        # we reduce max_bin vs other spaces to speed up
+        "max_bin": hp.choice("max_bin", [5, 10, 15, 50]),
         "max_depth": hp.choice("max_depth", list(range(1, 9))),
         "learning_rate": hp.loguniform("learning_rate", np.log(0.001), np.log(0.1)),
         "leaf_estimation_iterations": scope.int(hp.qloguniform("lei", np.log(1), np.log(10), q=1)),

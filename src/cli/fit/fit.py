@@ -8,6 +8,7 @@ from estimators import Estimator
 from metatab_utils.data_loader import DataLoader
 from cli.fit.params import parse_args
 from metalearning.database.utils import set_surrogate_database
+from hp_search.utils import ConfigSearchCV
 
 from metatab_utils.helper_programs import (
     adjust_io_paths_, 
@@ -37,6 +38,10 @@ def main():
     check_tune_configuration(pars, logger)
     adjust_meta_database_(pars)
     set_surrogate_database(pars["meta_database"])
+
+    # we set the "best" strategy for the meta-tuned estimators
+    # since the fit program is intended to get a single "best" model
+    ConfigSearchCV.meta_optimization_strategy = "best"
     
     dl = DataLoader()
 

@@ -257,8 +257,8 @@ def try_parse_specs_into_dict(specs: str, error_message_specs: str) -> dict[str,
     except Exception:
         raise ValueError(
             f"{error_message_specs} " + "cannot be correctly parsed into a dict." +
-            "It should be passed following the syntax {'key': value, ...}, enclosing the dict with double quotes" +
-            "Remember to enclose the keys in ticks ('') if they are python strings."
+            " It should be passed following the syntax {'key': value, ...}, enclosing the dict with double quotes." +
+            " Remember to enclose the keys in ticks ('') if they are python strings."
         )
     return specs
 

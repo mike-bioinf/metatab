@@ -1,4 +1,5 @@
 import re
+import numpy as np
 import pandas as pd
 import warnings
 from typing import Any, Callable, Literal
@@ -327,3 +328,101 @@ def create_gbdt_estimator_column(
 
     df[new_column] = df[estimator_column].apply(is_gbdt_estimator)
     return df
+
+
+
+def get_df_wide_proba(
+    df: pd.DataFrame,
+    y_true: str = "test_labels",
+    y_pred: str = "pred_proba",
+    group_new_cols: str | list[str] = "estimator",
+    group_new_rows: str | list[str] = ["dataset", "repetition", "fold"],
+    separator_new_cols: str = "__",
+    raise_on_na: Literal["error", "warning", "nothing"] = "error"
+) -> pd.DataFrame:
+    '''
+    Build a wide-format DataFrame containing the predicted probabilities of the
+    true class for each experimental group.
+
+    For each row in `df`, the function extracts the predicted probability corresponding
+    to the true label (from the `y_pred` arrays). Groups of results are identified by
+    the columns in `group_new_cols` and `group_new_rows`. In detail each unique combination 
+    of group cols and rows value becomes a new col and row respectively in the resulting 
+    dataframe. The columns names in particular are are concatenated from group values
+    using the `separator_new_cols` string.
+    
+    Parameters:
+        df (pd.DataFrame): 
+            Input DataFrame containing true labels and predicted probability arrays.
+            Each row should represent one evaluation split (e.g., fold) and contain:
+            - a column `y_true` with an array of true class indices.
+            - a column `y_pred` with an array of predicted probabilities of shape (n_samples, n_classes).
+
+        y_true (str, optional): 
+           Name of the column containing the true class indices.
+        
+        y_pred: (str, optional): 
+            Name of the column containing the predicted probabilities.
+        
+        group_new_cols (str | list[str], optional): 
+            Column(s) that define the resulting column index. Each unique combination of these values
+            forms one output column in the wide DataFrame, obtained in a string concatenation procedure
+            using the `separator_new_cols` as values separator.
+
+        group_new_rows (str | list[str], optional):
+            Row(s) taht define the resulting index. Each unique combination of these values
+            forms one output index in the wide DataFrame.
+
+        separator_new_cols (str, optional):
+            String used to concatenate the unique combinations of values of the `group_new_cols`
+            composing the columns of the resulting dataframe.
+
+        raise_when_na (Literal["error", "warning", "nothing"], optional):
+            Raise an error, warning or do nothing when the resulting table contains nan.
+
+    Returns:
+        pd.DataFrame: 
+        A wide-format DataFrame where each column contains a single 
+        concatenated vector of the predicted probabilities for the true class.
+    '''
+    group_new_cols = enlist(group_new_cols)
+    group_new_rows = enlist(group_new_rows)
+    sel_cols = [y_true, y_pred] + group_new_cols + group_new_rows
+    
+    check_presence_cols(df, sel_cols)
+    df_sub = df.loc[:, sel_cols]
+    
+    # get the right predictions
+    def get_right_pred(row: pd.Series) -> pd.Series:
+        pred_proba = row[y_pred]
+        true_labels = row[y_true]
+        pred_proba_true = pred_proba[np.arange(len(true_labels)), true_labels]
+        row["pred_proba_true"] = pred_proba_true
+        return row
+    
+    df_sub = df_sub.apply(get_right_pred, axis=1)
+
+    # create the composite key
+    df_sub["group_key"] = df_sub[group_new_cols].astype(str).agg(separator_new_cols.join, axis=1)
+    
+    # we expect to have only one value per group otherwise error by pivot
+    df_wide = df_sub.loc[:, ["pred_proba_true", "group_key"] + group_new_rows].pivot(
+        columns="group_key", 
+        values="pred_proba_true", 
+        index=group_new_rows
+    )
+
+    # flat numpy arrays
+    df_wide = pd.DataFrame({
+        col: np.concatenate(df_wide[col].to_numpy())
+        for col in df_wide.columns
+    })
+
+    if pd.isna(df_wide).any().any():
+        message = "Found nan in the resulting table."
+        if raise_on_na == "error":
+            raise ValueError(message)
+        elif raise_on_na == "warning":
+            warnings.warn(message)
+    
+    return df_wide
