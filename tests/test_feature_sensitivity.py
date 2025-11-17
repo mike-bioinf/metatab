@@ -8,7 +8,7 @@ from hp_search.point_corrector import PointCorrector
 from metalearning.generator import MetadataGenerator
 from metalearning.sampler import HyperoptRandomSampler
 from metalearning.metafeatures import CustomMFE
-from metalearning.database.utils import query_surrogate_framework
+from metalearning.load import query_surrogate_framework
 from metalearning.feature_sensitivity import _permute_block, compute_feature_sensitivity_map
 from pymfe.mfe import MFE
 
@@ -53,7 +53,7 @@ def test_that_compute_feature_sensitivity_map_works(create_multi_index_dataframe
     generator = MetadataGenerator(
         sampler=HyperoptRandomSampler(),
         point_corrector=PointCorrector(),
-        mfe=CustomMFE(seed=0)
+        mfe=CustomMFE()
     )
 
     metadata, _ = generator.fit(X, y, TuningParams.LGMB_C0, 0).generate(

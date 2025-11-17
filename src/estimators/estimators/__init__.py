@@ -1,36 +1,36 @@
 from typing import TypeAlias, Union
 
-from estimators.xgb import (
+from estimators.estimators.xgb import (
     MyXGBClassifier,
     MyESXGBClassifier,
     MyTunedXGBClassifier,
     MyTunedESXGBClassifier 
 )
 
-from estimators.catboost import (
+from estimators.estimators.catboost import (
     MyCatBoostClassifier,
     MyESCatBoostClassifier,
     MyTunedCatBoostClassifier,
     MyTunedESCatBoostClassifier
 )
 
-from estimators.rf import (
+from estimators.estimators.rf import (
     MyRandomForestClassifier,
     MyTunedRandomForestClassifier
 )
 
-from estimators.lgbm import (
+from estimators.estimators.lgbm import (
     MyLGBMClassifier,
     MyESLGBMClassifier,
     MyTunedLGBMClassifier,
     MyTunedESLGBMClassifier
 )
 
-from estimators.tabpfn import (
+from estimators.estimators.tabpfn import (
     MyTabPFNClassifier,
     MyTunedTabPFNClassifier,
-    MyAutoTabPFNClassifier,
-    MyAesFineTunedTabPFNClassifier
+    # MyAutoTabPFNClassifier,
+    # MyAesFineTunedTabPFNClassifier
 )
 
 
@@ -52,8 +52,8 @@ Estimator: TypeAlias = Union[
     MyTunedESLGBMClassifier,
     MyTabPFNClassifier,
     MyTunedTabPFNClassifier,
-    MyAutoTabPFNClassifier,
-    MyAesFineTunedTabPFNClassifier
+    # MyAutoTabPFNClassifier,
+    # MyAesFineTunedTabPFNClassifier
 ]
 
 
@@ -74,7 +74,7 @@ __all__ = [
     "MyTunedESLGBMClassifier"
     "MyTabPFNClassifier",
     "MyTunedTabPFNClassifier",
-    "MyAutoTabPFNClassifier",
-    "MyAesFineTunedTabPFNClassifier",
+    # "MyAutoTabPFNClassifier",
+    # "MyAesFineTunedTabPFNClassifier",
     "Estimator"
 ]

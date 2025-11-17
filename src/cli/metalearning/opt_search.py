@@ -10,16 +10,15 @@ import sys
 import argparse
 from time import time
 from typing import TYPE_CHECKING
-from estimators import Estimator
+from estimators.estimators import Estimator
 from metatab_utils.data_loader import DataLoader
 from hp_search.utils import ConfigSearchCV
 
-from metatab_utils.helper_programs import (
+from cli.helper import (
     check_target_feature,
     adjust_io_paths_,
     manage_output_path,
-    adjust_early_stopping_rounds_,
-    _pick_params_distributions_configuration,
+    resolve_preprocessing_info,
     pick_estimator_class,
     create_logger
 )
@@ -47,7 +46,8 @@ def parse_args(args):
                    choices=["random_forest", "xgb", "es_xgb", "catboost", "es_catboost", "lgbm", "es_lgbm", "tabpfn"],
                    help="The estimator.")
     
-    p.add_argument("-p", "--preprocessing", default="base", choices=["base", "density_filter", "pca"])
+    p.add_argument("-p", "--preprocessing", default="estimator_default", 
+                   choices=["estimator_default", "base", "density_filter", "pca", "no"])
     
     p.add_argument("-r", "--early-stopping-rounds", type=int, default=-1,
                    help="""Number of early stop rounds to use when using the "es" estimators.
@@ -109,7 +109,7 @@ def main():
     check_n_iter(pars)
     adjust_io_paths_(pars, "input_data", "output_file")
     manage_output_path(pars, "output_file", False)
-    adjust_early_stopping_rounds_(pars)
+    # adjust_early_stopping_rounds_(pars)
     pars["tune"] = True
     
     # set instruction for building and saving the search data
@@ -128,9 +128,9 @@ def main():
     }
 
     # add the hps space
-    pars["tune_configuration"]["params_distributions"] = (
-        _pick_params_distributions_configuration(pars)
-    )
+    # pars["tune_configuration"]["params_distributions"] = (
+    #     _pick_params_distributions_configuration(pars)
+    # )
 
     dl = DataLoader()
 
@@ -149,9 +149,12 @@ def main():
     estimator_class = pick_estimator_class(pars)
 
     estimator: Estimator = estimator_class(
-        preprocessing=pars["preprocessing"],
+        # here we resolve the preprocessing info in order to store
+        # the explicit preprocessing in the search data
+        preprocessing=resolve_preprocessing_info(pars),
         seed=pars["seed"],
         n_threads=pars["nthreads"],
+        ## TODO: correct here
         early_stopping_rounds=pars["early_stopping_rounds"],
         tune_configuration=pars["tune_configuration"]
     )

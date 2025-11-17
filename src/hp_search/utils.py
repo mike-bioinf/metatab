@@ -6,17 +6,13 @@ from tabpfn import TabPFNClassifier
 from sklearn.pipeline import Pipeline
 
 if TYPE_CHECKING:
-    from estimators.types import Classifier
-
+    from estimators.utils.types import Classifier
 
 
 
 class ConfigSearchCV:
     '''
     Class that holds the globally configurable settings for SearchCV instances.
-    
-    - meta_optimization_strategy (Literal["best", "random_from_best", "uniform_from_best"]):
-        Control the strategy used by the metalearning framework to select points.
 
     - raise_error_during_search (bool):
         Control whether to ignore the errors during the search.
@@ -33,13 +29,11 @@ class ConfigSearchCV:
         If not None allow to save the df_search after each search iteration at the specified path. 
         Ignored when "build_df_search" is False.
     '''
-    meta_optimization_strategy = "random_from_best"
     raise_error_during_search = False
     refit_with_best_hps = True
     build_df_search = False
     save_realtime_df_search_filepath = None
     _attrs = [
-        "meta_optimization_strategy",
         "raise_error_during_search",
         "refit_with_best_hps", 
         "build_df_search", 

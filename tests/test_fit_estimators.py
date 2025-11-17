@@ -4,7 +4,7 @@ import numpy as np
 from pathlib import Path
 from typing import Literal
 from sklearn.datasets import load_iris
-from estimators import Estimator
+from estimators.estimators import Estimator
 from hp_search.searchcv import SearchCV
 
 from tests.conftest import (
@@ -12,7 +12,6 @@ from tests.conftest import (
     ESTIMATOR_ALL_CONFIGS,
     get_alternative_estimator_file_names
 )
-
 
 
 

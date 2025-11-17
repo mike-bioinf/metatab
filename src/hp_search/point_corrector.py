@@ -3,8 +3,7 @@ from typing import Literal, Callable
 from copy import deepcopy
 from tabpfn.model_loading import _user_cache_dir
 from metatab_utils.general import enlist
-from estimators.types import TUNABLE_ESTIMATOR_TYPE
-
+from estimators.utils.types import TUNABLE_ESTIMATOR_TYPE
 
 
 

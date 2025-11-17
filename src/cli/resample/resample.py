@@ -1,32 +1,26 @@
 import os
 import sys
+from time import time
+from collections import defaultdict
 import pandas as pd
 import numpy as np
-from collections import defaultdict
-from copy import deepcopy
-from time import time
-from estimators import Estimator
+from estimators.estimators import Estimator
 from metatab_utils.prediction import PredictionDataframe
 from metatab_utils.data_loader import DataLoader
-from metalearning.database.utils import set_surrogate_database
+from cli.resample.params import parse_args
 from cli.resample.manager_estimator_workflow import GeneralManagerEstimatorWorkflowResample
+from metalearning.load import query_surrogate_framework
 
-from metatab_utils.helper_programs import (
+from cli.helper import (
+    create_logger,
     check_fit_resample_args,
-    check_tune_configuration,
     manage_output_path, 
     adjust_io_paths_,
-    adjust_tune_configuration_arg_,
-    adjust_early_stopping_rounds_,
-    adjust_meta_database_,
     pick_estimator_class,
-    create_logger, 
-    check_y_is_integer_encoded
-)
-
-from cli.resample.params import (
-    parse_args,
-    adjust_splitting_specs_
+    check_y_is_integer_encoded,
+    resolve_preprocessing_info,
+    build_early_stop_configuration,
+    build_tune_configuration
 )
 
 from cli.resample.helper import (
@@ -42,22 +36,18 @@ from cli.resample.helper import (
 
 
 
-
 ## TODO: to clean the main program flow:
 ## abstract saving logic in a class
 def main():
     logger = create_logger(sys.stdout)
     pars = vars(parse_args(sys.argv[1:]))
-    check_fit_resample_args(pars)
-
+    
+    check_fit_resample_args(pars, logger)
     adjust_io_paths_(pars, "input_data", "output_dir")
     manage_output_path(pars, "output_dir", True)
-    adjust_splitting_specs_(pars)
-    adjust_tune_configuration_arg_(pars)
-    adjust_early_stopping_rounds_(pars)
-    check_tune_configuration(pars, logger)
-    adjust_meta_database_(pars)
-    set_surrogate_database(pars["meta_database"])
+
+    early_stop_configuration = build_early_stop_configuration(pars)
+    tune_configuration = build_tune_configuration(pars)
 
     if pars["save_estimators"]:
         os.makedirs(pars["output_dir"] / "estimators", exist_ok=True)
@@ -80,24 +70,25 @@ def main():
 
     splitter = pick_splitter(pars)
     estimator_class = pick_estimator_class(pars)
-    rng_estimator = np.random.default_rng(pars["seed"])
+    rng_estimator = np.random.default_rng(pars["seed_estimator"])
 
     # initialize outputs
     output_dir = pars["output_dir"]
     results_filepath = output_dir / "pred_dataframe.txt"
     configuration_filepath = output_dir / "configuration.json"
     create_json_configuration_file(pars, configuration_filepath)
-    
+
     dict_results = defaultdict(list)
     df_pred_results = PredictionDataframe()
     
     if pars["tune"]: 
         dict_hpo = defaultdict(list)
         hpo_filepath = output_dir / "hpo.txt"
-        copy_tune_configuration = deepcopy(pars["tune_configuration"])
-        del copy_tune_configuration["params_distributions"]
 
-    
+    # this is to avoid the first download inside the fit call inflating times
+    if pars["tune"] and pars["tune_algo"] == "meta":
+        _ = query_surrogate_framework(pars["estimator"])
+
     # run resampling
     for i, (train_idx, test_idx) in enumerate(splitter.split(X, y)):
         repetition, fold = get_repetition_fold(i, pars)
@@ -108,11 +99,12 @@ def main():
 
         # we pass different seeds to maximize resample entropy
         estimator: Estimator = estimator_class(
-            preprocessing=pars["preprocessing"],
+            # we need to resolve the preprocessing to extract the related info
+            preprocessing=resolve_preprocessing_info(pars),
             seed=int(rng_estimator.integers(0, 2**32)),
             n_threads=pars["nthreads"],
-            early_stopping_rounds=pars["early_stopping_rounds"],
-            tune_configuration=pars["tune_configuration"]
+            early_stop_configuration=early_stop_configuration,
+            tune_configuration=tune_configuration
         )
 
         manager_estimator = GeneralManagerEstimatorWorkflowResample(estimator, pars, repetition, fold)
@@ -146,9 +138,9 @@ def main():
             "predict_dataset": name_dataset,
             "estimator": pars["estimator"],
             "tune": pars["tune"],
-            "tune_hps_configuration": pars["tune_configuration"]["configuration"] if pars["tune"] else None,
-            "tune_algo": pars["tune_configuration"]["algo"] if pars["tune"] else None,
-            "n_tune_iter": pars["tune_configuration"]["n_iter"] if pars["tune"] else None,
+            "tune_space": pars["tune_space"] if pars["tune"] else None,
+            "tune_algo": pars["tune_algo"] if pars["tune"] else None,
+            "tune_n_iter": pars["tune_n_iter"] if pars["tune"] else None,
             "n_threads": pars["nthreads"],
             "preprocessing": pars["preprocessing"],
             "splitting_mode": pars["splitting_mode"],
@@ -161,14 +153,17 @@ def main():
             "fit_time": fit_time,
             "predict_time": predict_time
         }
-
+    
         if pars["tune"]:
             populate_dict_lists_(
                 dictionary=dict_hpo,
                 dataset=name_dataset,
                 estimator=pars["estimator"],
                 preprocessing=pars["preprocessing"],
-                **copy_tune_configuration,
+                algo=pars["tune_algo"],
+                n_iter=pars["tune_n_iter"],
+                n_cv_repeats=pars["tune_n_cv_repeats"],
+                n_cv_folds=pars["tune_n_cv_folds"],
                 splitting_mode=pars["splitting_mode"], 
                 repetition=repetition,
                 fold=fold,

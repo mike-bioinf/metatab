@@ -11,10 +11,10 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 from sklearn.datasets import load_iris
 from functools import partial
-from estimators import Estimator
+from estimators.estimators import Estimator
 from estimators.params import TuningParams
 
-from estimators import (
+from estimators.estimators import (
     MyRandomForestClassifier,
     MyTunedRandomForestClassifier,
     MyXGBClassifier,
@@ -31,7 +31,7 @@ from estimators import (
     MyTunedESLGBMClassifier,
     MyTabPFNClassifier,
     MyTunedTabPFNClassifier,
-    MyAesFineTunedTabPFNClassifier
+    # MyAesFineTunedTabPFNClassifier
 )
 
 if TYPE_CHECKING:
@@ -96,12 +96,12 @@ TEST_TABPFN_FIXED_PARAMS = {
     "ignore_pretraining_limits": True
 }
 
-TEST_FINETUNED_TABPFN_FIXED_PARAMS = {
-    "finetune_setup": {"max_steps": 2},
-    "tabpfn_classifier_params": {"ignore_pretraining_limits": True},
-    "n_accumulation_steps": 1,
-    "log": False
-}
+# TEST_FINETUNED_TABPFN_FIXED_PARAMS = {
+#     "finetune_setup": {"max_steps": 2},
+#     "tabpfn_classifier_params": {"ignore_pretraining_limits": True},
+#     "n_accumulation_steps": 1,
+#     "log": False
+# }
 
 
 
@@ -128,7 +128,10 @@ def _fit_estimator(
         preprocessing="base", 
         seed=0,
         n_threads=4,
-        early_stopping_rounds=4,
+        early_stopping_configuration={
+            "early_stopping_rounds": 4, 
+            "validation_set_size": 0.3
+        },
         tune_configuration=tune_configuration
     )
 
@@ -153,7 +156,7 @@ ESTIMATOR_DEFAULT_CONFIGS = {
     "my_lgbm_classifier.pkl": (MyLGBMClassifier, TEST_LGBM_FIXED_PARAMS, None, None),
     "my_es_lgbm_classifier.pkl": (MyESLGBMClassifier, TEST_ESLGBM_FIXED_PARAMS, None, None),
     "my_tabpfn_classifier.pkl": (MyTabPFNClassifier, TEST_TABPFN_FIXED_PARAMS, None, None),
-    "my_aesfinetunedtabpfn_classifier.pkl": (MyAesFineTunedTabPFNClassifier, TEST_FINETUNED_TABPFN_FIXED_PARAMS, None, None),
+    #"my_aesfinetunedtabpfn_classifier.pkl": (MyAesFineTunedTabPFNClassifier, TEST_FINETUNED_TABPFN_FIXED_PARAMS, None, None),
 }
 
 

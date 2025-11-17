@@ -2,9 +2,10 @@ import re
 import numpy as np
 import pandas as pd
 import warnings
+from ast import literal_eval
 from typing import Any, Callable, Literal
-from estimators.types import ALL_ESTIMATOR_TYPE
-from estimators.constants import GBDT_ESTIMATORS
+from estimators.utils.types import ALL_ESTIMATOR_TYPE
+from estimators.utils.constants import GBDT_ESTIMATORS
 
 
 
@@ -13,11 +14,8 @@ def check_presence_cols(df: pd.DataFrame, cols: str | list[str]) -> None:
     Check the presence of multiple columns in a dataframe.
     The utility assumes that the columns are strings.
     '''
-    checked_cols = []
     for col in enlist(cols):
-        if col not in checked_cols:
-            check_presence_col(df, col)
-            checked_cols.append(col)
+        check_presence_col(df, col)
 
 
 
@@ -118,6 +116,20 @@ def safe_update_dict(
         dict[new_key] = value
         
     return dict
+
+
+
+def try_parse_specs_into_dict(specs: str, error_message_specs: str) -> dict[str, Any]:
+    '''Utility to parse the string dict representation to a dict'''
+    try:
+        specs = literal_eval(specs)
+    except Exception:
+        raise ValueError(
+            f"{error_message_specs} " + "cannot be correctly parsed into a dict." +
+            " It should be passed following the syntax {'key': value, ...}, enclosing the dict with double quotes." +
+            " Remember to enclose the keys in ticks ('') if they are python strings."
+        )
+    return specs
 
 
 

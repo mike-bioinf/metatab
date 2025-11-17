@@ -2,7 +2,7 @@ from lightgbm import LGBMClassifier
 from sklearn.feature_selection import VarianceThreshold
 from sklearn.pipeline import make_pipeline
 from sklearn.datasets import make_classification
-from estimators.utils import fit_with_early_stop_on_validation_set
+from estimators.utils.fit import fit_with_early_stop_on_validation_set
 
 
 

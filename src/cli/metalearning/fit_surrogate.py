@@ -15,7 +15,7 @@ from sklearn.pipeline import make_pipeline
 from metalearning.surrogate_rf import SurrogateRandomForestRegressor
 from metalearning.encode.encode import get_encoding_scheme
 
-from metatab_utils.helper_programs import (
+from cli.helper import (
     adjust_io_paths_,
     manage_output_path,
     create_logger

@@ -6,12 +6,12 @@ from copy import deepcopy
 from typing import TYPE_CHECKING, Literal
 from sklearn.model_selection import RepeatedStratifiedKFold
 from sklearn.metrics import log_loss
-from estimators.utils import fit_with_early_stop_on_validation_set
+from estimators.utils.fit import fit_with_early_stop_on_validation_set
 from hp_search.utils import set_params_into_clf
 
 if TYPE_CHECKING:
     from sklearn.pipeline import Pipeline
-    from estimators.types import Classifier
+    from estimators.utils.types import Classifier
     
     
 
@@ -32,11 +32,11 @@ class CrossValidator:
         early_stop_on_validation_set (bool):
             Whether to early stop on validation set(s).
 
-        eval_set_parameter (str):
-            Name of the eval_set parameter, 
-            i.e. the parameter taking the validation set(s) at fit level.
-            Ignored when "early_stop_on_validation_set" is False.
-        
+        eval_set_parameter (str | None):
+            Name of the eval_set parameter, i.e. the parameter 
+            taking the validation set(s) at fit level. 
+            If None then `early_stop_on_validation_set` must be False.
+            
         validation_set_size (float):
             The ratio of the early stop validation set.
             Ignored when "early_stop_on_validation_set" is False.
@@ -62,7 +62,7 @@ class CrossValidator:
         clf_or_pipe: Classifier | Pipeline,
         clf_random_state_parameter: str,
         early_stop_on_validation_set: bool,
-        eval_set_parameter: str,
+        eval_set_parameter: str | None,
         validation_set_size: float,
         fit_classifier_kwargs: dict,
         metric: Literal["logloss"],
@@ -96,7 +96,7 @@ class CrossValidator:
         Parameters:
             X (pd.DataFrame): X data.
             y (pd.Series): y data.
-            params (dict): Dict of classifier parameters. They must not follow the "pipeline format".
+            params (dict): Dict of classifier parameters. They must NOT follow the "pipeline format".
             agg (Literal["mean", "sum"]): How to aggregate the cv round performances.
             collect_info (bool): Whether to collect and return the cv info as dataframe.
 

@@ -9,7 +9,7 @@ from metalearning.sampler import HyperoptRandomSampler
 from metalearning.metafeatures import CustomMFE
 from metalearning.generator import MetadataGenerator
 from metalearning.acquisition_funcs import compute_upper_confidence_bound
-from metalearning.database.utils import query_surrogate_framework
+from metalearning.load import query_surrogate_framework
 
 
 

@@ -8,9 +8,9 @@ import numpy as np
 from metatab_utils.data_loader import DataLoader
 from metatab_utils.prediction import PredictionDataframe
 from cli.predict.params import parse_args
-from estimators import Estimator
+from estimators.estimators import Estimator
 
-from metatab_utils.helper_programs import (
+from cli.helper import (
     adjust_io_paths_, 
     manage_output_path,
     check_y_is_integer_encoded,

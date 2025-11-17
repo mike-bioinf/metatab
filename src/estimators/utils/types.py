@@ -23,6 +23,12 @@ Classifier: TypeAlias = Union[
 ]
 
 
+GBDTClassifier: TypeAlias = Union[
+    XGBClassifier,
+    CatBoostClassifier,
+    LGBMClassifier
+]
+
 
 TUNABLE_ESTIMATOR_TYPE = Literal[
     "random_forest",
@@ -33,6 +39,23 @@ TUNABLE_ESTIMATOR_TYPE = Literal[
     "catboost",
     "es_catboost",
     "tabpfn"
+]
+
+
+ES_ESTIMATOR_TYPE: Literal[
+    "es_lgbm",
+    "es_xgb",
+    "es_catboost"
+]
+
+
+GBDT_ESTIMATOR_TYPE = Literal[
+    "xgb",
+    "es_xgb",
+    "lgbm",
+    "es_lgbm",
+    "catboost",
+    "es_catboost"
 ]
 
 
@@ -58,4 +81,13 @@ ALL_ESTIMATOR_TYPE = Literal[
     "tabpfn",
     "autotabpfn",
     "finetunetabpfn"
+]
+
+
+PREPROCESSING_STRATEGIES = Literal[
+    "estimator_default",
+    "base",
+    "density_filter",
+    "pca",
+    "no"
 ]

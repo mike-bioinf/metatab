@@ -4,36 +4,32 @@ import json
 import warnings
 import numpy as np
 import pandas as pd
-from copy import deepcopy
 from pathlib import Path
 from typing import TYPE_CHECKING
 from pandas._libs.missing import NAType
 from sklearn.model_selection import RepeatedStratifiedKFold, StratifiedShuffleSplit
 
 if TYPE_CHECKING:
-    import logging
+    from logging import Logger
 
 
 
-
-def log_program_setting(pars: dict, logger: logging.Logger, name_dataset: str) -> None:
-    '''Logs info about the program input parameters/setting at debug level'''
+def log_program_setting(pars: dict, logger: Logger, name_dataset: str) -> None:
     if pars["tune"]:
         logger.debug(
-            f"\nLaunching tuned {pars["estimator"]} with '{pars["tune_configuration"]["configuration"]}' space on {name_dataset}!"
+            f"\nLaunching {pars["tune_algo"]} tuned {pars["estimator"]} with {pars["tune_space"]} space on {name_dataset}!"
         )
     else:
        logger.debug(f"\nLaunching {pars["estimator"]} on {name_dataset}!")
 
 
 
-def log_iteration(pars: dict, fold: int, repetition: int, logger: logging.Logger) -> None:
-    '''Utility that logs info about the current iteration at debug level'''
+def log_iteration(pars: dict, fold: int, repetition: int, logger: Logger) -> None:
     if pars["splitting_mode"] == "cv":
         logger.debug(f'Running on fold {fold} of repetition {repetition}:')
     elif pars["splitting_mode"] == "holdout":
         logger.debug(
-            f'Running holdout iteration {fold}, with train size {pars["splitting_specs"]["train_size"]}:'
+            f'Running holdout iteration {fold}":'
         )
 
 
@@ -45,12 +41,12 @@ def get_repetition_fold(iteration: int, pars: dict) -> tuple[int|NAType, int]:
     Returns a binary tuple of int and/or pd.NA.
     '''
     if pars["splitting_mode"] == "cv":
-        repetition = iteration // pars["splitting_specs"]["n_splits"]
-        fold = iteration - (pars["splitting_specs"]["n_splits"] * repetition)
+        repetition = iteration // pars["n_cv_folds"]
+        fold = iteration - (pars["n_cv_folds"] * repetition)
     elif pars["splitting_mode"] == "holdout":
         fold, repetition = iteration, pd.NA
     else:
-        raise ValueError("Unsupported splitting_mode.")
+        raise ValueError("Unsupported resampling mode.")
     
     return repetition, fold
 
@@ -80,23 +76,22 @@ def get_iteration_estimator_filepath(pars: dict, repeat: int | NAType, fold: int
 def pick_splitter(pars: dict):
     '''Utility to pick and create the right splitter depending on splitting_mode'''
     splitting_mode = pars["splitting_mode"]
-    splitting_specs = pars["splitting_specs"]
-    seed = pars["seed"]
+    seed = pars["seed_splitter"]
     
     if splitting_mode == "cv":
         splitter = RepeatedStratifiedKFold(
-            n_splits=splitting_specs["n_splits"], 
-            n_repeats=splitting_specs["n_repeats"], 
+            n_splits=pars["n_cv_folds"], 
+            n_repeats=pars["n_cv_repeats"], 
             random_state=seed
         )
     elif splitting_mode == "holdout":
         splitter = StratifiedShuffleSplit(
-            n_splits=splitting_specs["n_splits"], 
-            train_size=splitting_specs["train_size"], 
+            n_splits=pars["n_holdout_splits"], 
+            train_size=pars["holdout_train_size"], 
             random_state=seed
         )
     else:
-        raise ValueError("Unsupported splitting_mode.")
+        raise ValueError("Unsupported resampling mode.")
     
     return splitter
 
@@ -110,21 +105,15 @@ def populate_dict_lists_(dictionary: dict[str, list], **kwargs) -> None:
 
 
 def create_json_configuration_file(pars: dict, filepath: str | Path) -> None:
-    '''
-    Create a json file riassuming the input program configuration.
-    Takes in input the parsed and adjusted dict of program parameters.
-    '''
-    copy_pars = deepcopy(pars)
+    '''Create a json representation of the input program configuration'''
+    corrected_pars = {}
 
-    if copy_pars["tune"]:
-        del copy_pars["tune_configuration"]["params_distributions"]
-
-    for key, value in copy_pars.items():
-        if isinstance(value, Path):
-            copy_pars[key] = str(value)
+    # Path object cannot be serialized in json
+    for k, v in pars.items():
+        corrected_pars[k] = str(v) if isinstance(v, Path) else v    
     
     with open(filepath, "w") as f:
-        json.dump(copy_pars, f, indent=4)
+        json.dump(corrected_pars, f, indent=4)
 
 
 

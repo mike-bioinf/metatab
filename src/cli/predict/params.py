@@ -1,5 +1,5 @@
 import argparse
-from metatab_utils.helper_programs import check_target_feature
+from cli.helper import check_target_feature
 
 
 

@@ -34,7 +34,7 @@ from sklearn.preprocessing import OrdinalEncoder, OneHotEncoder
 from sklearn.feature_selection import VarianceThreshold
 from sklearn.compose import ColumnTransformer
 from metalearning.encode.transformers import NanToNone, ColToStr, InfToNan
-from estimators.types import TUNABLE_ESTIMATOR_TYPE
+from estimators.utils.types import TUNABLE_ESTIMATOR_TYPE
 
 from hp_search.tabpfn_search_space import (
     enumerate_preprocess_transforms,

@@ -1,0 +1,315 @@
+import warnings
+import pandas as pd
+from tabpfn import TabPFNClassifier
+from estimators.params import DefaultParams, TuningParams
+from hp_search.tabpfn_search_space import download_and_return_tabpfn_checkpoints, TABPFN_CHECKPOINTS
+
+from estimators.core import (
+    AbstractBaseEstimator,
+    DefaultEstimatorMixin,
+    TunedEstimatorMixin
+)
+
+## TODO: to clear in accordance to Auto and finetune versions
+# import os
+# import shutil
+# import json
+# from pathlib import Path
+# from copy import deepcopy
+# from sklearn.pipeline import Pipeline, make_pipeline
+# from sklearn.utils.validation import check_is_fitted
+# from sklearn.base import BaseEstimator, ClassifierMixin
+# from sklearn.feature_selection import VarianceThreshold
+# from hp_search.searchcv import SearchCV
+# from preprocessing import DensityFeatureSelector
+# from tabpfn_extensions.post_hoc_ensembles.sklearn_interface import AutoTabPFNClassifier
+# from finetabpfn import AesFineTunedTabPFNClassifier
+
+
+
+## TODO: to update when updating tabpfn version:
+# you can probably remove the sklearn warnings, and update the number of features message.
+def suppress_sklearn_and_tabpfn_warnings(func):
+    '''
+    Decorator to filter sklearn future deprecation warnings,
+    and tabpfn loading and ignore training limits warning.
+    '''
+    def wrapper(*args, **kwargs):
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", module="sklearn", category=FutureWarning)
+            warnings.filterwarnings("ignore", message=".*", module=".*tabpfn.*loading")
+            warnings.filterwarnings(
+                action="ignore", 
+                message=".*is greater than the maximum Number of features 500 supported by the model.*",
+                category=UserWarning
+            )
+            return func(*args, **kwargs)
+    return wrapper
+
+
+
+class MyTabPFNClassifier(DefaultEstimatorMixin, AbstractBaseEstimator):
+    '''
+    Implementation of the library default TabPFNClassifier.
+
+    Attributes:
+        estimator_ (TabPFNClassifier|Pipeline): Fitted classifier or pipeline object.
+    '''
+    fixed_params = DefaultParams.TABPFN_DEFAULT_PARAMS
+ 
+    @suppress_sklearn_and_tabpfn_warnings
+    def fit(self, X: pd.DataFrame, y: pd.Series) -> "MyTabPFNClassifier":
+        self.estimator_ = super().fit_estimator(
+            X=X,
+            y=y,
+            classifier_cls=TabPFNClassifier,
+            type_estimator="tabpfn",
+            is_tuned=False,
+            is_early_stopped=False,
+            density_feature_selector_strategy="undersample" # to speed up and be consistent with the tuned estimator
+        )
+        return self
+    
+
+
+class MyTunedTabPFNClassifier(TunedEstimatorMixin, AbstractBaseEstimator):
+    '''
+    Implementation of the tuned TabPFNClassifier.
+
+    Attributes:
+        estimator_ (SearchCV): Fitted SearchCV object.
+    '''
+    fixed_params = TuningParams.TABPFN_FIXED_PARAMS
+
+    @suppress_sklearn_and_tabpfn_warnings
+    def fit(self, X: pd.DataFrame, y: pd.Series) -> "MyTunedTabPFNClassifier":
+        # we download the different tabpfn checkpoint in the user cache dir
+        _ = download_and_return_tabpfn_checkpoints(TABPFN_CHECKPOINTS)
+        self.estimator_ = super().fit_estimator(
+            X=X,
+            y=y,
+            classifier_cls=TabPFNClassifier,
+            type_estimator="tabpfn",
+            is_tuned=True,
+            is_early_stopped=False,
+            density_feature_selector_strategy="undersample" # to speed up.
+        )
+        return self
+
+
+
+
+#### TODO: probably to remove in future so not updated after refactor
+
+# class MyAutoTabPFNClassifier(AbstractBaseEstimator):
+#     '''
+#     Autogluon ensemble (stacking + Caruana selection) of tabpfn classifiers.
+
+#     AutoGluon requires a directory path to store the models it generates during ensembling.
+#     To handle this, we define a class-level attribute `path_save_models`, which serves as the default save location.
+#     A method `set_directory_save_models` is provided to set a custom save path at the instance level.
+#     If an instance-level path is specified, it takes precedence over the class-level default during the fit process.
+#     This design allows users to define a custom save path when needed while maintaining a default fallback location.
+        
+#     Attributes
+#     ----------------
+#     estimator_ (AutoTabPFNClassifier|Pipeline): Fitted AutoTabPFNClassifier or Pipeline instance.
+#     '''
+#     fixed_params = DefaultParams.AUTOTABPFN_DEFAULT_PARAMS
+#     path_save_models : str | Path | None = None  # autogluon default
+
+#     @suppress_sklearn_and_tabpfn_warnings
+#     def fit(self, X: pd.DataFrame, y: pd.Series) -> "MyAutoTabPFNClassifier":
+#         fixed_params = self.update_fixed_params(up_seed=True, copy=True)
+#         fixed_params = self._add_path_save_models_to_params(fixed_params)
+#         self.estimator_ = self._create_autotabpfn_estimator(self.preprocessing, fixed_params)
+#         # to suppress automatic categorical features inferring
+#         fit_args = {"autotabpfnclassifier__categorical_feature_indices": []}\
+#             if isinstance(self.estimator_, Pipeline)\
+#             else {"categorical_feature_indices": []}
+#         self.estimator_.fit(X, y, **fit_args)
+#         return self
+    
+
+#     def set_directory_save_models(
+#         self,
+#         path: str | Path, 
+#         create_dir = True
+#     ) -> None:   
+#         '''
+#         Set internally the directory where the fitted tabpfn models are saved.
+#         Allows its creation also.
+#         '''
+#         if create_dir: os.makedirs(path, exist_ok=True)
+#         self.path_save_models = path
+
+
+#     def _add_path_save_models_to_params(
+#         self,
+#         params: dict,
+#         copy = False
+#     ) -> dict:
+#         params = deepcopy(params) if copy else params
+#         if ["phe_init_args"] not in params.keys():
+#             params["phe_init_args"] = {}
+#         params["phe_init_args"]["path"] = self.path_save_models
+#         return params
+
+
+#     def delete_save_models_directory(self) -> None:
+#         '''
+#         Delete the save models directory with all files inside.
+#         Does NOT work when the directory path is managed by autogluon, 
+#         i.e. when `path_save_models` is None.
+#         '''
+#         if self.path_save_models is not None:
+#             path_save_models = Path(self.path_save_models) \
+#                 if isinstance(self.path_save_models, str) \
+#                 else self.path_save_models
+#             if path_save_models.exists():
+#                 # we not handle errors here but let them propagate
+#                 shutil.rmtree(path_save_models)
+
+    
+#     @staticmethod
+#     def _create_autotabpfn_estimator(
+#         preprocessing: Literal["base", "density_filter", "pca"], 
+#         params: dict
+#     ) -> AutoTabPFNClassifier | Pipeline:
+#         if preprocessing == "base":
+#             return AutoTabPFNClassifier(**params)
+#         elif preprocessing == "pca":
+#             raise ValueError("PCA preprocessing is not possible with AutoTabPFNClassifier.")
+#         elif preprocessing == "density_filter":
+#             return create_density_filter_default_pipeline(
+#                 "undersample", # to speed up 
+#                 AutoTabPFNClassifier, 
+#                 params
+#             )
+#         else:
+#             raise ValueError("Unsupported preprocessing.")
+  
+
+
+
+# class SingleDatasetAesFineTunedTabpfnClassifier(ClassifierMixin, BaseEstimator):
+#     '''
+#     Sklearn like-class that wraps the AesFineTunedTabPFNClassifier class, 
+#     working exclusevely on a single dataset and using the finetune data 
+#     as context during inference.
+
+#     Parameters
+#     ------------------
+#     finetuned_classifier (AesFineTunedTabPFNClassifier):
+#         Instance of the AesFineTunedTabPFNClassifier class.
+
+#     Attributes
+#     -------------------
+#     _X_train (pd.DataFrame | np.ndarray): X finetune data.
+#     _y_train (pd.Series): y finetune data.
+#     n_features_in_ (int): Number of features of the X finetune data.
+#     feature_names_in_ (list[str]): Names of the features of the X finetuned data if a pandas DataFrame.
+#     n_classes_ (int): Number of classes of the y finetune data.
+#     is_fitted_ (bool): Whether the instance is fitted.
+#     finetuned_classifier_ (AesFineTunedTabPFNClassifier): Fitted finetuned_classifier instance.
+#     stats_finetune_ (dict[str, Any]): Dict with the finetune stastistics.
+#     df_finetune_ (pd.DataFrame): Dataframe with the training finetune statistics.
+#     '''
+#     def __init__(self, finetuned_classifier: AesFineTunedTabPFNClassifier):
+#         self.finetuned_classifier=finetuned_classifier
+
+#     def fit(self, X: pd.DataFrame | np.ndarray, y: pd.Series) -> "SingleDatasetAesFineTunedTabpfnClassifier":
+#         self.finetuned_classifier_ = deepcopy(self.finetuned_classifier)
+#         self.finetuned_classifier_.fit(X, y, use_for_validation=True)
+#         self._X_train = X
+#         self._y_train = y
+#         self.n_features_in_ = X.shape[1]
+#         if isinstance(X, pd.DataFrame):
+#             self.feature_names_in_ = X.index.to_list()
+#         self.n_classes_ = y.unique().size
+#         self.is_fitted_ = True
+#         self.stats_finetune_ = self.finetuned_classifier_.stats_finetune_
+#         self.df_finetune_ = self.stats_finetune_["df_finetune"]
+#         # we store the df_finetune separately
+#         del self.stats_finetune_["df_finetune"]
+#         return self
+
+#     def predict_proba(self, X) -> np.ndarray:
+#         check_is_fitted(self, "is_fitted_")
+#         return self.finetuned_classifier_.predict_proba(
+#             X, 
+#             X_contest=self._X_train, 
+#             y_contest=self._y_train, 
+#             categorical_features_indices=[]
+#         )
+        
+
+
+# class MyAesFineTunedTabPFNClassifier(AbstractBaseEstimator):
+#     '''
+#     Finetuned tabpfn classifier with an adaptive early stopping strategy on a validation set.
+    
+#     Attributes
+#     ----------------
+#     estimator_ (Pipeline): Fitted Pipeline instance.
+#     '''
+#     fixed_params = DefaultParams.AESFINETUNEDTABPFN_DEFAULT_PARAMS
+
+#     def fit(self, X: pd.DataFrame, y: pd.Series) -> "MyAesFineTunedTabPFNClassifier":
+#         self.estimator_ = self._create_estimator(
+#             preprocessing=self.preprocessing, 
+#             params=self._update_fixed_params_with_seed_and_nthreads()
+#         )
+#         self.estimator_.fit(X, y)
+#         return self
+    
+
+#     def _update_fixed_params_with_seed_and_nthreads(self) -> dict:
+#         params = deepcopy(self.fixed_params)
+#         params["tabpfn_classifier_params"]["random_state"] = self.seed
+#         params["tabpfn_classifier_params"]["n_jobs"] = self.n_threads
+#         params["seed"] = self.seed
+#         return params
+
+
+#     def save_finetune_stats(self, txt_filepath: str | Path, json_filepath: str | Path) -> None:
+#         check_is_fitted(self, "estimator_")
+#         finetuned_instance = self.estimator_[-1]
+#         finetuned_instance.df_finetune_.to_csv(txt_filepath, sep="\t", index=False)
+#         with open(json_filepath, "w") as f:
+#             json.dump(finetuned_instance.stats_finetune_, f, indent=4)
+
+
+#     @staticmethod
+#     def _create_estimator(
+#         preprocessing: Literal["base", "density_filter", "pca"],
+#         params: dict
+#     ) -> Pipeline:
+#         if preprocessing == "base":
+#             return make_pipeline(
+#                 VarianceThreshold(),
+#                 SingleDatasetAesFineTunedTabpfnClassifier(
+#                     AesFineTunedTabPFNClassifier(**params)
+#                 )
+#             )
+        
+#         elif preprocessing == "pca":
+#             raise ValueError(
+#                 "PCA preprocessing is not possible with AesFineTunedTabPFNClassifier."
+#             )
+        
+#         elif preprocessing == "density_filter":
+#             return make_pipeline(
+#                 VarianceThreshold(), 
+#                 DensityFeatureSelector(
+#                     n_target_cols=500, 
+#                     strategy="undersample", # to speed up
+#                     error_on_empty=True
+#                 ),
+#                 SingleDatasetAesFineTunedTabpfnClassifier(
+#                     AesFineTunedTabPFNClassifier(**params)
+#                 )
+#             )
+        
+#         else:
+#             raise ValueError("Unsupported preprocessing.")

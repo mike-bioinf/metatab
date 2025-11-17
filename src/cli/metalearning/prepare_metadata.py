@@ -13,7 +13,7 @@ import pandas as pd
 from metatab_utils.data_loader import DataLoader
 from metalearning.metafeatures import CustomMFE
 
-from metatab_utils.helper_programs import (
+from cli.helper import (
     create_logger,
     adjust_paths_,
     check_target_feature,

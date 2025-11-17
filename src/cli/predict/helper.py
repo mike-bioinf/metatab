@@ -1,4 +1,4 @@
-from estimators import (
+from estimators.estimators import (
     MyRandomForestClassifier,
     MyTunedRandomForestClassifier,
     MyXGBClassifier,
@@ -15,8 +15,8 @@ from estimators import (
     MyTunedESLGBMClassifier,
     MyTabPFNClassifier,
     MyTunedTabPFNClassifier,
-    MyAutoTabPFNClassifier,
-    MyAesFineTunedTabPFNClassifier
+    # MyAutoTabPFNClassifier,
+    # MyAesFineTunedTabPFNClassifier
 )
 
 
@@ -42,8 +42,8 @@ def check_type_deserialized_object(obj) -> None:
             MyTunedESLGBMClassifier,
             MyTabPFNClassifier,
             MyTunedTabPFNClassifier,
-            MyAutoTabPFNClassifier,
-            MyAesFineTunedTabPFNClassifier
+            # MyAutoTabPFNClassifier,
+            # MyAesFineTunedTabPFNClassifier
         )
     ):
         raise TypeError("The deserialized object is not of an estimator instance.")

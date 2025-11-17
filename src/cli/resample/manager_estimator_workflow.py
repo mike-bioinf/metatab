@@ -7,7 +7,7 @@ from cli.resample.helper import get_resample_iteration_signature
 if TYPE_CHECKING:
     from pathlib import Path
     from pandas._libs.missing import NAType
-    from estimators import Estimator
+    from estimators.estimators import Estimator
 
 
 

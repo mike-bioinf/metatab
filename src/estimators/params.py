@@ -2,17 +2,8 @@ import numpy as np
 from hyperopt import hp
 from hyperopt.pyll.base import scope
 from hp_search.tabpfn_search_space import TABPFN_TUNE_SPACE
-from estimators.types import TUNABLE_ESTIMATOR_TYPE
+from estimators.utils.types import TUNABLE_ESTIMATOR_TYPE
 
-
-
-DEFAULT_TUNE_CONFIGURATION = {
-    "configuration": "default",
-    "algo": "tpe",
-    "n_iter": 100,
-    "n_repeats": 1,
-    "n_splits": 5
-}
 
 
 ## TODO: we do not differentiate between same-named parameters for different estimators. This is "manually" guaranteed.

@@ -18,7 +18,7 @@ from sklearn.pipeline import make_pipeline
 from metalearning.surrogate_rf import SurrogateRandomForestRegressor
 from metalearning.encode.encode import get_encoding_scheme
 
-from metatab_utils.helper_programs import (
+from cli.helper import (
     adjust_io_paths_,
     manage_output_path,
     create_logger
@@ -120,8 +120,8 @@ def main():
         name_output_file = pars["output_folder"] / f"{name_dataset}.joblib"
         
         meta_data = pd.concat(
-            [d for n, d in datasets.items() if n != name_dataset], 
-            axis=0, 
+            [d for n, d in datasets.items() if n != name_dataset],
+            axis=0,
             ignore_index=True
         )
 

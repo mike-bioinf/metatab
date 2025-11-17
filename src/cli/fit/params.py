@@ -23,13 +23,14 @@ def parse_args(args):
     p.add_argument("-y", "--target-feature", default=None, 
                     help="Name of the target feature column. Must be provided if --input-mode is equal to 'df'")
     
-    p.add_argument("-p", "--preprocessing", default="base", choices=["base", "density_filter", "pca"],
-                    help= """Preprocessing to apply on the feature space. One of 'base', 'density_filter' and 'pca'.
-                    -base: a general minimal preprocessing is applied according to the used estimator.
-                    -density_filter: The number of columns is reduced to 500 keeping only the most dense features.
-                    Note: according to the type of filtering applied the exact number of selected features may be not exactly 500. 
-                    This strategy is automatically selected based on the estimator used (no user control over it).
-                    -pca: PCA is applied and only the first N principal components retaining the 95 percent of the variance are kept.""")
+    p.add_argument("-p", "--preprocessing", default="estimator_default", 
+                    choices=["estimator_default", "base", "density_filter", "pca", "no"],
+                    help= """Preprocessing to apply on the feature space. In detail:
+                    -estimator_default: Automatically select from the following options the prepocessing according to the estimator used.
+                    -base: Filtering of constant features.
+                    -density_filter: The number of columns is reduced to 500 (approximately) keeping only the most dense features.
+                    -pca: PCA preprocessing retaining the N principal components explaining the 95 percent of the variance.
+                    -no: No preprocessing is applied.""")
     
     p.add_argument("-t", "--tune", action="store_true", 
                    help="""Tune the estimator hyperparameters. 
@@ -53,7 +54,6 @@ def parse_args(args):
     p.add_argument("-s", "--seed", default=42, type=int, 
                    help="""Seed used to control randomness.
                    In particular it controls the randomness inherent to the estimators, splitting and tuning procedures.""")
-
 
     p.add_argument("--meta-database", default=None,
                    help="""Not intended for users. This parameter allows to pass as a str dict representation
