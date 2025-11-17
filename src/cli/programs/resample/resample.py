@@ -2,28 +2,29 @@ import os
 import sys
 from time import time
 from collections import defaultdict
-import pandas as pd
 import numpy as np
+import pandas as pd
 from estimators.estimators import Estimator
 from metatab_utils.prediction import PredictionDataframe
 from metatab_utils.data_loader import DataLoader
-from cli.resample.params import parse_args
-from cli.resample.manager_estimator_workflow import GeneralManagerEstimatorWorkflowResample
+from cli.programs.resample.params import parse_args
+from cli.programs.resample.manager_estimator_workflow import GeneralManagerEstimatorWorkflowResample
 from metalearning.load import query_surrogate_framework
 
 from cli.helper import (
     create_logger,
     check_fit_resample_args,
+    check_y_is_integer_encoded,
+    check_holdout_train_size,
     manage_output_path, 
     adjust_io_paths_,
     pick_estimator_class,
-    check_y_is_integer_encoded,
     resolve_preprocessing_info,
     build_early_stop_configuration,
     build_tune_configuration
 )
 
-from cli.resample.helper import (
+from cli.programs.resample.helper import (
     get_repetition_fold,
     pick_splitter,
     log_iteration,
@@ -43,11 +44,14 @@ def main():
     pars = vars(parse_args(sys.argv[1:]))
     
     check_fit_resample_args(pars, logger)
+    check_holdout_train_size(pars)
+    
     adjust_io_paths_(pars, "input_data", "output_dir")
     manage_output_path(pars, "output_dir", True)
 
     early_stop_configuration = build_early_stop_configuration(pars)
     tune_configuration = build_tune_configuration(pars)
+    tune_scenario = pars["estimator_mode"] == "tune"
 
     if pars["save_estimators"]:
         os.makedirs(pars["output_dir"] / "estimators", exist_ok=True)
@@ -81,12 +85,12 @@ def main():
     dict_results = defaultdict(list)
     df_pred_results = PredictionDataframe()
     
-    if pars["tune"]: 
+    if tune_scenario: 
         dict_hpo = defaultdict(list)
         hpo_filepath = output_dir / "hpo.txt"
 
     # this is to avoid the first download inside the fit call inflating times
-    if pars["tune"] and pars["tune_algo"] == "meta":
+    if tune_scenario and pars["tune_algo"] == "meta":
         _ = query_surrogate_framework(pars["estimator"])
 
     # run resampling
@@ -119,7 +123,7 @@ def main():
         fit_preprocessing_dict: dict = estimator.collect_fit_preprocessing_info()
         manager_estimator.execute_post_fit_routine()
 
-        if pars["tune"]:
+        if tune_scenario:
             best_hps = estimator.get_best_hps()
             refit_time = estimator.get_refit_time()
             search_losses = estimator.get_search_losses()
@@ -137,10 +141,10 @@ def main():
             "dataset": name_dataset,
             "predict_dataset": name_dataset,
             "estimator": pars["estimator"],
-            "tune": pars["tune"],
-            "tune_space": pars["tune_space"] if pars["tune"] else None,
-            "tune_algo": pars["tune_algo"] if pars["tune"] else None,
-            "tune_n_iter": pars["tune_n_iter"] if pars["tune"] else None,
+            "estimator_mode": pars["estimator_mode"],
+            "tune_space": pars["tune_space"] if tune_scenario else None,
+            "tune_algo": pars["tune_algo"] if tune_scenario else None,
+            "tune_n_iter": pars["tune_n_iter"] if tune_scenario else None,
             "n_threads": pars["nthreads"],
             "preprocessing": pars["preprocessing"],
             "splitting_mode": pars["splitting_mode"],
@@ -154,7 +158,7 @@ def main():
             "predict_time": predict_time
         }
     
-        if pars["tune"]:
+        if tune_scenario:
             populate_dict_lists_(
                 dictionary=dict_hpo,
                 dataset=name_dataset,
@@ -185,7 +189,7 @@ def main():
 
             df_pred_results.to_csv(results_filepath, sep="\t", index=False)
 
-            if pars["tune"]:
+            if tune_scenario:
                 pd.DataFrame(dict_hpo).to_csv(hpo_filepath, sep="\t", index=False)
 
         # save additional optional iteration-level info
@@ -201,7 +205,7 @@ def main():
             df_pred_results.compute_metrics(multiclass="average", average_strategy="macro")
             df_pred_results.to_csv(results_filepath, sep="\t", index=False)
 
-        if pars["tune"]:
+        if tune_scenario:
             pd.DataFrame(dict_hpo).to_csv(hpo_filepath, sep="\t", index=False)
 
     logger.debug(f"Outputs created at {output_dir}")

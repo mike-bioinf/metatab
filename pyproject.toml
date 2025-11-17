@@ -34,13 +34,13 @@ paper = [
 
 
 [project.scripts]
-metatab-fit = "cli.fit.fit:main"
-metatab-predict = "cli.predict.predict:main"
-metatab-resample = "cli.resample.resample:main"
-metatab-opt-search = "cli.metalearning.opt_search:main"
-metatab-prepare-metadata = "cli.metalearning.prepare_metadata:main"
-metatab-fit-surrogate = "cli.metalearning.fit_surrogate:main"
-metatab-fit-surrogate-loo = "cli.metalearning.fit_surrogate_loo:main"
+metatab-fit = "cli.programs.fit.fit:main"
+metatab-predict = "cli.programs.predict.predict:main"
+metatab-resample = "cli.programs.resample.resample:main"
+metatab-opt-search = "cli.programs.metalearning.opt_search:main"
+metatab-prepare-metadata = "cli.programs.metalearning.prepare_metadata:main"
+metatab-fit-surrogate = "cli.programs.metalearning.fit_surrogate:main"
+metatab-fit-surrogate-loo = "cli.programs.metalearning.fit_surrogate_loo:main"
 
 
 [build-system]

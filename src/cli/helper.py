@@ -1,4 +1,3 @@
-import os
 import logging
 import numpy as np
 import pandas as pd
@@ -12,9 +11,9 @@ from estimators.utils.constants import (
     PCA_INCOMPATIBLE_ESTIMATORS
 )
 
-from estimators.params import (
+from estimators.params.utils import (
     DEFAULT_ESTIMATORS_TUNE_SPACES,
-    pick_estimator_space
+    pick_estimator_tune_space
 )
 
 from estimators.estimators import (
@@ -41,13 +40,12 @@ from estimators.estimators import (
 
 
 def check_fit_resample_args(pars: dict, logger: logging.Logger) -> None:
-    '''General check for fit and resample program arguments'''
+    '''General argument check for fit and resample programs'''
     check_target_feature(pars)
     check_not_tunable_estimators(pars)
     check_incompatible_estimator_preprocessing(pars)
     check_meta_tuning(pars, logger)
     check_early_stop_parameters(pars)
-    check_holdout_train_size(pars)
 
 
 
@@ -59,8 +57,8 @@ def check_target_feature(pars: dict) -> None:
 
 
 def check_not_tunable_estimators(pars: dict) -> None:
-    '''Check whether the tune flag is used with not tunable estimators'''
-    if (estimator := pars["estimator"]) in NON_TUNABLE_ESTIMATORS and pars["tune"]:
+    '''Check whether the tune program is run with not tunable estimators'''
+    if pars["estimator_mode"] == "tune" and (estimator := pars["estimator"]) in NON_TUNABLE_ESTIMATORS:
         raise ValueError(f"Estimator '{estimator}' cannot be tuned.")
 
 
@@ -81,7 +79,7 @@ def check_meta_tuning(pars: dict, logger: logging.Logger) -> None:
     - send a message when the preprocessing option is not suggested for meta-tuning. 
     '''
     # do nothing when not meta-tuning
-    if not pars["tune"] or pars["tune_algo"] != "meta":
+    if pars["estimator_mode"] != "tune" or pars["tune_algo"] != "meta":
         return None
     
     estimator = pars["estimator"]
@@ -167,9 +165,9 @@ def adjust_paths_(pars: dict, *args) -> None:
 
 def manage_output_path(pars: dict, output_arg: str, is_folder: bool) -> None:
     '''
-    Control whether the output folder exists and whether to create it if not.
-    One must specify the output parameter and if this is expected
-    to be a folder. If not the parent folder is considered.
+    Control whether the output folder exists and whether to create it.
+    One must specify the output parameter and if this is expected to be a folder. 
+    If not the parent folder is considered.
     Assumes that the output argument is a Path object.
     '''
     out: Path = pars[output_arg]
@@ -178,7 +176,7 @@ def manage_output_path(pars: dict, output_arg: str, is_folder: bool) -> None:
     if not out_folder.exists() and not pars["create_outdir"]:
         raise FileNotFoundError(f"{out_folder} does not exists!")
     elif not out_folder.exists() and pars["create_outdir"]:
-        os.makedirs(out_folder)
+        out_folder.mkdir(parents=True, exist_ok=True)
 
 
 
@@ -191,7 +189,7 @@ def resolve_preprocessing_info(pars: dict) -> str:
 
 
 def build_tune_configuration(pars: dict) -> dict | None:
-    if not pars["tune"]:
+    if pars["estimator_mode"] != "tune":
         return None
     return {
         "algo": pars["tune_algo"],
@@ -200,7 +198,9 @@ def build_tune_configuration(pars: dict) -> dict | None:
         "n_folds": pars["tune_n_cv_folds"],
         "meta_surrogate_model": pars["tune_meta_surrogate_model"],
         "meta_strategy": pars["tune_meta_strategy"],
-        "params_distributions": pick_estimator_space(pars["tune_space"], pars["estimator"])
+        # for now we not allow to specify these params via cli
+        "meta_strategy_params": None,
+        "params_distributions": pick_estimator_tune_space(pars["tune_space"], pars["estimator"])
     }
 
 
@@ -215,44 +215,43 @@ def build_early_stop_configuration(pars: dict) -> dict | None:
 
 
 
-
 def pick_estimator_class(pars: dict) -> Estimator:
-    match (pars["estimator"], pars["tune"]):
-        case ("random_forest", False):
+    match (pars["estimator"], pars["estimator_mode"]):
+        case ("random_forest", "default"):
             return MyRandomForestClassifier
-        case ("random_forest", True):
+        case ("random_forest", "tune"):
             return MyTunedRandomForestClassifier
         
-        case ("xgb", False):
+        case ("xgb", "default"):
             return MyXGBClassifier
-        case ("xgb", True):
+        case ("xgb", "tune"):
             return MyTunedXGBClassifier
-        case ("es_xgb", False):
+        case ("es_xgb", "default"):
             return MyESXGBClassifier
-        case ("es_xgb", True):
+        case ("es_xgb", "tune"):
             return MyTunedESXGBClassifier
         
-        case("catboost", False):
+        case("catboost", "default"):
             return MyCatBoostClassifier
-        case("catboost", True):
+        case("catboost", "tune"):
             return MyTunedCatBoostClassifier
-        case ("es_catboost", False):
+        case ("es_catboost", "default"):
             return MyESCatBoostClassifier
-        case("es_catboost", True):
+        case("es_catboost", "tune"):
             return MyTunedESCatBoostClassifier
         
-        case ("lgbm", False):
+        case ("lgbm", "default"):
             return MyLGBMClassifier
-        case("lgbm", True):
+        case("lgbm", "tune"):
             return MyTunedLGBMClassifier
-        case ("es_lgbm", False):
+        case ("es_lgbm", "default"):
             return MyESLGBMClassifier
-        case ("es_lgbm", True):
+        case ("es_lgbm", "tune"):
             return MyTunedESLGBMClassifier
 
-        case ("tabpfn", False):
+        case ("tabpfn", "default"):
             return MyTabPFNClassifier
-        case("tabpfn", True):
+        case("tabpfn", "tune"):
             return MyTunedTabPFNClassifier
         # case("autotabpfn", _):
         #     return MyAutoTabPFNClassifier

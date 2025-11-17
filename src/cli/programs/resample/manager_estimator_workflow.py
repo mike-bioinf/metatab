@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import os
-from typing import TYPE_CHECKING
-from cli.resample.helper import get_resample_iteration_signature
+from typing import TYPE_CHECKING, Literal
+from cli.programs.resample.helper import get_resample_iteration_signature
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -31,7 +31,7 @@ class GeneralManagerEstimatorWorkflowResample:
             It's the repeat fold in CV or the general iteration in holdout.
     '''
     def __init__(self, estimator: Estimator, pars: dict, repeat: int | NAType, fold: int):
-        self._manager_class = self._pick_manager_class(pars["estimator"], pars["tune"])
+        self._manager_class = self._pick_manager_class(pars["estimator"], pars["estimator_mode"])
         self.manager = self._manager_class(estimator, pars, repeat, fold)
     
     def execute_pre_fit_routine(self):
@@ -44,43 +44,43 @@ class GeneralManagerEstimatorWorkflowResample:
         self.manager.execute_post_predict_routine()
     
     @staticmethod
-    def _pick_manager_class(estimator_name: str, tune: bool):
-        match (estimator_name, tune):
-            case ("random_forest", False):
+    def _pick_manager_class(estimator_name: str, estimator_mode: Literal["default", "tune"]):
+        match (estimator_name, estimator_mode):
+            case ("random_forest", "default"):
                 return BaseManagerEstimatorWorkflowResample
-            case ("random_forest", True):
-                return BaseManagerEstimatorWorkflowResample
-            
-            case ("xgb", False):
-                return BaseManagerEstimatorWorkflowResample
-            case ("xgb", True):
-                return BaseManagerEstimatorWorkflowResample
-            case ("es_xgb", False):
-                return BaseManagerEstimatorWorkflowResample
-            case ("es_xgb", True):
+            case ("random_forest", "tune"):
                 return BaseManagerEstimatorWorkflowResample
             
-            case("catboost", False):
+            case ("xgb", "default"):
                 return BaseManagerEstimatorWorkflowResample
-            case("catboost", True):
+            case ("xgb", "tune"):
                 return BaseManagerEstimatorWorkflowResample
-            case ("es_catboost", False):
+            case ("es_xgb", "default"):
                 return BaseManagerEstimatorWorkflowResample
-            case("es_catboost", True):
+            case ("es_xgb", "tune"):
                 return BaseManagerEstimatorWorkflowResample
             
-            case ("lgbm", False):
+            case("catboost", "default"):
                 return BaseManagerEstimatorWorkflowResample
-            case("lgbm", True):
+            case("catboost", "tune"):
                 return BaseManagerEstimatorWorkflowResample
-            case ("es_lgbm", False):
+            case ("es_catboost", "default"):
                 return BaseManagerEstimatorWorkflowResample
-            case ("es_lgbm", True):
+            case("es_catboost", "tune"):
+                return BaseManagerEstimatorWorkflowResample
+            
+            case ("lgbm", "default"):
+                return BaseManagerEstimatorWorkflowResample
+            case("lgbm", "tune"):
+                return BaseManagerEstimatorWorkflowResample
+            case ("es_lgbm", "default"):
+                return BaseManagerEstimatorWorkflowResample
+            case ("es_lgbm", "tune"):
                 return BaseManagerEstimatorWorkflowResample
 
-            case ("tabpfn", False):
+            case ("tabpfn", "default"):
                 return BaseManagerEstimatorWorkflowResample
-            case("tabpfn", True):
+            case("tabpfn", "tune"):
                 return BaseManagerEstimatorWorkflowResample
             case("autotabpfn", _):
                 return ManagerAutoTabPFNWorkflowResample

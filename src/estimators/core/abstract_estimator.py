@@ -206,6 +206,7 @@ class AbstractBaseEstimator(ABC):
                 eval_set_parameter=eval_set_parameter,
                 meta_surrogate_model=self.tune_configuration["meta_surrogate_model"],
                 meta_strategy=self.tune_configuration["meta_strategy"],
+                meta_strategy_params=self.tune_configuration["meta_strategy_params"]
             )
             return estimator.fit(X, y)
 

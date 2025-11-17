@@ -11,7 +11,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 from sklearn.datasets import load_iris
 from functools import partial
-from estimators.estimators import Estimator
 from estimators.params import TuningParams
 
 from estimators.estimators import (
@@ -36,6 +35,7 @@ from estimators.estimators import (
 
 if TYPE_CHECKING:
     import pandas as pd
+    from estimators.estimators import Estimator
 
 
 
@@ -47,7 +47,10 @@ TEST_TUNE_CONFIGURATION = {
     "algo": "random",
     "n_iter": 5,
     "n_repeats": 1,
-    "n_splits": 3
+    "n_folds": 3,
+    "meta_strategy": "best",
+    "meta_strategy_params": None,
+    "meta_surrogate_model": None
 }
 
 TEST_RANDOM_FOREST_FIXED_PARAMS = {
@@ -125,11 +128,11 @@ def _fit_estimator(
         tune_configuration["params_distributions"] = params_distributions
     
     estimator = estimator(
-        preprocessing="base", 
+        preprocessing="estimator_default", 
         seed=0,
         n_threads=4,
-        early_stopping_configuration={
-            "early_stopping_rounds": 4, 
+        early_stop_configuration={
+            "early_stop_rounds": 4, 
             "validation_set_size": 0.3
         },
         tune_configuration=tune_configuration

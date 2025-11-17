@@ -7,8 +7,8 @@ import pickle
 import numpy as np
 from metatab_utils.data_loader import DataLoader
 from metatab_utils.prediction import PredictionDataframe
-from cli.predict.params import parse_args
 from estimators.estimators import Estimator
+from cli.programs.predict.params import parse_args
 
 from cli.helper import (
     adjust_io_paths_, 
@@ -18,10 +18,11 @@ from cli.helper import (
     create_logger
 )
 
-from cli.predict.helper import (
+from cli.programs.predict.helper import (
     check_type_deserialized_object,
     check_estimator_is_fitted
 )
+
 
 
 

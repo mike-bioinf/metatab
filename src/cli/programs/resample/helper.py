@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 
 
 def log_program_setting(pars: dict, logger: Logger, name_dataset: str) -> None:
-    if pars["tune"]:
+    if pars["estimator_mode"] == "tune":
         logger.debug(
             f"\nLaunching {pars["tune_algo"]} tuned {pars["estimator"]} with {pars["tune_space"]} space on {name_dataset}!"
         )
@@ -28,9 +28,7 @@ def log_iteration(pars: dict, fold: int, repetition: int, logger: Logger) -> Non
     if pars["splitting_mode"] == "cv":
         logger.debug(f'Running on fold {fold} of repetition {repetition}:')
     elif pars["splitting_mode"] == "holdout":
-        logger.debug(
-            f'Running holdout iteration {fold}":'
-        )
+        logger.debug(f'Running holdout iteration {fold}":')
 
 
 

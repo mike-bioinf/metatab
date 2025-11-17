@@ -62,26 +62,20 @@ class SurrogateWorker:
         return self
 
 
-    def propose_n_best(
-        self, 
+    def draw_candidates(
+        self,
         n_candidate_points: int, 
-        n_best: int,
         point_corrector_kwargs: None | dict = None,
         mfe_fit_kwargs: None | dict = None,
-        mfe_extract_kwargs: None | dict = None,
-        acquisition_func_kwargs: None | dict = None
-    ) -> list[dict[str, Any]]:
+        mfe_extract_kwargs: None | dict = None
+    ) -> tuple[pd.DataFrame, list[dict]]:
         '''
-        Get the best meta-points. 
-        Here by best we mean the ones that maximize the promisingness score 
-        evaluated though the surrogate framework and acquisition function.
+        Draw candidate points.
+        These are both set internally and returned.
 
         Parameters:
             n_candidate_points (int): 
                 Number of points to draw as candidates.
-
-            n_best (int): 
-                Number of points returned by the utility.
             
             point_corrector_kwargs (None | dict, optional):
                 Kwargs to pass to the PointCorrector `correct_point` method.
@@ -91,48 +85,74 @@ class SurrogateWorker:
             
             mfe_extract_kwargs (None | dict, optional):
                 Kwargs to pass to the mfe `extract` method.
-            
-            acquisition_func_kwargs (None | dict):
-                Kwargs to pass to the acquisition function callable.
 
         Returns:
-            list[dict[str,Any]]: The list of the best points.
+            tuple[pd.DataFrame,list[dict]]:
+            Returns the meta-data plus the list of hp points used to build it.
+            Importantly the meta-data and points order matches, meaning
+            that the first row is built upon the first point in the list and so on.
         '''
         check_is_fitted(self, "is_fitted_")
-
-        self._check_proposed_not_exceed_candidates(
-            n_candidate_points,
-            n_best,
-            "n_candidate_points",
-            "n_best"
-        )
-
-        acquisition_func_kwargs = ensure_or_create(acquisition_func_kwargs, dict)
-
         metadata, candidate_points = self.metadata_generator.generate(
             n_points=n_candidate_points,
             point_corrector_kwargs=point_corrector_kwargs,
             mfe_fit_kwargs=mfe_fit_kwargs,
             mfe_extract_kwargs=mfe_extract_kwargs
         )
+        self.n_candidate_points_ = n_candidate_points
+        self.metadata_ = metadata
+        self.candidate_points_ = candidate_points
+        return metadata, candidate_points
        
-        pred_values, pred_uncertainty = self.surrogate_framework.predict(metadata)        
+
+    def evaluate_candidates(self, acquisition_func_kwargs: None | dict = None) -> np.ndarray:
+        '''
+        Evaluate the promisingness of the drawn candidate points,
+        through the surrogate framework and acquisition function.
+        This info is both returned and set internally.
+
+        Parameters:
+            acquisition_func_kwargs (None | dict):
+                Kwargs to pass to the acquisition function callable.
+
+        Returns:
+            np.ndarray: The candidate points promisingness scores.
+        '''
+        self._check_candidate_points_existence()
+        pred_values, pred_uncertainty = self.surrogate_framework.predict(self.metadata_)        
+        acquisition_func_kwargs = ensure_or_create(acquisition_func_kwargs, dict)
         promisingness = self.acquisition_func(pred_values, pred_uncertainty, **acquisition_func_kwargs)
+        self.promisingness_ = promisingness
+        return promisingness
+    
+
+    def propose_n_best(self, n_best: int) -> list[dict[str, Any]]:
+        '''
+        Get the best meta-points. 
+        Here by best we mean the ones that maximize the promisingness score.
+
+        Parameters:
+            n_best (int): 
+                Number of points returned by the utility.
+
+        Returns:
+            list[dict[str,Any]]: The list of best points.
+        '''
+        self._check_candidate_points_existence()
+        self._check_promisingness_score_existence()
+
+        if n_best > self.n_candidate_points_:
+            raise ValueError("'n_best' cannot be greater than the number of candidate points.")
 
         # argsort works in increasing order, so we reverse to have best --> worst direction
-        top_idx = np.argsort(promisingness, stable=True)[::-1][:n_best]
-        return [candidate_points[idx] for idx in top_idx]
+        top_idx = np.argsort(self.promisingness_, stable=True)[::-1][:n_best]
+        return [self.candidate_points_[idx] for idx in top_idx]
     
 
     def propose_random_from_top(
         self, 
-        n_candidate_points: int,
         n_proposed: int,
         top: int,
-        point_corrector_kwargs: None | dict = None,
-        mfe_fit_kwargs: None | dict = None,
-        mfe_extract_kwargs: None | dict = None,
-        acquisition_func_kwargs: None | dict = None,
         seed: int = 0
     ) -> list[dict[str, Any]]:
         '''
@@ -141,66 +161,30 @@ class SurrogateWorker:
         positions of `n_candidate_points` in a random way without duplication.
 
         Parameters:
-            n_candidate_points (int): 
-                Number of points to draw as candidates.
-
             n_proposed (int): 
                 Number of points returned by the utility.
 
             top (int):
                 Number of top points from which draw the random proposed ones.
             
-            point_corrector_kwargs (None | dict, optional):
-                Kwargs to pass to the PointCorrector `correct_point` method.
-
-            mfe_fit_kwargs (None | dict, optional):
-                Kwargs to pass to the mfe `fit` method.
-            
-            mfe_extract_kwargs (None | dict, optional):
-                Kwargs to pass to the mfe `extract` method.
-            
-            acquisition_func_kwargs (None | dict):
-                Kwargs to pass to the acquisition function callable.
-
             seed (int, optional):
                 Control the randomness of the point selection procedure.   
 
         Returns:
-            list[dict[str,Any]]: The list of the best points.
+            list[dict[str,Any]]: The list of best points.
         '''
-        check_is_fitted(self, "is_fitted_")
+        self._check_candidate_points_existence()
+        self._check_promisingness_score_existence()
 
-        self._check_proposed_not_exceed_candidates(
-            n_candidate_points, 
-            n_proposed,
-            "n_candidate_points",
-            "n_proposed"
-        )
-
-        if top > n_candidate_points:
-            raise ValueError(f"'{top}' cannot be greater than {n_candidate_points}.")
+        if top > self.n_candidate_points_:
+            raise ValueError(f"'top' cannot be greater than the number of candidate points.")
 
         if n_proposed > top:
-            raise ValueError(f"'{n_proposed}' cannot be greater than '{top}'.")
-        
-        metadata, candidate_points = self.metadata_generator.generate(
-            n_points=n_candidate_points,
-            point_corrector_kwargs=point_corrector_kwargs,
-            mfe_fit_kwargs=mfe_fit_kwargs,
-            mfe_extract_kwargs=mfe_extract_kwargs
-        )
-
-        # we can skip inference in this scenario
-        if n_proposed == n_candidate_points:
-            return candidate_points
-
-        acquisition_func_kwargs = ensure_or_create(acquisition_func_kwargs, dict)
-        pred_values, pred_uncertainty = self.surrogate_framework.predict(metadata)        
-        promisingness = self.acquisition_func(pred_values, pred_uncertainty, **acquisition_func_kwargs)
+            raise ValueError(f"'n_proposed' cannot be greater than 'top'.")
 
         # argsort works in increasing order, so we reverse to have best --> worst direction
-        top_idx = np.argsort(promisingness, stable=True)[::-1][:top]
-        top_points = [candidate_points[idx] for idx in top_idx]
+        top_idx = np.argsort(self.promisingness_, stable=True)[::-1][:top]
+        top_points = [self.candidate_points_[idx] for idx in top_idx]
 
         # we can skip random drawing in this scenario
         if top == n_proposed:
@@ -211,16 +195,7 @@ class SurrogateWorker:
         return [top_points[idx] for idx in selected_idx]
 
 
-    def propose_uniform_from_top(
-        self, 
-        n_candidate_points: int,
-        n_steps: int,
-        step_size: int,
-        point_corrector_kwargs: None | dict = None,
-        mfe_fit_kwargs: None | dict = None,
-        mfe_extract_kwargs: None | dict = None,
-        acquisition_func_kwargs: None | dict = None
-    ):
+    def propose_uniform_from_top(self, n_steps: int, step_size: int):
         '''
         Get the best `n_steps` points using a fixed `step_size`.
         This propose strategy can be think of ordering the points
@@ -229,61 +204,39 @@ class SurrogateWorker:
         The utility therefore returns n_steps points.
 
         Parameters:
-            n_candidate_points (int): 
-                Number of points to draw as candidates.
-
             n_steps (int): 
                 Number of points returned by the utility.
 
             step_size (int):
                 Size of the step.
-            
-            point_corrector_kwargs (None | dict, optional):
-                Kwargs to pass to the PointCorrector `correct_point` method.
-
-            mfe_fit_kwargs (None | dict, optional):
-                Kwargs to pass to the mfe `fit` method.
-            
-            mfe_extract_kwargs (None | dict, optional):
-                Kwargs to pass to the mfe `extract` method.
-            
-            acquisition_func_kwargs (None | dict):
-                Kwargs to pass to the acquisition function callable.
 
         Returns:
             list[dict[str,Any]]: The list of the best points.
         '''
-        check_is_fitted(self, "is_fitted_")
+        self._check_candidate_points_existence()
+        self._check_promisingness_score_existence()
+
         working_range = n_steps * step_size
         
-        if working_range > n_candidate_points:
-            raise ValueError("'n_steps * step_size' cannot be greater than 'n_candidate_points'.")
+        if working_range > self.n_candidate_points_:
+            raise ValueError(
+                "'n_steps * step_size' cannot be greater than the number of candidate points."
+            )
 
-        metadata, candidate_points = self.metadata_generator.generate(
-            n_points=n_candidate_points,
-            point_corrector_kwargs=point_corrector_kwargs,
-            mfe_fit_kwargs=mfe_fit_kwargs,
-            mfe_extract_kwargs=mfe_extract_kwargs
-        )
-        
-        acquisition_func_kwargs = ensure_or_create(acquisition_func_kwargs, dict)
-        pred_values, pred_uncertainty = self.surrogate_framework.predict(metadata)        
-        promisingness = self.acquisition_func(pred_values, pred_uncertainty, **acquisition_func_kwargs)
-        
         # argsort works in increasing order, so we reverse to have best --> worst direction
-        ordered_idx = np.argsort(promisingness, stable=True)[::-1]
-        ordered_points = [candidate_points[idx] for idx in ordered_idx]
+        ordered_idx = np.argsort(self.promisingness_, stable=True)[::-1]
+        ordered_points = [self.candidate_points_[idx] for idx in ordered_idx]
         return ordered_points[:working_range:step_size]
 
 
-    @staticmethod
-    def _check_proposed_not_exceed_candidates(
-        n_candidates: int, 
-        n_proposed: int,
-        n_candidates_param: str,
-        n_proposed_param: str
-    ) -> None:
-        if n_candidates < n_proposed:
+    def _check_candidate_points_existence(self) -> None:
+        if not hasattr(self, "candidate_points_"):
             raise ValueError(
-                f"'{n_candidates_param}' cannot be less than '{n_proposed_param}'."
+                "There are no candidates to evaluate. You must call 'draw_candidates' method first."
+            ) 
+    
+    def _check_promisingness_score_existence(self) -> None:
+        if not hasattr(self, "promisingness_"):
+            raise ValueError(
+                "The candidate points promisingness score has not been evaluated yet."
             )

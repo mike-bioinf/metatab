@@ -8,13 +8,11 @@ from functools import partial
 from typing import Literal
 from sklearn.pipeline import Pipeline
 from sklearn.utils.validation import check_is_fitted
-from hyperopt import Trials, STATUS_OK, STATUS_FAIL, tpe, rand, fmin, space_eval
+from hyperopt import STATUS_OK, STATUS_FAIL, tpe, rand, fmin, space_eval
 from hyperopt.pyll.stochastic import sample
 from estimators.utils.types import Classifier, PREPROCESSING_STRATEGIES, TUNABLE_ESTIMATOR_TYPE
 from estimators.utils.fit import fit_with_early_stop_on_validation_set
 from estimators.params import HPS_MIXED_TYPED
-from hp_search.cv import CrossValidator
-from hp_search.utils import ConfigSearchCV, set_params_into_clf
 from hp_search.point_corrector import PointCorrector
 from metalearning.metafeatures import CustomMFE
 from metalearning.load import query_surrogate_framework
@@ -23,7 +21,15 @@ from metalearning.surrogate_worker import SurrogateWorker
 from metalearning.sampler import HyperoptRandomSampler
 from metalearning.generator import MetadataGenerator
 from metatab_utils.general import add_broadcasted_objects_as_column
+from hp_search.cv import CrossValidator
 
+from hp_search.utils import (
+    ConfigSearchCV, 
+    set_params_into_clf,
+    BestMetaStrategyParams,
+    RandomFromBestMetaStrategyParams,
+    UniformFromBestMetaStrategyParams
+)
 
 
 
@@ -174,6 +180,7 @@ class SearchCV:
         fit_classifier_kwargs: None | dict = None,
         meta_surrogate_model: None | str | Path = None,
         meta_strategy: Literal["best", "random_from_best", "uniform_from_best"] = "random_from_best",
+        meta_strategy_params: None | BestMetaStrategyParams | RandomFromBestMetaStrategyParams | UniformFromBestMetaStrategyParams = None,
         raise_error_during_search: None | bool = None,
         build_df_search: None | bool = None,
         refit_with_best_hps: None | bool = None,
@@ -196,6 +203,7 @@ class SearchCV:
         self.fit_classifier_kwargs=fit_classifier_kwargs if fit_classifier_kwargs else {}
         self.meta_surrogate_model=meta_surrogate_model
         self.meta_strategy=meta_strategy
+        self.meta_strategy_params=meta_strategy_params
         
         self.cross_validator=CrossValidator(
             clf_or_pipe=clf_or_pipe,
@@ -326,39 +334,50 @@ class SearchCV:
         # 1500 are the points used in our prior for all estimators (for now)
         # In general drawning too many points can reduce their divergence and therefore hurt performance
         # TODO: use "new" points also?
-        n_candidate_points = max(1500, self.n_iter)
+        n_candidate_points = max(1500, self.n_iter) \
+            if self.meta_strategy_params is None \
+            else self.meta_strategy_params["n_candidate_points"]
 
-        # add the preprocessing to the meta-data
-        mfe_extract_kwargs = {"add_features": {"preprocessing": self.type_clf_or_pipe_preprocessing}}
+        _ = surrogate_worker.draw_candidates(
+            n_candidate_points=n_candidate_points,
+            # add the preprocessing to the meta-data
+            mfe_extract_kwargs = {"add_features": {"preprocessing": self.type_clf_or_pipe_preprocessing}}
+        )
+
+        _ = surrogate_worker.evaluate_candidates()
 
         if self.meta_strategy == "best":
-            points = surrogate_worker.propose_n_best(
-                n_candidate_points=n_candidate_points, 
-                n_best=self.n_iter, 
-                mfe_extract_kwargs=mfe_extract_kwargs
-            )
-
+            points = surrogate_worker.propose_n_best(n_best=self.n_iter)
+        
         elif self.meta_strategy == "random_from_best":
+            # we use a ratio of 1 to 3 by default when possible, 
+            # meaning we give "3 choices for point"
+            top = min(self.n_iter * 3, n_candidate_points) \
+                if self.meta_strategy_params is None \
+                else self.meta_strategy_params["top"]
+            
+            # we use the seed of the instance to allow variability,
+            # when not hardcoded in the supplied params
+            meta_seed = self.seed if self.meta_strategy_params is None else self.meta_strategy_params["seed"]
+
             points = surrogate_worker.propose_random_from_top(
-                n_candidate_points=n_candidate_points,
                 n_proposed=self.n_iter,
-                # we use a FIXED ratio of 1 to 3 when possible, meaning we give "3 choices for point"
-                top=min(self.n_iter * 3, n_candidate_points),
-                mfe_extract_kwargs=mfe_extract_kwargs,
-                # we use the seed of the instance to allow variability
-                seed=self.seed
+                top=top,
+                seed=meta_seed
             )
         
         elif self.meta_strategy == "uniform_from_best":
-            # we use a FIXED step of 3 when possible
-            step_size = 3 if (n_candidate_points / self.n_iter) > 3 else 1
+            # we use a step of 3 by default when possible
+            if self.meta_strategy_params is None:
+                step_size = 3 if (n_candidate_points / self.n_iter) > 3 else 1
+            else:
+                step_size = self.meta_strategy_params["step_size"]
+            
             points = surrogate_worker.propose_uniform_from_top(
-                n_candidate_points=n_candidate_points,
                 n_steps=self.n_iter,
-                step_size=step_size,
-                mfe_extract_kwargs=mfe_extract_kwargs
+                step_size=step_size
             )
-
+        
         else:
             raise ValueError(
                 "meta_strategy must be one of: 'best', 'random_from_best', 'uniform_from_best'."
