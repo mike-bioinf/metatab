@@ -9,17 +9,17 @@ from preprocessing import DensityFeatureSelector
 
 if TYPE_CHECKING:
     from estimators.utils.types import Classifier
-    from estimators.utils.types import PREPROCESSING_STRATEGIES, ALL_ESTIMATOR_TYPE
+    from estimators.utils.types import PreprocessingStrategy, EstimatorType
 
 
 
 def create_classifier_pipeline(
     *,
-    preprocessing: PREPROCESSING_STRATEGIES,
+    preprocessing: PreprocessingStrategy,
     density_feature_selector_strategy: Literal["exact", "oversample", "undersample"],
     classifier: Classifier | None = None,
     classifier_params: dict | None = None,
-    type_estimator: ALL_ESTIMATOR_TYPE | None = None
+    type_estimator: EstimatorType | None = None
 ) -> Classifier | Pipeline:
     '''
     Creates the classifier pipeline for each preprocessing strategy.
@@ -46,7 +46,7 @@ def create_classifier_pipeline(
             Paramaters used to instatiate the classifier.
             Can be None when `classifier` is None, otherwise must be specified.
 
-        type_estimator (ALL_ESTIMATOR_TYPE | None, optional):
+        type_estimator (EstimatorType | None, optional):
             String estimator type required when `preprocessing` is "estimator_default". 
 
     Returns:
@@ -92,7 +92,7 @@ def create_classifier_pipeline(
 
 
 # this is used also in helper programs
-def get_estimator_default_preprocessing(type_estimator: ALL_ESTIMATOR_TYPE):
+def get_estimator_default_preprocessing(type_estimator: EstimatorType):
     if type_estimator == "tabpfn":
         return "density_filter"
     else:

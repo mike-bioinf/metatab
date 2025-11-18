@@ -5,7 +5,8 @@ from estimators.params import TuningParams, DefaultParams
 from estimators.core import (
     AbstractBaseEstimator, 
     DefaultEstimatorMixin,
-    TunedEstimatorMixin
+    TunedEstimatorMixin,
+    BaseMetaEstimator
 )
 
 
@@ -50,4 +51,12 @@ class MyTunedRandomForestClassifier(TunedEstimatorMixin, AbstractBaseEstimator):
             is_tuned=True,
             is_early_stopped=False
         )
+        return self
+
+
+
+class MetaTuneRandomForestClassifier(BaseMetaEstimator):
+    ## TODO: allow also numpy arrays
+    def fit(self, X: pd.DataFrame, y: pd.Series) -> "MetaTuneRandomForestClassifier":
+        super().fit(X, y, "base", MyTunedRandomForestClassifier, TuningParams.RF_C0, None)
         return self

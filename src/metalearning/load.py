@@ -9,11 +9,11 @@ from platformdirs import user_cache_path
 
 if TYPE_CHECKING:
     from sklearn.pipeline import Pipeline
-    from estimators.utils.types import TUNABLE_ESTIMATOR_TYPE
+    from estimators.utils.types import TunableEstimatorType
 
 
 
-def download_surrogate_framework(type_estimator: TUNABLE_ESTIMATOR_TYPE) -> None:
+def download_surrogate_framework(type_estimator: TunableEstimatorType) -> None:
     '''
     Download the surrogate model/framework for the input estimator 
     from the hugging face repo in the user metatab cache directory.
@@ -46,7 +46,7 @@ def download_surrogate_framework(type_estimator: TUNABLE_ESTIMATOR_TYPE) -> None
 
 
 
-def query_surrogate_framework(type_estimator: TUNABLE_ESTIMATOR_TYPE) -> Pipeline:
+def query_surrogate_framework(type_estimator: TunableEstimatorType) -> Pipeline:
     '''Retrieve the fitted surrogate framework for the input type_estimator'''
     surrogate_model_path = user_cache_path("metatab") / f"surrogate_framework_for_{type_estimator}.joblib"
     if not surrogate_model_path.exists():

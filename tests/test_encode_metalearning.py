@@ -5,14 +5,14 @@ import pandas as pd
 from pathlib import Path
 from typing import Literal
 from sklearn.pipeline import make_pipeline
-from estimators.utils.types import TUNABLE_ESTIMATOR_TYPE
+from estimators.utils.types import TunableEstimatorType
 from metalearning.encode.encode import get_encoding_scheme
 from metalearning.encode.transformers import NanToNone, ColToStr, InfToNan
 
 
 
 def load_metadata(
-    estimator: TUNABLE_ESTIMATOR_TYPE,
+    estimator: TunableEstimatorType,
     preprocessing: Literal["base", "density_filter", "pca"] = "base"
 ) -> pd.DataFrame:
     df = pd.read_csv(Path(__file__).parent / "data/metadata" / f"{estimator}.txt", sep="\t")

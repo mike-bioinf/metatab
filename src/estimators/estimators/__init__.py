@@ -4,7 +4,9 @@ from estimators.estimators.xgb import (
     MyXGBClassifier,
     MyESXGBClassifier,
     MyTunedXGBClassifier,
-    MyTunedESXGBClassifier 
+    MyTunedESXGBClassifier,
+    MetaTuneXGBClassifier,
+    MetaTuneEsXGBClassifier
 )
 
 from estimators.estimators.catboost import (
@@ -16,19 +18,23 @@ from estimators.estimators.catboost import (
 
 from estimators.estimators.rf import (
     MyRandomForestClassifier,
-    MyTunedRandomForestClassifier
+    MyTunedRandomForestClassifier,
+    MetaTuneRandomForestClassifier
 )
 
 from estimators.estimators.lgbm import (
     MyLGBMClassifier,
     MyESLGBMClassifier,
     MyTunedLGBMClassifier,
-    MyTunedESLGBMClassifier
+    MyTunedESLGBMClassifier,
+    MetaTuneLGBMClassifier,
+    MetaTuneEsLGBMClassifier
 )
 
 from estimators.estimators.tabpfn import (
     MyTabPFNClassifier,
     MyTunedTabPFNClassifier,
+    MetaTuneTabPFNClassifier,
     # MyAutoTabPFNClassifier,
     # MyAesFineTunedTabPFNClassifier
 )

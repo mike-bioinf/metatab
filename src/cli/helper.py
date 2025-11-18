@@ -4,6 +4,7 @@ import pandas as pd
 from pathlib import Path
 from estimators.estimators import Estimator
 from estimators.preprocessing import get_estimator_default_preprocessing
+from estimators.core.configurations import TuneConfiguration, EarlyStopConfiguration
 
 from estimators.utils.constants import (
     EARLY_STOPPED_ESTIMATORS, 
@@ -188,30 +189,28 @@ def resolve_preprocessing_info(pars: dict) -> str:
 
 
 
-def build_tune_configuration(pars: dict) -> dict | None:
+def build_tune_configuration(pars: dict) -> None | TuneConfiguration:
     if pars["estimator_mode"] != "tune":
         return None
-    return {
-        "algo": pars["tune_algo"],
-        "n_iter": pars["tune_n_iter"],
-        "n_repeats": pars["tune_n_cv_repeats"],
-        "n_folds": pars["tune_n_cv_folds"],
-        "meta_surrogate_model": pars["tune_meta_surrogate_model"],
-        "meta_strategy": pars["tune_meta_strategy"],
-        # for now we not allow to specify these params via cli
-        "meta_strategy_params": None,
-        "params_distributions": pick_estimator_tune_space(pars["tune_space"], pars["estimator"])
-    }
+    return TuneConfiguration(
+        algo=pars["tune_algo"],
+        n_iter=pars["tune_n_iter"],
+        n_cv_repeats=pars["tune_n_cv_repeats"],
+        n_cv_folds=pars["tune_n_cv_folds"],
+        params_distributions=pick_estimator_tune_space(pars["tune_space"], pars["estimator"]),
+        meta_surrogate_model=pars["tune_meta_surrogate_model"],
+        meta_strategy=pars["tune_meta_strategy"],
+    )
 
 
 
-def build_early_stop_configuration(pars: dict) -> dict | None:
+def build_early_stop_configuration(pars: dict) -> None | EarlyStopConfiguration:
     if pars["estimator"] not in EARLY_STOPPED_ESTIMATORS:
         return None
-    return {
-        "early_stop_rounds": pars["early_stop_rounds"],
-        "validation_set_size": pars["validation_set_size"]
-    }
+    return EarlyStopConfiguration(
+        early_stop_rounds=pars["early_stop_rounds"],
+        validation_set_size=pars["validation_set_size"]
+    )
 
 
 

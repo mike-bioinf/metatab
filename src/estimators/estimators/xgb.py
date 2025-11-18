@@ -2,11 +2,13 @@ import pandas as pd
 from functools import partial
 from xgboost import XGBClassifier
 from estimators.params import TuningParams, DefaultParams
+from estimators.core.configurations import EarlyStopConfiguration
 
 from estimators.core import (
     AbstractBaseEstimator, 
     TunedEstimatorMixin, 
-    DefaultEstimatorMixin
+    DefaultEstimatorMixin,
+    BaseMetaEstimator
 )
 
 from estimators.utils.gbdt import ( 
@@ -116,4 +118,29 @@ class MyTunedESXGBClassifier(TunedEstimatorMixin, AbstractBaseEstimator):
             ],
             fit_classifier_kwargs={"verbose": False}  # to be effective must be passed to fit
         )
+        return self
+    
+
+
+class MetaTuneXGBClassifier(BaseMetaEstimator):
+    ## TODO: allow for numpy arrays
+    def fit(self, X: pd.DataFrame, y: pd.Series) -> "MetaTuneXGBClassifier":
+        super().fit(X, y, "base", MyTunedXGBClassifier, TuningParams.XGB_C0, None)
+        return self
+
+
+
+class MetaTuneEsXGBClassifier(BaseMetaEstimator):
+    def fit(
+        self,
+        X: pd.DataFrame, 
+        y: pd.Series,
+        early_stop_rounds: int = 100,
+        validation_set_size: float = 0.3
+    ) -> "MetaTuneEsXGBClassifier":
+        early_stop_conf = EarlyStopConfiguration(
+            early_stop_rounds=early_stop_rounds, 
+            validation_set_size=validation_set_size
+        )
+        super().fit(X, y, "base", MyTunedESXGBClassifier, TuningParams.XGB_C0, early_stop_conf)
         return self

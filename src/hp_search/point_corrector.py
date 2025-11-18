@@ -3,7 +3,7 @@ from typing import Literal, Callable
 from copy import deepcopy
 from tabpfn.model_loading import _user_cache_dir
 from metatab_utils.general import enlist
-from estimators.utils.types import TUNABLE_ESTIMATOR_TYPE
+from estimators.utils.types import TunableEstimatorType
 
 
 
@@ -49,7 +49,7 @@ class PointCorrector:
         self,
         point: dict,
         apply_hypeopt_corrections: bool = False,
-        estimator: TUNABLE_ESTIMATOR_TYPE | None = None,
+        estimator: TunableEstimatorType | None = None,
         estimator_corrections: str | list[str] | Literal["all"] | None = None
     ):
         '''
@@ -63,7 +63,7 @@ class PointCorrector:
             apply_hypeopt_corrections (bool, optional): 
                 Whether to apply the hyperopt general corrections to the point.
             
-            estimator: (TUNABLE_ESTIMATOR_TYPE | None, optional):
+            estimator: (TunableEstimatorType | None, optional):
                 The type of estimator to which the point refers.
                 This info is needed to select the right set of corrections.
             

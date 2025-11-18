@@ -3,11 +3,13 @@ import pandas as pd
 from functools import partial
 from lightgbm import LGBMClassifier
 from estimators.params import TuningParams, DefaultParams
+from estimators.core.configurations import EarlyStopConfiguration
 
 from estimators.core import (
     AbstractBaseEstimator, 
     TunedEstimatorMixin, 
-    DefaultEstimatorMixin
+    DefaultEstimatorMixin,
+    BaseMetaEstimator
 )
 
 from estimators.utils.gbdt import ( 
@@ -153,3 +155,28 @@ class MyTunedESLGBMClassifier(TunedEstimatorMixin, AbstractBaseEstimator):
     @ignore_lgbm_feature_name_warning
     def predict_proba(self, X, **kwargs):
         return super().predict_proba(X)
+    
+
+
+class MetaTuneLGBMClassifier(BaseMetaEstimator):
+    ## TODO: Allows for numpy arrays
+    def fit(self, X: pd.DataFrame, y: pd.Series) -> "MetaTuneLGBMClassifier":
+        super().fit(X, y, "base", MyTunedLGBMClassifier, TuningParams.LGMB_C0, None)
+        return self
+
+
+
+class MetaTuneEsLGBMClassifier(BaseMetaEstimator):
+    ## TODO: Allows for numpy arrays
+    def fit(
+        self, X: pd.DataFrame, 
+        y: pd.Series, 
+        early_stop_rounds: int = 100, 
+        validation_set_size: float = 0.3
+    ) -> "MetaTuneEsLGBMClassifier":
+        early_stop_conf = EarlyStopConfiguration(
+            early_stop_rounds=early_stop_rounds,
+            validation_set_size=validation_set_size
+        )
+        super().fit(X, y, "base", MyTunedESLGBMClassifier, TuningParams.LGMB_C0, early_stop_conf)
+        return self

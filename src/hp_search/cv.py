@@ -48,7 +48,7 @@ class CrossValidator:
         metric (Literal["logloss"]):
             The performance metric to compute.
 
-        n_splits (int):
+        n_folds (int):
             Number of cv splits.
 
         n_repeats (int):
@@ -66,7 +66,7 @@ class CrossValidator:
         validation_set_size: float,
         fit_classifier_kwargs: dict,
         metric: Literal["logloss"],
-        n_splits: int, 
+        n_folds: int, 
         n_repeats: int, 
         seed: int
     ):
@@ -77,7 +77,7 @@ class CrossValidator:
         self.validation_set_size=validation_set_size
         self.fit_classifier_kwargs=fit_classifier_kwargs
         self.metric=metric
-        self.n_splits=n_splits
+        self.n_folds=n_folds
         self.n_repeats=n_repeats
         self.seed=seed
 
@@ -106,7 +106,7 @@ class CrossValidator:
             The second term is None if `collect_info` is False.
         '''
         skf = RepeatedStratifiedKFold(
-            n_splits=self.n_splits, 
+            n_splits=self.n_folds, 
             n_repeats=self.n_repeats, 
             random_state=self.seed
         )
@@ -116,8 +116,8 @@ class CrossValidator:
         rng = np.random.default_rng(self.seed)        
         
         for iter_idx, (train_idx, test_idx) in enumerate(skf.split(X, y)):
-            repeat = iter_idx // self.n_splits
-            fold = iter_idx - (self.n_splits * repeat)
+            repeat = iter_idx // self.n_folds
+            fold = iter_idx - (self.n_folds * repeat)
 
             # we create a copy of the clf/pipe at each cv round
             # to avoid specific classifier implementation problems

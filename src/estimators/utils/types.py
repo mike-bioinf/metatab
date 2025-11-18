@@ -30,7 +30,7 @@ GBDTClassifier: TypeAlias = Union[
 ]
 
 
-TUNABLE_ESTIMATOR_TYPE = Literal[
+TunableEstimatorType = Literal[
     "random_forest",
     "xgb",
     "es_xgb",
@@ -42,14 +42,14 @@ TUNABLE_ESTIMATOR_TYPE = Literal[
 ]
 
 
-ES_ESTIMATOR_TYPE: Literal[
+EsEstimatorType: Literal[
     "es_lgbm",
     "es_xgb",
     "es_catboost"
 ]
 
 
-GBDT_ESTIMATOR_TYPE = Literal[
+GBDTEstimatorType = Literal[
     "xgb",
     "es_xgb",
     "lgbm",
@@ -59,7 +59,7 @@ GBDT_ESTIMATOR_TYPE = Literal[
 ]
 
 
-TREE_ESTIMATOR_TYPE = Literal[
+TreeEstimatorType = Literal[
     "random_forest",
     "xgb",
     "es_xgb",
@@ -70,7 +70,7 @@ TREE_ESTIMATOR_TYPE = Literal[
 ]
 
 
-ALL_ESTIMATOR_TYPE = Literal[
+EstimatorType = Literal[
     "random_forest",
     "xgb",
     "es_xgb",
@@ -84,7 +84,7 @@ ALL_ESTIMATOR_TYPE = Literal[
 ]
 
 
-PREPROCESSING_STRATEGIES = Literal[
+PreprocessingStrategy = Literal[
     "estimator_default",
     "base",
     "density_filter",

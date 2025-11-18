@@ -7,7 +7,7 @@ from abc import ABC, abstractmethod
 from typing import Literal, TYPE_CHECKING, Callable
 from sklearn.pipeline import Pipeline
 from hp_search.searchcv import SearchCV
-from metatab_utils.general import ensure_or_create
+from metatab_utils.general import ensure_or_create, asdict_shallow
 from estimators.preprocessing import create_classifier_pipeline
 from estimators.utils.fit import fit_with_early_stop_on_validation_set
 
@@ -15,12 +15,18 @@ if TYPE_CHECKING:
     import pandas as pd
     from sklearn.decomposition import PCA
     from preprocessing.density_selector import DensityFeatureSelector
+    
     from estimators.utils.types import (
         Classifier, 
-        PREPROCESSING_STRATEGIES, 
-        ALL_ESTIMATOR_TYPE
+        PreprocessingStrategy, 
+        EstimatorType
     )
-
+    
+    from estimators.core.configurations import (
+        TuneConfiguration, 
+        EarlyStopConfiguration, 
+        EnsembleConfiguration
+    )
 
 
 
@@ -29,11 +35,11 @@ class AbstractBaseEstimator(ABC):
     Abstract base class for estimators classes.
 
     Parameters:
-        preprocessing (PREPROCESSING_STRATEGIES): Preprocessing strategy to use.
+        preprocessing (PreprocessingStrategy): Preprocessing strategy to use.
         seed (int): Seed for estimator reproducibility.
         n_threads (int, optional): Number of CPU threads used to fit the estimator. 
-        early_stop_configuration (None | dict, optional): Early stop configuration.
-        tune_configuration (None | dict, optional): Tune configuration.
+        early_stop_configuration (None | EarlyStopConfiguration, optional): Early stop configuration.
+        tune_configuration (None | TuneConfiguration, optional): Tune configuration.
         ensemble_configuration (None | dict, optional): Ensemble configuration.
     
     ### Important Design Note:
@@ -46,12 +52,12 @@ class AbstractBaseEstimator(ABC):
 
     def __init__(
         self, 
-        preprocessing: PREPROCESSING_STRATEGIES,
+        preprocessing: PreprocessingStrategy,
         seed: int,
         n_threads: int,
-        early_stop_configuration: None | dict = None,
-        tune_configuration: None | dict = None,
-        ensemble_configuration: None | dict = None
+        early_stop_configuration: None | EarlyStopConfiguration = None,
+        tune_configuration: None | TuneConfiguration = None,
+        ensemble_configuration: None | EnsembleConfiguration = None
     ):
         self.preprocessing=preprocessing
         self.seed=seed
@@ -72,7 +78,7 @@ class AbstractBaseEstimator(ABC):
         X: pd.DataFrame,  ###TODO: check if all works with numpy arrays --> CUSTOM MFE BREAKS, density_selection breaks
         y: pd.Series,    ### TODO. check if all works if numpy arrays --> CUSTOM MFE BREAKS, density_selection breaks
         classifier_cls: Classifier,
-        type_estimator: ALL_ESTIMATOR_TYPE,
+        type_estimator: EstimatorType,
         is_tuned: bool,
         is_early_stopped: bool,
         eval_set_parameter: str | None = "eval_set",
@@ -100,7 +106,7 @@ class AbstractBaseEstimator(ABC):
             
             classifier_cls (Classifier): Classifier class.
             
-            type_estimator (ALL_ESTIMATOR_TYPE): String estimator type.
+            type_estimator (EstimatorType): String estimator type.
 
             is_tuned (bool):
                 Whether the concrete estimator leverages HPs tuning.
@@ -184,7 +190,7 @@ class AbstractBaseEstimator(ABC):
 
         if is_tuned:
             # searchcv address both early stop and normal scenarios
-            val_set_size = self.early_stop_configuration["validation_set_size"]\
+            val_set_size = self.early_stop_configuration.validation_set_size\
                 if is_early_stopped\
                 else 0.0
             
@@ -192,21 +198,14 @@ class AbstractBaseEstimator(ABC):
                 clf_or_pipe=clf_or_pipe,
                 type_estimator=type_estimator,
                 type_clf_or_pipe_preprocessing=self.preprocessing,
-                algo=self.tune_configuration["algo"],
-                params_distributions=self.tune_configuration["params_distributions"],
                 random_state_parameter=random_state_parameter,
-                n_iter=self.tune_configuration["n_iter"],
-                n_cv_repeats=self.tune_configuration["n_repeats"],
-                n_cv_splits=self.tune_configuration["n_folds"],
                 seed=self.seed,
                 metric_to_minimize="logloss",
                 fit_classifier_kwargs=fit_classifier_kwargs,
                 early_stop_on_validation_set=is_early_stopped,
                 validation_set_size=val_set_size,
                 eval_set_parameter=eval_set_parameter,
-                meta_surrogate_model=self.tune_configuration["meta_surrogate_model"],
-                meta_strategy=self.tune_configuration["meta_strategy"],
-                meta_strategy_params=self.tune_configuration["meta_strategy_params"]
+                **asdict_shallow(self.tune_configuration)
             )
             return estimator.fit(X, y)
 
@@ -216,7 +215,7 @@ class AbstractBaseEstimator(ABC):
                 X=X,
                 y=y,
                 seed=self.seed,
-                validation_set_size=self.early_stop_configuration["validation_set_size"],
+                validation_set_size=self.early_stop_configuration.validation_set_size,
                 eval_set_parameter=eval_set_parameter,
                 fit_classifier_kwargs=fit_classifier_kwargs
             )
@@ -261,7 +260,7 @@ class AbstractBaseEstimator(ABC):
         if up_seed: fixed_params[key_seed] = self.seed
         if up_n_threads: fixed_params[key_n_threads] = self.n_threads
         if up_early_stop_rounds: 
-            fixed_params[key_early_stop_rounds] = self.early_stop_configuration["early_stop_rounds"]
+            fixed_params[key_early_stop_rounds] = self.early_stop_configuration.early_stop_rounds
         return fixed_params
 
 

@@ -10,7 +10,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.utils.validation import check_is_fitted
 from hyperopt import STATUS_OK, STATUS_FAIL, tpe, rand, fmin, space_eval
 from hyperopt.pyll.stochastic import sample
-from estimators.utils.types import Classifier, PREPROCESSING_STRATEGIES, TUNABLE_ESTIMATOR_TYPE
+from estimators.utils.types import Classifier, PreprocessingStrategy, TunableEstimatorType
 from estimators.utils.fit import fit_with_early_stop_on_validation_set
 from estimators.params import HPS_MIXED_TYPED
 from hp_search.point_corrector import PointCorrector
@@ -22,6 +22,7 @@ from metalearning.sampler import HyperoptRandomSampler
 from metalearning.generator import MetadataGenerator
 from metatab_utils.general import add_broadcasted_objects_as_column
 from hp_search.cv import CrossValidator
+from hp_search.types import MetaAlgo, MetaStrategy, MetaStrategyParams
 
 from hp_search.utils import (
     ConfigSearchCV, 
@@ -52,10 +53,10 @@ class SearchCV:
             Classifier or Pipeline object with a classifier as head, 
             which hps have to be optimized.
         
-        type_estimator (TUNABLE_ESTIMATOR_TYPE):
+        type_estimator (TunableEstimatorType):
             String estimator type. Info needed in meta-optimization (`meta` algo).
             
-        type_clf_or_pipe_preprocessing (PREPROCESSING_STRATEGIES | None):
+        type_clf_or_pipe_preprocessing (PreprocessingStrategy | None):
             Type of preprocessing used for the clf_or_pipe object.
             Needed only by the `meta` algo to propose candidate points.
         
@@ -66,12 +67,16 @@ class SearchCV:
 
         n_iter (int): Number of search iterations.
         
-        n_cv_splits (int): Number of cv splits.
+        n_cv_folds (int): Number of cv folds.
 
         n_cv_repeats (int): Number of cv repeats.
         
-        seed (int): Seed for reproducibility.
-        
+        seed (int): 
+            Seed for reproducibility.
+            Used in the standard optimization routes to draw points (random, tpe), 
+            in the determination of the validation set when early stop is enabled,
+            and in the inner-cross validation procedure (indipendently of the tune algo).
+
         random_state_parameter (str | None):
             Name of the estimator random state parameter.
         
@@ -103,14 +108,21 @@ class SearchCV:
             If None the "default" surrogate model acording to `type_estimator` is used instead.
             Ignored when `algo` is not "meta".
 
-        meta_strategy (Literal["best", "random_from_best", "uniform_from_best"], optional):
-            Control the strategy used by the metalearning framework to select points.
+        meta_strategy (MetaStrategy, optional):
+            Set the strategy used by the metalearning framework to select points.
             It has no effect when `algo` is different from "meta".
             In detail the following `SurrogateWorker` utilities are used:
             - "best": `propose_n_best`
             - "random_from_best": `propose_random_from_top`
             - "uniform_from_best": `propose_best_uniform`
             See the specific method for more details.
+
+        meta_seed (int, optional):
+            Seed used specifically to draw condidate points in the meta-optimization scenario.
+            Importanlty the default value of 42 is the one used to generate the prior.
+            Therefore using the default seed allow to draw and evaluate real-evaluated 
+            points. It's therefore highly suggested to not change this value in most
+            applications.
 
         raise_error_during_search (None | bool, optional):
             Whether to ignore the errors during the search.
@@ -134,8 +146,8 @@ class SearchCV:
             Forced to False if `n_iter` equal 1. 
        
 
-    Attributes:
-    ------------------------------------
+    ## Attributes:
+
         best_params_ (dict):
             Best HPs configuration obtained from the tuning procedure.
         
@@ -164,12 +176,12 @@ class SearchCV:
         self,
         *,
         clf_or_pipe: Classifier | Pipeline,
-        type_estimator: TUNABLE_ESTIMATOR_TYPE,
-        type_clf_or_pipe_preprocessing: PREPROCESSING_STRATEGIES | None,
-        algo: Literal["random", "tpe", "meta"],
+        type_estimator: TunableEstimatorType,
+        type_clf_or_pipe_preprocessing: PreprocessingStrategy | None,
+        algo: MetaAlgo,
         params_distributions: dict,
         n_iter: int,
-        n_cv_splits: int,
+        n_cv_folds: int,
         n_cv_repeats: int,
         seed: int,
         random_state_parameter: str,
@@ -179,8 +191,9 @@ class SearchCV:
         validation_set_size: float = 0.3,
         fit_classifier_kwargs: None | dict = None,
         meta_surrogate_model: None | str | Path = None,
-        meta_strategy: Literal["best", "random_from_best", "uniform_from_best"] = "random_from_best",
-        meta_strategy_params: None | BestMetaStrategyParams | RandomFromBestMetaStrategyParams | UniformFromBestMetaStrategyParams = None,
+        meta_strategy: MetaStrategy = "random_from_best",
+        meta_strategy_params: None | MetaStrategyParams = None,
+        meta_seed: int = 42,
         raise_error_during_search: None | bool = None,
         build_df_search: None | bool = None,
         refit_with_best_hps: None | bool = None,
@@ -194,7 +207,7 @@ class SearchCV:
         self.random_state_parameter=random_state_parameter
         self.n_iter=n_iter
         self.n_cv_repeats=n_cv_repeats
-        self.n_cv_splits=n_cv_splits
+        self.n_cv_folds=n_cv_folds
         self.seed=seed
         self.metric_to_minimize=metric_to_minimize
         self.early_stop_on_validation_set=early_stop_on_validation_set
@@ -204,6 +217,7 @@ class SearchCV:
         self.meta_surrogate_model=meta_surrogate_model
         self.meta_strategy=meta_strategy
         self.meta_strategy_params=meta_strategy_params
+        self.meta_seed=meta_seed
         
         self.cross_validator=CrossValidator(
             clf_or_pipe=clf_or_pipe,
@@ -213,7 +227,7 @@ class SearchCV:
             validation_set_size=validation_set_size,
             fit_classifier_kwargs=self.fit_classifier_kwargs, # here we must always pass a dict
             metric=metric_to_minimize,
-            n_splits=n_cv_splits,
+            n_folds=n_cv_folds,
             n_repeats=n_cv_repeats,
             seed=seed
         )
@@ -254,6 +268,7 @@ class SearchCV:
                 raise ValueError(
                     "'type_clf_or_pipe_preprocessing' cannot be None with 'meta' algo."
                 )
+            self._check_meta_strategy_params()
             self._fit_with_meta_points()
         
         elif self.algo in ["random", "tpe"]:
@@ -320,15 +335,11 @@ class SearchCV:
             acquisition_func=acquisition_func
         )
 
-        # Note: we use the fixed seed of 42 for the surrogate framework and its components.
-        # This seed is the one used to generate the prior on which the surrogate has been trained,
-        # meaning that we use "real" evaluated points as candidates.
-        ## TODO: change approach? 
         surrogate_worker.fit(
             X=self._X,
             y=self._y,
             hp_space=self.params_distributions,
-            seed=42
+            seed=self.meta_seed
         )
 
         # 1500 are the points used in our prior for all estimators (for now)
@@ -336,7 +347,7 @@ class SearchCV:
         # TODO: use "new" points also?
         n_candidate_points = max(1500, self.n_iter) \
             if self.meta_strategy_params is None \
-            else self.meta_strategy_params["n_candidate_points"]
+            else self.meta_strategy_params.n_candidate_points
 
         _ = surrogate_worker.draw_candidates(
             n_candidate_points=n_candidate_points,
@@ -354,16 +365,16 @@ class SearchCV:
             # meaning we give "3 choices for point"
             top = min(self.n_iter * 3, n_candidate_points) \
                 if self.meta_strategy_params is None \
-                else self.meta_strategy_params["top"]
+                else self.meta_strategy_params.top
             
-            # we use the seed of the instance to allow variability,
+            # we use the "normal" seed of the instance to allow variability,
             # when not hardcoded in the supplied params
-            meta_seed = self.seed if self.meta_strategy_params is None else self.meta_strategy_params["seed"]
+            propose_seed = self.seed if self.meta_strategy_params is None else self.meta_strategy_params.seed
 
             points = surrogate_worker.propose_random_from_top(
                 n_proposed=self.n_iter,
                 top=top,
-                seed=meta_seed
+                seed=propose_seed
             )
         
         elif self.meta_strategy == "uniform_from_best":
@@ -371,7 +382,7 @@ class SearchCV:
             if self.meta_strategy_params is None:
                 step_size = 3 if (n_candidate_points / self.n_iter) > 3 else 1
             else:
-                step_size = self.meta_strategy_params["step_size"]
+                step_size = self.meta_strategy_params.step_size
             
             points = surrogate_worker.propose_uniform_from_top(
                 n_steps=self.n_iter,
@@ -573,3 +584,37 @@ class SearchCV:
     def predict_proba(self, X: pd.DataFrame, **kwargs) -> np.ndarray:
         check_is_fitted(self, "best_estimator_")
         return self.best_estimator_.predict_proba(X)
+
+
+
+    def _check_meta_strategy_params(self) -> None:
+        '''Check that the meta strategy and related params are compatible'''
+        if self.meta_strategy_params is None:
+            return None
+        
+        if (
+            self.meta_strategy == "best" and 
+            not isinstance(self.meta_strategy_params, BestMetaStrategyParams)
+        ):
+            raise ValueError((
+                "With 'best' meta_strategy a 'BestMetaStrategyParams'"
+                " object is expected in meta_strategy_params."
+            ))
+        
+        elif (
+            self.meta_strategy == "random_from_best" and 
+            not isinstance(self.meta_strategy_params, RandomFromBestMetaStrategyParams)
+        ):
+            raise ValueError((
+                "With 'random_from_best' meta_strategy a 'RandomFromBestMetaStrategyParams'"
+                " object is expected in meta_strategy_params."
+            ))
+        
+        elif (
+            self.meta_strategy == "uniform_from_best" and
+            not isinstance(self.meta_strategy_params, UniformFromBestMetaStrategyParams)
+        ):
+            raise ValueError((
+                "With 'uniform_from_best' meta_strategy a 'UniformFromBestMetaStrategyParams'"
+                " object is expected in meta_strategy_params."
+            ))

@@ -28,7 +28,7 @@ def log_iteration(pars: dict, fold: int, repetition: int, logger: Logger) -> Non
     if pars["splitting_mode"] == "cv":
         logger.debug(f'Running on fold {fold} of repetition {repetition}:')
     elif pars["splitting_mode"] == "holdout":
-        logger.debug(f'Running holdout iteration {fold}":')
+        logger.debug(f'Running holdout iteration {fold}:')
 
 
 

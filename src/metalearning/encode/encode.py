@@ -34,13 +34,12 @@ from sklearn.preprocessing import OrdinalEncoder, OneHotEncoder
 from sklearn.feature_selection import VarianceThreshold
 from sklearn.compose import ColumnTransformer
 from metalearning.encode.transformers import NanToNone, ColToStr, InfToNan
-from estimators.utils.types import TUNABLE_ESTIMATOR_TYPE
+from estimators.utils.types import TunableEstimatorType
 
 from hp_search.tabpfn_search_space import (
     enumerate_preprocess_transforms,
     TABPFN_CHECKPOINTS
 )
-
 
 
 
@@ -57,9 +56,15 @@ COLUMN_TRANSFORMER_FIXED_PARAMS = {
 }
 
 
+### TODO: add no preprocessing (we have to regenerate the surrogate models once changed)
+# since handle_unknow was set to 'error'
 PREPROCESSING_COLUMN_ENCODING = (
     "preprocessing_column", 
-    OneHotEncoder(categories=[["base", "pca", "density_filter"]], sparse_output=False),
+    OneHotEncoder(
+        categories=[["base", "pca", "density_filter"]], 
+        handle_unknown="ignore",  # to maintain model functionality when we add more preprocessig options
+        sparse_output=False
+    ),
     ["preprocessing"]
 )
 
@@ -219,7 +224,7 @@ HPS_ENCODING_SCHEME = {
 }
 
 
-def get_encoding_scheme(estimator: TUNABLE_ESTIMATOR_TYPE) -> list:
+def get_encoding_scheme(estimator: TunableEstimatorType) -> list:
     '''
     Get a deepcopy of the encoding scheme of the HP feature space designed for the input estimator.
     The encoding scheme consists in a ordered list of sklearn transformers to insert in a Pipeline object.

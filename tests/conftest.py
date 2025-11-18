@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING
 from sklearn.datasets import load_iris
 from functools import partial
 from estimators.params import TuningParams
+from estimators.core.configurations import EarlyStopConfiguration, TuneConfiguration
 
 from estimators.estimators import (
     MyRandomForestClassifier,
@@ -42,16 +43,15 @@ if TYPE_CHECKING:
 
 ### We define different parameters configuration to speed up the fitting procedure ----------------------------------
 
-TEST_TUNE_CONFIGURATION = {
-    "configuration": "c0",
-    "algo": "random",
-    "n_iter": 5,
-    "n_repeats": 1,
-    "n_folds": 3,
-    "meta_strategy": "best",
-    "meta_strategy_params": None,
-    "meta_surrogate_model": None
-}
+TEST_TUNE_CONFIGURATION = TuneConfiguration(
+    algo="random",
+    n_iter=5,
+    n_cv_repeats=1,
+    n_cv_folds=2,
+    meta_strategy="best",
+    params_distributions="to_overwrite"
+)
+
 
 TEST_RANDOM_FOREST_FIXED_PARAMS = {
     "n_estimators": 10
@@ -114,7 +114,7 @@ def _fit_estimator(
     *,
     estimator: Estimator,
     fixed_params: dict | None,
-    tune_configuration: dict | None,
+    tune_configuration: TuneConfiguration | None,
     params_distributions: dict | None,
     file: str | Path, 
     X: pd.DataFrame, 
@@ -125,16 +125,14 @@ def _fit_estimator(
     fixed_params = {} if fixed_params is None else fixed_params
 
     if tune_configuration:
-        tune_configuration["params_distributions"] = params_distributions
+        tune_configuration = deepcopy(tune_configuration)
+        tune_configuration.params_distributions = params_distributions
     
     estimator = estimator(
         preprocessing="estimator_default", 
         seed=0,
         n_threads=4,
-        early_stop_configuration={
-            "early_stop_rounds": 4, 
-            "validation_set_size": 0.3
-        },
+        early_stop_configuration=EarlyStopConfiguration(),
         tune_configuration=tune_configuration
     )
 
@@ -234,7 +232,6 @@ def _fit_alternative_tune_spaces(
     '''
     for space in spaces:
         conf = deepcopy(TEST_TUNE_CONFIGURATION)
-        conf["configuration"] = space
         params = getattr(TuningParams, f"{tuning_param_prefix}_C{re.sub("c", "", space)}")
         _fit_estimator_on_iris(
             estimator=cls,

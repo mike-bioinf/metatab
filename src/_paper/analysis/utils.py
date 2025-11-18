@@ -4,7 +4,7 @@ import pandas as pd
 import warnings
 from ast import literal_eval
 from typing import Any, Callable, Literal
-from estimators.utils.types import ALL_ESTIMATOR_TYPE
+from estimators.utils.types import EstimatorType
 from estimators.utils.constants import GBDT_ESTIMATORS
 
 
@@ -164,12 +164,12 @@ def filter_hpo(
 
 
 
-def is_early_stopped_estimator(estimator: ALL_ESTIMATOR_TYPE, invert: bool = False) -> bool:
+def is_early_stopped_estimator(estimator: EstimatorType, invert: bool = False) -> bool:
     '''
     Utility to infer whether the estimator is early stopped or not based on its "str type".
 
     Parameters:
-        estimator (ALL_ESTIMATOR_TYPE): Estimator "str type".
+        estimator (EstimatorType): Estimator "str type".
         invert (bool, optional): Whether to invert the check.
 
     Returns:
@@ -180,12 +180,12 @@ def is_early_stopped_estimator(estimator: ALL_ESTIMATOR_TYPE, invert: bool = Fal
 
 
 
-def is_gbdt_estimator(estimator: ALL_ESTIMATOR_TYPE, invert: bool = False) -> bool:
+def is_gbdt_estimator(estimator: EstimatorType, invert: bool = False) -> bool:
     '''
     Utility to infer whether the estimator belongs to the gbdt family based on its "str type"
 
     Parameters:
-        estimator (ALL_ESTIMATOR_TYPE): Estimator "str type".
+        estimator (EstimatorType): Estimator "str type".
         invert (bool, optional): Whether to invert the check.
     
     Returns:

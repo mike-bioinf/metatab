@@ -1,6 +1,7 @@
 import pandas as pd
 from copy import deepcopy
 from typing import Any, Callable
+from dataclasses import fields, is_dataclass
 
 
 
@@ -159,3 +160,15 @@ def select_level_from_columns(df: pd.DataFrame, level: int | str) -> pd.DataFram
     df_new = df.copy()
     df_new.columns = df.columns.get_level_values(level)
     return df_new
+
+
+
+def asdict_shallow(obj_dataclass) -> dict:
+    '''
+    The standard 'asdict' utility provided by the dataclass module
+    acts by default in a recursive way. This utility allows implements
+    a shallow version.
+    '''
+    if not is_dataclass(obj_dataclass):
+        raise ValueError("obj_dataclass must be a dataclass instance.")
+    return {field.name: getattr(obj_dataclass, field.name) for field in fields(obj_dataclass)}

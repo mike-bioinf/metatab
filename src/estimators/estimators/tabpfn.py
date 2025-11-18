@@ -7,7 +7,8 @@ from hp_search.tabpfn_search_space import download_and_return_tabpfn_checkpoints
 from estimators.core import (
     AbstractBaseEstimator,
     DefaultEstimatorMixin,
-    TunedEstimatorMixin
+    TunedEstimatorMixin,
+    BaseMetaEstimator
 )
 
 ## TODO: to clear in accordance to Auto and finetune versions
@@ -94,6 +95,14 @@ class MyTunedTabPFNClassifier(TunedEstimatorMixin, AbstractBaseEstimator):
             is_early_stopped=False,
             density_feature_selector_strategy="undersample" # to speed up.
         )
+        return self
+
+
+
+class MetaTuneTabPFNClassifier(BaseMetaEstimator):
+    ## TODO: allows for numpy arrays
+    def fit(self, X: pd.DataFrame, y: pd.Series) -> "MetaTuneTabPFNClassifier":
+        super().fit(X, y, "density_filter", MyTunedTabPFNClassifier, TuningParams.TABPFN_C0, None)
         return self
 
 

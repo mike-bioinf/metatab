@@ -20,13 +20,12 @@ def create_cross_validator() -> CrossValidator:
         validation_set_size=None,
         fit_classifier_kwargs={},
         metric="logloss",
-        n_splits=3,
+        n_folds=3,
         n_repeats=1,
         seed=0
     )
 
     return cross_validator
-
 
 
 def fit_cross_validator(cross_validator: CrossValidator) -> tuple[float, pd.DataFrame, CrossValidator]:
@@ -42,7 +41,6 @@ def test_cross_validator_fitting_procedure_not_raise_expections():
     _ = fit_cross_validator(create_cross_validator())
 
 
-
 def test_cross_validator_works_as_expected():
     _, df_info, _ = fit_cross_validator(create_cross_validator())
     assert df_info.shape[0] == 3, "Wrong number of rows for df_info"
@@ -53,7 +51,6 @@ def test_cross_validator_works_as_expected():
                 raise ValueError("Check on cols is failing.")
     except:
         assert False, f"{col} not found in df_info"
-
 
 
 def test_reproducibility_of_cross_validator_results():

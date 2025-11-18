@@ -1,5 +1,5 @@
 from estimators.params import TuningParams
-from estimators.utils.types import TUNABLE_ESTIMATOR_TYPE
+from estimators.utils.types import TunableEstimatorType
 
 
 
@@ -17,7 +17,7 @@ DEFAULT_ESTIMATORS_TUNE_SPACES = {
 }
 
 
-def pick_estimator_tune_space(space: str, estimator: TUNABLE_ESTIMATOR_TYPE) -> dict:
+def pick_estimator_tune_space(space: str, estimator: TunableEstimatorType) -> dict:
      match (estimator, space):
         case ("random_forest", "c0"):
             return TuningParams.RF_C0
