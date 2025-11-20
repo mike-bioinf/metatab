@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 from pathlib import Path
 from estimators.estimators import Estimator
-from estimators.preprocessing import get_estimator_default_preprocessing
+from preprocessing.preprocessing import get_estimator_default_preprocessing
 from estimators.core.configurations import TuneConfiguration, EarlyStopConfiguration
 
 from estimators.utils.constants import (

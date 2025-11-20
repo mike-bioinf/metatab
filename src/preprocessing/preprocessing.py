@@ -5,11 +5,11 @@ from sklearn.pipeline import Pipeline, make_pipeline
 from sklearn.feature_selection import VarianceThreshold
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
-from preprocessing import DensityFeatureSelector
+from preprocessing.density_selector import DensityFeatureSelector
 
 if TYPE_CHECKING:
-    from estimators.utils.types import Classifier
-    from estimators.utils.types import PreprocessingStrategy, EstimatorType
+    from estimators.utils.types import Classifier, EstimatorType
+    from preprocessing.types import PreprocessingStrategy
 
 
 
@@ -141,7 +141,7 @@ def _create_density_filter_pipeline(
                 DensityFeatureSelector(
                     n_target_cols=500, 
                     strategy=density_feature_selector_strategy,
-                    error_on_empty=True
+                    on_empty="select_all"
                 )
             ),
             classifier,

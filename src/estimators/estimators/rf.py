@@ -1,6 +1,7 @@
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
 from estimators.params import TuningParams, DefaultParams
+from metatab_utils.types import XType, YType
 
 from estimators.core import (
     AbstractBaseEstimator, 
@@ -20,7 +21,7 @@ class MyRandomForestClassifier(DefaultEstimatorMixin, AbstractBaseEstimator):
     '''
     fixed_params = DefaultParams.RANDOM_FOREST_DEFAULT_PARAMS
 
-    def fit(self, X: pd.DataFrame, y: pd.Series) -> "MyRandomForestClassifier":
+    def fit(self, X: XType, y: YType) -> "MyRandomForestClassifier":
         self.estimator_ = super().fit_estimator(
             X=X,
             y=y,
@@ -42,7 +43,7 @@ class MyTunedRandomForestClassifier(TunedEstimatorMixin, AbstractBaseEstimator):
     '''
     fixed_params = TuningParams.RANDOM_FOREST_FIXED_PARAMS 
     
-    def fit(self, X: pd.DataFrame, y: pd.Series) -> "MyTunedRandomForestClassifier":
+    def fit(self, X: XType, y: YType) -> "MyTunedRandomForestClassifier":
         self.estimator_ = super().fit_estimator(
             X=X,
             y=y,
@@ -56,7 +57,6 @@ class MyTunedRandomForestClassifier(TunedEstimatorMixin, AbstractBaseEstimator):
 
 
 class MetaTuneRandomForestClassifier(BaseMetaEstimator):
-    ## TODO: allow also numpy arrays
-    def fit(self, X: pd.DataFrame, y: pd.Series) -> "MetaTuneRandomForestClassifier":
+    def fit(self, X: XType, y: YType) -> "MetaTuneRandomForestClassifier":
         super().fit(X, y, "base", MyTunedRandomForestClassifier, TuningParams.RF_C0, None)
         return self

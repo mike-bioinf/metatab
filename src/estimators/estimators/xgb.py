@@ -1,8 +1,8 @@
-import pandas as pd
 from functools import partial
 from xgboost import XGBClassifier
 from estimators.params import TuningParams, DefaultParams
 from estimators.core.configurations import EarlyStopConfiguration
+from metatab_utils.types import XType, YType
 
 from estimators.core import (
     AbstractBaseEstimator, 
@@ -27,7 +27,7 @@ class MyXGBClassifier(DefaultEstimatorMixin, AbstractBaseEstimator):
     '''
     fixed_params = DefaultParams.XGB_DEFAULT_PARAMS
 
-    def fit(self, X: pd.DataFrame, y: pd.Series) -> "MyXGBClassifier":
+    def fit(self, X: XType, y: YType) -> "MyXGBClassifier":
         self.estimator_ = super().fit_estimator(
             X=X,
             y=y,
@@ -52,7 +52,7 @@ class MyESXGBClassifier(DefaultEstimatorMixin, AbstractBaseEstimator):
     '''
     fixed_params=DefaultParams.ES_XGB_DEFAULT_PARAMS
     
-    def fit(self, X: pd.DataFrame, y: pd.Series) -> "MyESXGBClassifier":
+    def fit(self, X: XType, y: YType) -> "MyESXGBClassifier":
         self.estimator_ = super().fit_estimator(
             X=X,
             y=y,
@@ -79,7 +79,7 @@ class MyTunedXGBClassifier(TunedEstimatorMixin, AbstractBaseEstimator):
     '''
     fixed_params=TuningParams.XGB_FIXED_PARAMS
 
-    def fit(self, X: pd.DataFrame, y: pd.Series) -> "MyTunedXGBClassifier":
+    def fit(self, X: XType, y: YType) -> "MyTunedXGBClassifier":
         self.estimator_ = super().fit_estimator(
             X=X,
             y=y,
@@ -104,7 +104,7 @@ class MyTunedESXGBClassifier(TunedEstimatorMixin, AbstractBaseEstimator):
     '''
     fixed_params = TuningParams.ES_XGB_FIXED_PARAMS
 
-    def fit(self, X: pd.DataFrame, y: pd.Series) -> "MyTunedESXGBClassifier":
+    def fit(self, X: XType, y: YType) -> "MyTunedESXGBClassifier":
         self.estimator_ = super().fit_estimator(
             X=X,
             y=y,
@@ -123,8 +123,7 @@ class MyTunedESXGBClassifier(TunedEstimatorMixin, AbstractBaseEstimator):
 
 
 class MetaTuneXGBClassifier(BaseMetaEstimator):
-    ## TODO: allow for numpy arrays
-    def fit(self, X: pd.DataFrame, y: pd.Series) -> "MetaTuneXGBClassifier":
+    def fit(self, X: XType, y: YType) -> "MetaTuneXGBClassifier":
         super().fit(X, y, "base", MyTunedXGBClassifier, TuningParams.XGB_C0, None)
         return self
 
@@ -133,8 +132,8 @@ class MetaTuneXGBClassifier(BaseMetaEstimator):
 class MetaTuneEsXGBClassifier(BaseMetaEstimator):
     def fit(
         self,
-        X: pd.DataFrame, 
-        y: pd.Series,
+        X: XType, 
+        y: YType,
         early_stop_rounds: int = 100,
         validation_set_size: float = 0.3
     ) -> "MetaTuneEsXGBClassifier":

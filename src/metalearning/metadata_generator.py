@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import warnings
-import numpy as np
 import pandas as pd
 from typing import TYPE_CHECKING
 from sklearn.utils.validation import check_is_fitted
@@ -11,6 +10,7 @@ if TYPE_CHECKING:
     from metalearning.sampler import HyperoptRandomSampler
     from metalearning.metafeatures import CustomMFE
     from hp_search.point_corrector import PointCorrector
+    from metatab_utils.types import XType, YType
 
 
 
@@ -40,8 +40,8 @@ class MetadataGenerator():
     
     def fit(
         self, 
-        X: pd.DataFrame | np.ndarray, 
-        y: pd.Series | np.ndarray, 
+        X: XType, 
+        y: YType, 
         hp_space: dict,
         seed: int
     ) -> "MetadataGenerator":
@@ -50,8 +50,8 @@ class MetadataGenerator():
         The provided `hp_space` must be compatible with the assigned sampler.
 
         Parameters:
-            X (pd.DataFrame | np.ndarray): Feature matrix.
-            y (pd.Series | np.ndarray): Target vector.
+            X (XType): Feature matrix.
+            y (YType): Target vector.
             hp_space (dict): Hyperparameter space.
             seed (int): Random seed controlling candidate sampling.
 

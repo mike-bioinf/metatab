@@ -1,4 +1,4 @@
-import pandas as pd
+import numpy as np
 from copy import deepcopy
 from typing import Literal
 
@@ -6,7 +6,7 @@ from typing import Literal
 
 def adjust_objective_logloss_and_num_classes(
     params: dict, 
-    y: pd.Series,
+    y: np.ndarray,
     copy: bool,
     framework: Literal["catboost", "xgboost", "lightgbm"]
 ) -> dict:
@@ -18,7 +18,7 @@ def adjust_objective_logloss_and_num_classes(
     Returns the updated dict of params.
     '''
     params = deepcopy(params) if copy else params
-    n_classes = y.unique().size
+    n_classes = np.unique(y).size
     
     if framework == "catboost":
         loss_parameter = "loss_function"
@@ -50,7 +50,7 @@ def adjust_objective_logloss_and_num_classes(
 
 def adjust_es_logloss_metric(
     params: dict, 
-    y: pd.Series, 
+    y: np.ndarray, 
     copy: bool,
     framework: Literal["catboost", "xgboost", "lightgbm"]
 ) -> dict:
@@ -62,7 +62,7 @@ def adjust_es_logloss_metric(
     Returns the updated dict of params.
     '''
     params = deepcopy(params) if copy else params
-    n_classes = y.unique().size
+    n_classes = np.unique(y).size
 
     if framework == "catboost":
         metric_parameter = "eval_metric"

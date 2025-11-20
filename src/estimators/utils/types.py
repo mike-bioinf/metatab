@@ -82,12 +82,3 @@ EstimatorType = Literal[
     "autotabpfn",
     "finetunetabpfn"
 ]
-
-
-PreprocessingStrategy = Literal[
-    "estimator_default",
-    "base",
-    "density_filter",
-    "pca",
-    "no"
-]

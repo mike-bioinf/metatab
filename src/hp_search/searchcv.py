@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import time
 import joblib
 import numpy as np
@@ -5,12 +7,11 @@ import pandas as pd
 from pathlib import Path
 from copy import deepcopy
 from functools import partial
-from typing import Literal
+from typing import Literal, TYPE_CHECKING
 from sklearn.pipeline import Pipeline
 from sklearn.utils.validation import check_is_fitted
 from hyperopt import STATUS_OK, STATUS_FAIL, tpe, rand, fmin, space_eval
 from hyperopt.pyll.stochastic import sample
-from estimators.utils.types import Classifier, PreprocessingStrategy, TunableEstimatorType
 from estimators.utils.fit import fit_with_early_stop_on_validation_set
 from estimators.params import HPS_MIXED_TYPED
 from hp_search.point_corrector import PointCorrector
@@ -19,10 +20,9 @@ from metalearning.load import query_surrogate_framework
 from metalearning.acquisition_funcs import compute_upper_confidence_bound
 from metalearning.surrogate_worker import SurrogateWorker
 from metalearning.sampler import HyperoptRandomSampler
-from metalearning.generator import MetadataGenerator
+from metalearning.metadata_generator import MetadataGenerator
 from metatab_utils.general import add_broadcasted_objects_as_column
 from hp_search.cv import CrossValidator
-from hp_search.types import MetaAlgo, MetaStrategy, MetaStrategyParams
 
 from hp_search.utils import (
     ConfigSearchCV, 
@@ -31,6 +31,13 @@ from hp_search.utils import (
     RandomFromBestMetaStrategyParams,
     UniformFromBestMetaStrategyParams
 )
+
+if TYPE_CHECKING:
+    from preprocessing.types import PreprocessingStrategy
+    from estimators.utils.types import Classifier, TunableEstimatorType
+    from hp_search.types import MetaAlgo, MetaStrategy, MetaStrategyParams
+    from metatab_utils.types import XType, YType
+
 
 
 
@@ -243,10 +250,10 @@ class SearchCV:
         
 
 
-    def fit(self, X: pd.DataFrame, y: pd.Series) -> "SearchCV":
+    def fit(self, X: XType, y: YType) -> "SearchCV":
         '''Performs HPO. Returns the instance. '''
-        self._X = X
-        self._y = y
+        self._X = X if isinstance(X, np.ndarray) else X.to_numpy()
+        self._y = y if isinstance(y, np.ndarray) else y.to_numpy()
 
         self._point_corrector = PointCorrector()
         self._set_point_to_model_corrections()
@@ -281,6 +288,8 @@ class SearchCV:
         if self.build_df_search and not self.save_realtime_df_search_filepath:
             self.df_search_ = self._build_df_search()
 
+        # we refit on the original X and y to not influence sklearn expection
+        # about the fit type which is checked at predict time 
         if self.refit_with_best_hps:
             best_estimator = deepcopy(self.clf_or_pipe)
             set_params_into_clf(best_estimator, self.best_params_)   

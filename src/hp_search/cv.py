@@ -13,7 +13,6 @@ if TYPE_CHECKING:
     from sklearn.pipeline import Pipeline
     from estimators.utils.types import Classifier
     
-    
 
 
 class CrossValidator:
@@ -84,8 +83,8 @@ class CrossValidator:
 
     def fit(
         self,
-        X: pd.DataFrame,
-        y: pd.Series,
+        X: np.ndarray,
+        y: np.ndarray,
         params: dict, 
         agg: Literal["mean", "sum"],
         collect_info: bool,
@@ -94,8 +93,8 @@ class CrossValidator:
         Fit the cv procedure on the instance data.
 
         Parameters:
-            X (pd.DataFrame): X data.
-            y (pd.Series): y data.
+            X (np.ndarray): X data.
+            y (np.ndarray): y data.
             params (dict): Dict of classifier parameters. They must NOT follow the "pipeline format".
             agg (Literal["mean", "sum"]): How to aggregate the cv round performances.
             collect_info (bool): Whether to collect and return the cv info as dataframe.
@@ -131,8 +130,8 @@ class CrossValidator:
             round_cv_seed = {self.clf_random_state_parameter: int(rng.integers(0, 2**32))}
             set_params_into_clf(clf_or_pipe, round_cv_seed, set_tabpfn_inference_config=False)
             
-            X_train, y_train = X.iloc[train_idx, :], y.iloc[train_idx]
-            X_test, y_test = X.iloc[test_idx, :], y.iloc[test_idx]
+            X_train, y_train = X[train_idx, :], y[train_idx]
+            X_test, y_test = X[test_idx, :], y[test_idx]
 
             if self.early_stop_on_validation_set:
                 clf_or_pipe = fit_with_early_stop_on_validation_set(

@@ -1,7 +1,7 @@
-import pandas as pd
 from functools import partial
 from catboost import CatBoostClassifier
 from estimators.params import TuningParams, DefaultParams
+from metatab_utils.types import XType, YType
 
 from estimators.core import (
     TunedEstimatorMixin, 
@@ -25,7 +25,7 @@ class MyCatBoostClassifier(DefaultEstimatorMixin, AbstractBaseEstimator):
     '''
     fixed_params=DefaultParams.CATBOOST_DEFAULT_PARAMS
 
-    def fit(self, X: pd.DataFrame, y: pd.Series) -> "MyCatBoostClassifier":
+    def fit(self, X: XType, y: YType) -> "MyCatBoostClassifier":
         self.estimator_ = super().fit_estimator(
             X=X,
             y=y,
@@ -51,7 +51,7 @@ class MyESCatBoostClassifier(DefaultEstimatorMixin, AbstractBaseEstimator):
     '''
     fixed_params=DefaultParams.ES_CATBOOST_DEFAULT_PARAMS
 
-    def fit(self, X: pd.DataFrame, y: pd.Series) -> "MyESCatBoostClassifier":
+    def fit(self, X: XType, y: YType) -> "MyESCatBoostClassifier":
         self.estimator_ = super().fit_estimator(
             X=X,
             y=y,
@@ -78,7 +78,7 @@ class MyTunedCatBoostClassifier(TunedEstimatorMixin, AbstractBaseEstimator):
     '''
     fixed_params=TuningParams.CATBOOST_FIXED_PARAMS
 
-    def fit(self, X: pd.DataFrame, y: pd.Series) -> "MyTunedCatBoostClassifier":
+    def fit(self, X: XType, y: YType) -> "MyTunedCatBoostClassifier":
         self.estimator_ = super().fit_estimator(
             X=X,
             y=y,
@@ -104,7 +104,7 @@ class MyTunedESCatBoostClassifier(TunedEstimatorMixin, AbstractBaseEstimator):
     '''
     fixed_params=TuningParams.ES_CATBOOST_FIXED_PARAMS
 
-    def fit(self, X: pd.DataFrame, y: pd.Series) -> "MyTunedESCatBoostClassifier":
+    def fit(self, X: XType, y: YType) -> "MyTunedESCatBoostClassifier":
         self.estimator_ = super().fit_estimator(
             X=X,
             y=y,

@@ -1,35 +1,35 @@
-'''
-For all the compute functions defined in this module we are assuming in input a full numeric dataframe.
-'''
 import re
-import pandas as pd
+import numpy as np
 from typing import Iterable, Any
 from sklearn.utils.validation import check_is_fitted
-from preprocessing.utils import get_density_scores
 from pymfe.mfe import MFE
 from metatab_utils.general import ensure_or_create, enlist
+from metatab_utils.types import XType, YType
 
 
 
 HIGH_SPARSITY_THRESHOLD = 0.8
 LOW_SPARSITY_THRESHOLD = 0.2
-    
-
-def compute_fraction_full_zero_columns(df: pd.DataFrame) -> float:
-    '''Returns the fraction of full zero columns over their total number'''
-    return (((df == 0).all(axis=0)).sum()) / df.shape[1]
 
 
-def compute_fraction_full_dense_columns(df: pd.DataFrame) -> float:
-    return (get_density_scores(df) == 1).sum() / df.shape[1]
+def compute_fraction_full_zero_columns(X: np.ndarray) -> float:
+    return np.all((X == 0), axis=0).sum() / X.shape[1]
 
 
-def compute_fraction_high_sparsity_columns(df: pd.DataFrame) -> float:
-    return ((1 - get_density_scores(df)) >= HIGH_SPARSITY_THRESHOLD).sum() / df.shape[1]
+def compute_fraction_full_dense_columns(X: np.ndarray) -> float:
+    return (_get_columns_density_scores(X) == 1).sum() / X.shape[1]
 
 
-def compute_fraction_low_sparsity_columns(df: pd.DataFrame) -> float:
-    return ((1 - get_density_scores(df)) <= LOW_SPARSITY_THRESHOLD).sum() / df.shape[1]
+def compute_fraction_high_sparsity_columns(X: np.ndarray) -> float:
+    return ((1 - _get_columns_density_scores(X)) >= HIGH_SPARSITY_THRESHOLD).sum() / X.shape[1] 
+
+
+def compute_fraction_low_sparsity_columns(X: np.ndarray) -> float:
+    return ((1 - _get_columns_density_scores(X)) <= LOW_SPARSITY_THRESHOLD).sum() / X.shape[1]
+
+
+def _get_columns_density_scores(X: np.ndarray) -> np.ndarray:
+    return np.mean((X != 0), axis=0)
 
 
 MAP_SPARSE_METAFEATURES = {
@@ -73,7 +73,7 @@ class CustomMFE:
     Custom version of the `MFE` class of `pymfe` package.
 
     Changes:
-    - We extract the metafeatures from pandas DataFrame and Series directly.
+    - We can extract the metafeatures from pandas DataFrame and Series.
     - We can compute additional sparsity metafeatures. These are simple metafeatures 
     on which the summarization function are not applied. They can be computed on the
     original data only (if transformation want to be applied an error is raised).
@@ -190,8 +190,8 @@ class CustomMFE:
 
     def fit(
         self, 
-        X: pd.DataFrame, 
-        y: pd.Series,
+        X: XType, 
+        y: YType,
         transform_num: bool = False,
         transform_cat: str = None,
         rescale: str | None = None,
@@ -224,13 +224,13 @@ class CustomMFE:
                 "Is not possible to compute additional_sparse metafeature on transformed data."
             )
         
-        self._X = X
-        self._y = y
+        self._X = X if isinstance(X, np.ndarray) else X.to_numpy()
+        self._y = y if isinstance(X, np.ndarray) else y.to_numpy()
         
         if self.mfe:
             _ = self.mfe.fit(
-                X.to_numpy(), 
-                y.to_numpy(),
+                self._X, 
+                self._y,
                 transform_num=transform_num,
                 transform_cat=transform_cat,
                 rescale=rescale,

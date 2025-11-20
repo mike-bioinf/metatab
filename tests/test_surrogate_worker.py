@@ -7,7 +7,7 @@ from hp_search.point_corrector import PointCorrector
 from metalearning.surrogate_worker import SurrogateWorker
 from metalearning.sampler import HyperoptRandomSampler
 from metalearning.metafeatures import CustomMFE
-from metalearning.generator import MetadataGenerator
+from metalearning.metadata_generator import MetadataGenerator
 from metalearning.acquisition_funcs import compute_upper_confidence_bound
 from metalearning.load import query_surrogate_framework
 

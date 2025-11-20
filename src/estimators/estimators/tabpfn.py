@@ -1,8 +1,8 @@
 import warnings
-import pandas as pd
 from tabpfn import TabPFNClassifier
 from estimators.params import DefaultParams, TuningParams
 from hp_search.tabpfn_search_space import download_and_return_tabpfn_checkpoints, TABPFN_CHECKPOINTS
+from metatab_utils.types import XType, YType
 
 from estimators.core import (
     AbstractBaseEstimator,
@@ -59,7 +59,7 @@ class MyTabPFNClassifier(DefaultEstimatorMixin, AbstractBaseEstimator):
     fixed_params = DefaultParams.TABPFN_DEFAULT_PARAMS
  
     @suppress_sklearn_and_tabpfn_warnings
-    def fit(self, X: pd.DataFrame, y: pd.Series) -> "MyTabPFNClassifier":
+    def fit(self, X: XType, y: YType) -> "MyTabPFNClassifier":
         self.estimator_ = super().fit_estimator(
             X=X,
             y=y,
@@ -83,7 +83,7 @@ class MyTunedTabPFNClassifier(TunedEstimatorMixin, AbstractBaseEstimator):
     fixed_params = TuningParams.TABPFN_FIXED_PARAMS
 
     @suppress_sklearn_and_tabpfn_warnings
-    def fit(self, X: pd.DataFrame, y: pd.Series) -> "MyTunedTabPFNClassifier":
+    def fit(self, X: XType, y: YType) -> "MyTunedTabPFNClassifier":
         # we download the different tabpfn checkpoint in the user cache dir
         _ = download_and_return_tabpfn_checkpoints(TABPFN_CHECKPOINTS)
         self.estimator_ = super().fit_estimator(
@@ -100,8 +100,7 @@ class MyTunedTabPFNClassifier(TunedEstimatorMixin, AbstractBaseEstimator):
 
 
 class MetaTuneTabPFNClassifier(BaseMetaEstimator):
-    ## TODO: allows for numpy arrays
-    def fit(self, X: pd.DataFrame, y: pd.Series) -> "MetaTuneTabPFNClassifier":
+    def fit(self, X: XType, y: YType) -> "MetaTuneTabPFNClassifier":
         super().fit(X, y, "density_filter", MyTunedTabPFNClassifier, TuningParams.TABPFN_C0, None)
         return self
 

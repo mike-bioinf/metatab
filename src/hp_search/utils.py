@@ -98,7 +98,7 @@ def set_params_into_clf(
     '''
     Set the parameters into the classifier in place. 
     The method works with all type of classifiers and even when they head pipeline objects.
-    Note that the method expects 'classified formatted' parameters.
+    Note that the method expects 'classifier formatted' parameters.
     The method overwrites the pre-existent parameters values for the ones specified in params.
     For tabpfn classifiers is possible to micro manage the setting of the `inference_config__` 
     marked parameters.

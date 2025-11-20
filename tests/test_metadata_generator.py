@@ -3,7 +3,7 @@ import pandas as pd
 from sklearn.datasets import make_classification
 from hp_search.point_corrector import PointCorrector
 from metalearning.sampler import HyperoptRandomSampler
-from metalearning.generator import MetadataGenerator
+from metalearning.metadata_generator import MetadataGenerator
 from metalearning.metafeatures import CustomMFE
 from estimators.params import TuningParams
 

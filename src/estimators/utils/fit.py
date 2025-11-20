@@ -1,17 +1,22 @@
+from __future__ import annotations
+
 import time
-import pandas as pd
+from typing import TYPE_CHECKING
 from sklearn.pipeline import Pipeline
 from sklearn.model_selection import train_test_split
 from estimators.utils.general import remove_string_from_params
-from estimators.utils.types import Classifier
+
+if TYPE_CHECKING:
+    from estimators.utils.types import Classifier
+    from metatab_utils.types import XType, YType
 
 
 
 def fit_with_early_stop_on_validation_set(
     *,
     clf_or_pipe: Classifier | Pipeline,
-    X: pd.DataFrame,
-    y: pd.Series,
+    X: XType,
+    y: YType,
     seed: int,
     validation_set_size: float,
     eval_set_parameter: str,
@@ -28,9 +33,9 @@ def fit_with_early_stop_on_validation_set(
             The classifier or pipeline to fit. 
             If a pipeline it must ends with a classifier.
         
-        X (pd.DataFrame): Training feature space.
+        X (XType): Training feature space.
         
-        y (pd.Series): Training labels.
+        y (YType): Training labels.
         
         seed (int): Seed for reproducibility used ONLY in the train/val splitting.
         

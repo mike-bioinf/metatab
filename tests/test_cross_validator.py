@@ -4,6 +4,7 @@ from hyperopt.pyll.stochastic import sample
 from hp_search.cv import CrossValidator
 from lightgbm import LGBMClassifier
 from estimators.params import TuningParams
+from estimators.estimators.lgbm import ignore_lgbm_feature_name_warning
 from sklearn.datasets import load_iris
 
 
@@ -28,13 +29,13 @@ def create_cross_validator() -> CrossValidator:
     return cross_validator
 
 
+@ignore_lgbm_feature_name_warning
 def fit_cross_validator(cross_validator: CrossValidator) -> tuple[float, pd.DataFrame, CrossValidator]:
-    X, y = load_iris(return_X_y=True, as_frame=True)
+    X, y = load_iris(return_X_y=True, as_frame=False)
     lgbm_tune_space = TuningParams.LGMB_C0
     params = sample(lgbm_tune_space, rng=np.random.default_rng(0))
     loss, df_info = cross_validator.fit(X, y, params, "sum", True)
     return loss, df_info, cross_validator
-
 
 
 def test_cross_validator_fitting_procedure_not_raise_expections():
@@ -48,7 +49,7 @@ def test_cross_validator_works_as_expected():
     try:
         for col in ["repeat", "fold", "loss"]:
             if col not in df_info.columns:
-                raise ValueError("Check on cols is failing.")
+                raise ValueError("")
     except:
         assert False, f"{col} not found in df_info"
 

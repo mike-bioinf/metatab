@@ -1,8 +1,8 @@
 import numpy as np
-import pandas as pd
 from sklearn.base import BaseEstimator, RegressorMixin
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.utils.validation import check_is_fitted
+from metatab_utils.types import XType, YType
 
 
 
@@ -66,7 +66,7 @@ class SurrogateRandomForestRegressor(RegressorMixin, BaseEstimator):
         self.monotonic_cst = monotonic_cst
 
 
-    def fit(self, X: pd.DataFrame | np.ndarray, y: pd.DataFrame | np.ndarray) -> "SurrogateRandomForestRegressor":
+    def fit(self, X: XType, y: YType) -> "SurrogateRandomForestRegressor":
         forest = RandomForestRegressor(
             n_estimators=self.n_estimators,
             criterion=self.criterion,
@@ -90,7 +90,7 @@ class SurrogateRandomForestRegressor(RegressorMixin, BaseEstimator):
         return self
 
 
-    def predict(self, X: pd.DataFrame | np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    def predict(self, X: XType) -> tuple[np.ndarray, np.ndarray]:
         '''
         Predicts the values and their uncertainty.
         Returns a binary tuple of numpy arrays.
@@ -100,8 +100,7 @@ class SurrogateRandomForestRegressor(RegressorMixin, BaseEstimator):
         # on numpy arrays and therefore they raise the warning:
         # "X has feature names, but DecisionTreeRegressor was fitted without feature names" 
         # when used for inference on dataframe.
-        if isinstance(X, pd.DataFrame):
-            X = X.to_numpy()
+        X = X if isinstance(X, np.ndarray) else X.to_numpy()
         # tree_preds has shape (tree, pred)
         tree_preds = np.array([tree.predict(X) for tree in self.forest_.estimators_])
         # we compute the unbiased standard deviation with ddof = 1

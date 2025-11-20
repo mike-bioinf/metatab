@@ -5,8 +5,8 @@ from typing import TYPE_CHECKING
 from sklearn.utils.validation import check_is_fitted
 
 if TYPE_CHECKING:
-    import pandas as pd
     from hp_search.searchcv import SearchCV
+    from metatab_utils.types import XType
 
 
 
@@ -32,12 +32,6 @@ class TunedEstimatorMixin:
         return np.array(self.estimator_.search_losses_)
     
     
-    def get_feature_names_in_(self) -> np.ndarray:
-        check_is_fitted(self, "estimator_")
-        self._check_estimator_is_refitted()
-        return self.estimator_.best_estimator_.feature_names_in_
-
-    
     def get_refit_time(self) -> float:
         check_is_fitted(self, "estimator_")
         self._check_estimator_is_refitted()
@@ -49,29 +43,38 @@ class TunedEstimatorMixin:
         self._check_estimator_is_refitted()
         return super().collect_fit_preprocessing_info(self.estimator_.best_estimator_)
 
-
-    def collect_sklearn_fit_info(self) -> dict:
+    
+    def get_feature_names_in_(self) -> np.ndarray | None:
         check_is_fitted(self, "estimator_")
         self._check_estimator_is_refitted()
-        
-        features_names_in = self.estimator_.best_estimator_.feature_names_in_\
-            if hasattr(self.estimator_.best_estimator_, "feature_names_in_")\
-            else None
-        
-        return {
+        return getattr(self.estimator_.best_estimator_, "feature_names_in_", None)
+    
+
+    def collect_sklearn_fit_info(self) -> dict:
+        '''
+        Returns the `classes_`, `n_features_in_` and when existent 
+        the `feature_names_in_` info in a dict with the keys names
+        equal to the attributes names.
+        '''
+        check_is_fitted(self, "estimator_")
+        self._check_estimator_is_refitted()
+        out = {
             "classes_": self.estimator_.best_estimator_.classes_,
             "n_features_in_": self.estimator_.best_estimator_.n_features_in_,
-            "feature_names_in_": features_names_in
         }
+        feature_names_in = getattr(self.estimator_.best_estimator_, "feature_names_in_", None)
+        if feature_names_in is not None:
+            out["feature_names_in_"] = feature_names_in
+        return out
 
 
-    def predict_proba(self, X: pd.DataFrame | np.ndarray) -> np.ndarray:
+    def predict_proba(self, X: XType) -> np.ndarray:
         check_is_fitted(self, "estimator_")
         self._check_estimator_is_refitted()
         return self.estimator_.best_estimator_.predict_proba(X)
-    
 
-    def predict(self, X: pd.DataFrame | np.ndarray) -> np.ndarray:
+
+    def predict(self, X: XType) -> np.ndarray:
         check_is_fitted(self, "estimator_")
         self._check_estimator_is_refitted()
         return self.estimator_.best_estimator_.predict(X)

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pickle
+import pandas as pd
 from pathlib import Path
 from copy import deepcopy
 from abc import ABC, abstractmethod
@@ -8,20 +9,16 @@ from typing import Literal, TYPE_CHECKING, Callable
 from sklearn.pipeline import Pipeline
 from hp_search.searchcv import SearchCV
 from metatab_utils.general import ensure_or_create, asdict_shallow
-from estimators.preprocessing import create_classifier_pipeline
+from preprocessing import create_classifier_pipeline
 from estimators.utils.fit import fit_with_early_stop_on_validation_set
 
 if TYPE_CHECKING:
-    import pandas as pd
     from sklearn.decomposition import PCA
-    from preprocessing.density_selector import DensityFeatureSelector
-    
-    from estimators.utils.types import (
-        Classifier, 
-        PreprocessingStrategy, 
-        EstimatorType
-    )
-    
+    from preprocessing import DensityFeatureSelector
+    from preprocessing.types import PreprocessingStrategy
+    from metatab_utils.types import XType, YType    
+    from estimators.utils.types import Classifier, EstimatorType
+
     from estimators.core.configurations import (
         TuneConfiguration, 
         EarlyStopConfiguration, 
@@ -75,8 +72,8 @@ class AbstractBaseEstimator(ABC):
     def fit_estimator(
         self,
         *,
-        X: pd.DataFrame,  ###TODO: check if all works with numpy arrays --> CUSTOM MFE BREAKS, density_selection breaks
-        y: pd.Series,    ### TODO. check if all works if numpy arrays --> CUSTOM MFE BREAKS, density_selection breaks
+        X: XType,
+        y: YType,
         classifier_cls: Classifier,
         type_estimator: EstimatorType,
         is_tuned: bool,
@@ -91,18 +88,17 @@ class AbstractBaseEstimator(ABC):
     ) -> Classifier | Pipeline | SearchCV:
         '''
         Utility that abstracts the `fit` logic of concrete estimators.
-
         This function centralizes the repeated steps involved in preparing 
         and fitting the internal estimator involving:
         - Completing the `fixed_params` attribute of concrete estimators.
         - Creating the inner classifier or pipeline.
         - Fitting the inner estimator using the appropriate strategy.
+        
 
-     
         Parameters:
-            X (pd.DataFrame): Data to fit.
+            X (XType): Data to fit.
 
-            y (pd.Series): Data labels to fit.
+            y (Ytype): Data labels to fit.
             
             classifier_cls (Classifier): Classifier class.
             

@@ -5,7 +5,6 @@ In this module we implement the base meta estimator for the estimators py classe
 from __future__ import annotations
 
 import numpy as np
-import pandas as pd
 from typing import TYPE_CHECKING
 from estimators.core.configurations import TuneConfiguration, EarlyStopConfiguration
 
@@ -13,7 +12,8 @@ if TYPE_CHECKING:
     from sklearn.pipeline import Pipeline
     from estimators.estimators import Estimator
     from hp_search.types import MetaStrategy, MetaStrategyParams
-    from estimators.preprocessing import PreprocessingStrategy
+    from preprocessing.types import PreprocessingStrategy
+    from metatab_utils.types import XType, YType
 
 
 
@@ -157,11 +157,10 @@ class BaseMetaEstimator:
         self.n_threads=n_threads
 
 
-    ## TODO: allow also numpy arrays
     def fit(
         self,
-        X: pd.DataFrame, 
-        y: pd.Series,
+        X: XType, 
+        y: YType,
         preprocessing: PreprocessingStrategy,
         concrete_estimator_cls: Estimator,
         tuning_params: dict,
@@ -171,9 +170,9 @@ class BaseMetaEstimator:
         Fit the meta estimator.
 
         Parameters:
-            X (pd.DataFrame): Train data.
+            X (XType): Train data.
             
-            y (pd.Series): Train labels.
+            y (YType): Train labels.
             
             concrete_estimator_class (Estimator): 
                 Estimator class to instantiate.
@@ -208,14 +207,11 @@ class BaseMetaEstimator:
         )
 
         self.estimator_ = estimator.fit(X, y)
-
         fit_info = self.estimator_.collect_sklearn_fit_info()
-        self.classes_ = fit_info["classes_"]
-        self.n_features_in_ = fit_info["n_features_in_"]
-        # can be None since we can fit also from numpy arrays
-        if fit_info["feature_names_in_"] is not None:
-            self.feature_names_in_ = fit_info["feature_names_in_"]
 
+        for k, v in fit_info.items():
+            setattr(self, k, v)
+        
         if self.build_df_search:
             self.df_search_ = self.estimator_.estimator_.df_search_
 
@@ -225,12 +221,12 @@ class BaseMetaEstimator:
         return self
 
 
-    def predict(self, X: pd.DataFrame | np.ndarray) -> np.ndarray:
+    def predict(self, X: XType) -> np.ndarray:
         '''
         Predict class for X.
 
         Parameters:
-            X (pd.DataFrame | np.ndarray): Input samples.
+            X (XType): Input samples.
 
         Returns:
             np.ndarray: The predicted classes.
@@ -238,12 +234,12 @@ class BaseMetaEstimator:
         return self.estimator_.predict(X)
 
 
-    def predict_proba(self, X: pd.DataFrame | np.ndarray) -> np.ndarray:
+    def predict_proba(self, X: XType) -> np.ndarray:
         '''
         Predict class probabilities for X.
 
         Parameters:
-            X (pd.DataFrame | np.ndarray): Input samples.
+            X (XType): Input samples.
         
         Returns:
             np.ndarray: The class probabilities of the input samples.

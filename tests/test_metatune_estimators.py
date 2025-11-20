@@ -29,8 +29,8 @@ def test_metatune_estimator(metaclass):
     X, y = load_iris(return_X_y=True, as_frame=True)
     
     meta_estimator = metaclass(
-        n_iter=2, 
-        n_cv_folds=2, 
+        n_iter=2,
+        n_cv_folds=2,
         meta_strategy_params=BestMetaStrategyParams(n_candidate_points=3),
         build_df_search=True
     )

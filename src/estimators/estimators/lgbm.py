@@ -1,9 +1,9 @@
 import warnings
-import pandas as pd
 from functools import partial
 from lightgbm import LGBMClassifier
 from estimators.params import TuningParams, DefaultParams
 from estimators.core.configurations import EarlyStopConfiguration
+from metatab_utils.types import XType, YType
 
 from estimators.core import (
     AbstractBaseEstimator, 
@@ -46,7 +46,7 @@ class MyLGBMClassifier(DefaultEstimatorMixin, AbstractBaseEstimator):
     fixed_params=DefaultParams.LGBM_DEFAULT_PARAMS
 
     @ignore_lgbm_feature_name_warning
-    def fit(self, X: pd.DataFrame, y: pd.Series) -> "MyLGBMClassifier":
+    def fit(self, X: XType, y: YType) -> "MyLGBMClassifier":
         self.estimator_ = super().fit_estimator(
             X=X,
             y=y,
@@ -76,7 +76,7 @@ class MyESLGBMClassifier(DefaultEstimatorMixin, AbstractBaseEstimator):
     fixed_params=DefaultParams.ES_LGBM_DEFAULT_PARAMS
 
     @ignore_lgbm_feature_name_warning
-    def fit(self, X: pd.DataFrame, y: pd.Series) -> "MyESLGBMClassifier":
+    def fit(self, X: XType, y: YType) -> "MyESLGBMClassifier":
         self.estimator_ = super().fit_estimator(
             X=X,
             y=y,
@@ -107,7 +107,7 @@ class MyTunedLGBMClassifier(TunedEstimatorMixin, AbstractBaseEstimator):
     fixed_params=TuningParams.LGBM_FIXED_PARAMS
         
     @ignore_lgbm_feature_name_warning
-    def fit(self, X: pd.DataFrame, y: pd.Series) -> "MyTunedLGBMClassifier":
+    def fit(self, X: XType, y: YType) -> "MyTunedLGBMClassifier":
         self.estimator_ = super().fit_estimator(
             X=X,
             y=y,
@@ -137,7 +137,7 @@ class MyTunedESLGBMClassifier(TunedEstimatorMixin, AbstractBaseEstimator):
     fixed_params = TuningParams.ES_LGBM_FIXED_PARAMS
 
     @ignore_lgbm_feature_name_warning
-    def fit(self, X: pd.DataFrame, y: pd.Series) -> "MyTunedESLGBMClassifier":
+    def fit(self, X: XType, y: YType) -> "MyTunedESLGBMClassifier":
         self.estimator_ = super().fit_estimator(
             X=X,
             y=y,
@@ -159,18 +159,16 @@ class MyTunedESLGBMClassifier(TunedEstimatorMixin, AbstractBaseEstimator):
 
 
 class MetaTuneLGBMClassifier(BaseMetaEstimator):
-    ## TODO: Allows for numpy arrays
-    def fit(self, X: pd.DataFrame, y: pd.Series) -> "MetaTuneLGBMClassifier":
+    def fit(self, X: XType, y: YType) -> "MetaTuneLGBMClassifier":
         super().fit(X, y, "base", MyTunedLGBMClassifier, TuningParams.LGMB_C0, None)
         return self
 
 
 
 class MetaTuneEsLGBMClassifier(BaseMetaEstimator):
-    ## TODO: Allows for numpy arrays
     def fit(
-        self, X: pd.DataFrame, 
-        y: pd.Series, 
+        self, X: XType, 
+        y: YType, 
         early_stop_rounds: int = 100, 
         validation_set_size: float = 0.3
     ) -> "MetaTuneEsLGBMClassifier":
