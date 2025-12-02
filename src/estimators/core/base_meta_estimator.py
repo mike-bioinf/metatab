@@ -6,12 +6,13 @@ from __future__ import annotations
 
 import numpy as np
 from typing import TYPE_CHECKING
+from sklearn.utils.validation import check_is_fitted
 from estimators.core.configurations import TuneConfiguration, EarlyStopConfiguration
 
 if TYPE_CHECKING:
     from sklearn.pipeline import Pipeline
     from estimators.estimators import Estimator
-    from hp_search.types import MetaStrategy, MetaStrategyParams
+    from metalearning.types import MetaStrategy, MetaStrategyParams
     from preprocessing.types import PreprocessingStrategy
     from metatab_utils.types import XType, YType
 
@@ -94,9 +95,16 @@ class BaseMetaEstimator:
 
         meta_seed (int, optional):
             Seed specifically and only used to draw candidate points.
-            The default value of 42 is the one used in our prior generation.
-            Therefore using this value allows to evaluate points tested beforehand. 
+            The default value of 42 is the one used to generate our prior.
+            Using this value allows to evaluate points tested beforehand. 
             Therefore is highly suggested to not modify this value.
+            Note: If the parameter is left at its default but the number of 
+            candidate points (set via `meta_strategy_params`) differs from the 
+            default of 1500, the following occurs.
+            - If the number of candidate points is less than 1500, 
+            a subset of the prior points is selected.
+            - If the number exceeds 1500, "new" points are drawn in addition 
+            to the prior points.
 
         seed (int, optional): 
             Seed controlling the randomness inherent to the estimator,
@@ -195,7 +203,10 @@ class BaseMetaEstimator:
             meta_strategy=self.meta_strategy,
             meta_strategy_params=self.meta_strategy_params,
             meta_surrogate_model=self.meta_surrogate_model,
-            build_df_search=self.build_df_search
+            build_df_search=self.build_df_search,
+            raise_error_during_search=False,
+            refit_with_best_hps=True,
+            save_realtime_df_search_filepath=None
         )
 
         estimator: Estimator = concrete_estimator_cls(
@@ -231,6 +242,7 @@ class BaseMetaEstimator:
         Returns:
             np.ndarray: The predicted classes.
         '''
+        check_is_fitted(self, "estimator_")
         return self.estimator_.predict(X)
 
 
@@ -244,4 +256,5 @@ class BaseMetaEstimator:
         Returns:
             np.ndarray: The class probabilities of the input samples.
         '''
+        check_is_fitted(self, "estimator_")
         return self.estimator_.predict_proba(X)

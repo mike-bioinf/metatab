@@ -4,7 +4,7 @@ from functools import partial
 from sklearn.datasets import make_classification
 from estimators.params import TuningParams
 from hp_search.point_corrector import PointCorrector
-from metalearning.surrogate_worker import SurrogateWorker
+from metalearning.metadata_evaluator import MetadataEvaluator
 from metalearning.sampler import HyperoptRandomSampler
 from metalearning.metafeatures import CustomMFE
 from metalearning.metadata_generator import MetadataGenerator
@@ -13,15 +13,8 @@ from metalearning.load import query_surrogate_framework
 
 
 
-class DummyMetadataGenerator:
-    def fit(self, *args, **kwargs):
-        return self
-
-    def generate(self, *args, **kwargs):
-        # we craft a list of values and relative positions in the decreasing order
-        metadata = pd.DataFrame(np.array([[2, 1, 0, 4, 10, 7, 99, 18]]).T, columns=["col_0"])
-        canditate_points = ["sixth", "seventh", "eighth", "fifth", "third", "fourth", "first", "second"]
-        return metadata, canditate_points
+DUMMY_METADATA = pd.DataFrame(np.array([[2, 1, 0, 4, 10, 7, 99, 18]]).T, columns=["col_0"])
+DUMMY_CANDIDATE_POINTS = ["sixth", "seventh", "eighth", "fifth", "third", "fourth", "first", "second"]
 
 
 class DummySurrogateFramework:
@@ -33,37 +26,35 @@ def dummy_acquisition_func(value: np.ndarray, uncertanty: np.ndarray, *args, **k
     return value + uncertanty
 
 
-def create_dummy_surrogate_worker():
-    surrogate_worker = SurrogateWorker(
-        metadata_generator=DummyMetadataGenerator(),
+def create_dummy_metadata_evaluator():
+    metadata_evaluator = MetadataEvaluator(
         surrogate_framework=DummySurrogateFramework(),
         acquisition_func=dummy_acquisition_func
     )
-    surrogate_worker.is_fitted_ = True
-    surrogate_worker.draw_candidates(n_candidate_points=1000) #ignored
-    surrogate_worker.evaluate_candidates()
-    return surrogate_worker
+    metadata_evaluator.fit(DUMMY_METADATA, DUMMY_CANDIDATE_POINTS)
+    metadata_evaluator.evaluate_candidates()
+    return metadata_evaluator
 
 
 
-def test_surrogate_worker_propose_n_best_method():
-    surrogate_worker = create_dummy_surrogate_worker()
-    points = surrogate_worker.propose_n_best(n_best=3)
+def test_metadata_evaluator_propose_n_best_method():
+    metadata_evaluator = create_dummy_metadata_evaluator()
+    points = metadata_evaluator.propose_n_best(n_best=3)
     assert points == ["first", "second", "third"], "propose_n_best returns the wrong points"
 
 
 
-def test_surrogate_worker_propose_uniform_from_top():
-    surrogate_worker = create_dummy_surrogate_worker()
-    points = surrogate_worker.propose_uniform_from_top(n_steps=2, step_size=3)
+def test_metadata_evaluator_propose_uniform_from_top():
+    metadata_evaluator = create_dummy_metadata_evaluator()
+    points = metadata_evaluator.propose_uniform_from_top(n_steps=2, step_size=3)
     assert points == ["first", "fourth"], "propose_best_uniform returns the wrong points"
 
 
 
-def test_surrogate_worker_propose_random_from_top_method():
-    surrogate_worker = create_dummy_surrogate_worker()
+def test_metadata_evaluator_propose_random_from_top_method():
+    metadata_evaluator = create_dummy_metadata_evaluator()
 
-    points = surrogate_worker.propose_random_from_top(
+    points = metadata_evaluator.propose_random_from_top(
         n_proposed=4,
         top=8, # include all points
         seed=0
@@ -90,7 +81,7 @@ def create_data() -> tuple[pd.DataFrame, pd.Series]:
     return X, y
 
 
-def test_surrogate_worker_works_in_a_real_scenario():
+def test_metadata_evaluator_works_in_real_scenario():
     X, y = create_data()
     surrogate_framework = query_surrogate_framework("lgbm")
 
@@ -106,22 +97,20 @@ def test_surrogate_worker_works_in_a_real_scenario():
         mfe=CustomMFE()
     )
 
-    surrogate_worker = SurrogateWorker(
-        metadata_generator=meta_generator,
+    meta_generator.fit(X, y, TuningParams.LGMB_C0, seed=0)
+
+    metadata, candidate_points = meta_generator.generate(
+        n_points=10,
+        mfe_extract_kwargs={"add_features": {"preprocessing": "base"}} 
+    )
+
+    metadata_evaluator = MetadataEvaluator(
         surrogate_framework=surrogate_framework,
         acquisition_func=partial_compute_upper_confidence_bound
     )
 
-    _ = surrogate_worker.fit(X, y, TuningParams.LGMB_C0, seed=0)
-    
-    _ = surrogate_worker.draw_candidates(
-        n_candidate_points=10, 
-        mfe_extract_kwargs={"add_features": {"preprocessing": "base"}}
-    )
-    
-    _ = surrogate_worker.evaluate_candidates()
-    
-    best_points = surrogate_worker.propose_n_best(n_best=2)
+    _ = metadata_evaluator.fit(metadata, candidate_points).evaluate_candidates()
+    best_points = metadata_evaluator.propose_n_best(n_best=2)
 
     assert isinstance(best_points, list), "The surrogate worker does not return a list."
     assert len(best_points) == 2, "The surrogate worker select a wrong number of points."

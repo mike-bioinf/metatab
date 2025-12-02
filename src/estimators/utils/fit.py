@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import warnings
 import time
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 from sklearn.pipeline import Pipeline
 from sklearn.model_selection import train_test_split
+from sklearn.pipeline import Pipeline
+from tabpfn import TabPFNClassifier
 from estimators.utils.general import remove_string_from_params
 
 if TYPE_CHECKING:
@@ -105,3 +108,60 @@ def fit_with_early_stop_on_validation_set(
         return [clf_or_pipe, fit_time]
     else:
         return clf_or_pipe
+    
+
+
+def set_params_into_clf(
+    clf_or_pipe: Classifier | Pipeline, 
+    params: dict[str, Any],
+    set_tabpfn_inference_config: bool = True
+) -> None:
+    '''
+    Set the parameters into the classifier in place. 
+    The method works with all type of classifiers and even when they head pipeline objects.
+    Note that the method expects 'classifier formatted' parameters.
+    The method overwrites the pre-existent parameters values for the ones specified in params.
+    For tabpfn classifiers is possible to micro manage the setting of the `inference_config__` 
+    marked parameters.
+    '''
+    clf = clf_or_pipe[-1] if isinstance(clf_or_pipe, Pipeline) else clf_or_pipe
+    
+    if isinstance(clf, TabPFNClassifier):
+        if "inference_config" in params.keys():
+            raise KeyError(
+                "The inference_config parameter cannot be handled explicity.",
+                "Instead its keys must be passed as normal parameters marked with the 'inference_config__' prefix."
+            )
+
+        inference_config = {}
+        cleaned_params = {}
+        
+        for k, v in params.items():
+            if k.startswith("inference_config__"):
+                inference_config[f"{k.removeprefix("inference_config__")}"] = v
+            else:
+                cleaned_params[k] = v
+
+        if set_tabpfn_inference_config:
+            if not inference_config:
+                warnings.warn(
+                    message=(
+                        "Derived an empty inference_config dict."
+                        " It will overwrite the classifier's existing inference_config."
+                    ),
+                    category=UserWarning
+                )
+            clf.set_params(inference_config=inference_config, **cleaned_params)
+        else:
+            if inference_config:
+                warnings.warn(
+                        message=(
+                        "Derived a non-empty inference_config dict, but since "
+                        "set_tabpfn_inference_config=False, it will be ignored."
+                    ),
+                    category=UserWarning
+                )
+            clf.set_params(**cleaned_params)
+    
+    else:
+        clf.set_params(**params)

@@ -9,33 +9,26 @@ from copy import deepcopy
 from functools import partial
 from typing import Literal, TYPE_CHECKING
 from sklearn.pipeline import Pipeline
-from sklearn.utils.validation import check_is_fitted
 from hyperopt import STATUS_OK, STATUS_FAIL, tpe, rand, fmin, space_eval
 from hyperopt.pyll.stochastic import sample
-from estimators.utils.fit import fit_with_early_stop_on_validation_set
+from estimators.utils.fit import fit_with_early_stop_on_validation_set, set_params_into_clf
 from estimators.params import HPS_MIXED_TYPED
-from hp_search.point_corrector import PointCorrector
 from metalearning.metafeatures import CustomMFE
 from metalearning.load import query_surrogate_framework
 from metalearning.acquisition_funcs import compute_upper_confidence_bound
-from metalearning.surrogate_worker import SurrogateWorker
 from metalearning.sampler import HyperoptRandomSampler
 from metalearning.metadata_generator import MetadataGenerator
+from metalearning.metadata_evaluator import MetadataEvaluator
+from metalearning.utils import check_meta_strategy, check_meta_strategy_params
 from metatab_utils.general import add_broadcasted_objects_as_column
+from hp_search.point_corrector import PointCorrector
 from hp_search.cv import CrossValidator
-
-from hp_search.utils import (
-    ConfigSearchCV, 
-    set_params_into_clf,
-    BestMetaStrategyParams,
-    RandomFromBestMetaStrategyParams,
-    UniformFromBestMetaStrategyParams
-)
+from hp_search.utils import ConfigSearchCV
 
 if TYPE_CHECKING:
     from preprocessing.types import PreprocessingStrategy
     from estimators.utils.types import Classifier, TunableEstimatorType
-    from hp_search.types import MetaAlgo, MetaStrategy, MetaStrategyParams
+    from metalearning.types import MetaStrategy, MetaStrategyParams
     from metatab_utils.types import XType, YType
 
 
@@ -43,16 +36,15 @@ if TYPE_CHECKING:
 
 class SearchCV:
     '''
-    Class that implements HPs optimization via random search or
-    tpe methods with (repeated) cross-validation.
+    Class that implements HPs optimization using an inner cross-validation.
 
     Some key features:
+    - Implements different optimazation algorithms: random, tpe and meta. 
     - Allows a meta-learning informed search via surrogate models using the "meta" algo.
     - Allows early stop on a validation set at fit time. This functionality is possible 
     only when the classifier implements an "eval_set-like" interface.
     - Allows to optionally refit the classifier/pipeline with the best hyperparameters.
-    - Exposes the "predict_proba" method of the refitted object.
-    - The search is not parallelized even when the "random" algo is selected. 
+    - The search is not parallelizable even when the "random" algo is used. 
     
 
     Parameters:
@@ -61,14 +53,14 @@ class SearchCV:
             which hps have to be optimized.
         
         type_estimator (TunableEstimatorType):
-            String estimator type. Info needed in meta-optimization (`meta` algo).
+            String estimator type. 
+            Info needed in meta-optimization (`meta` algo).
             
-        type_clf_or_pipe_preprocessing (PreprocessingStrategy | None):
+        clf_or_pipe_preprocessing (PreprocessingStrategy):
             Type of preprocessing used for the clf_or_pipe object.
-            Needed only by the `meta` algo to propose candidate points.
+            Info needed in meta-optimization (`meta` algo).
         
-        algo (Literal["random", "tpe", "meta"]): 
-            Type of searching algorithm to use.
+        algo (Literal["random", "tpe", "meta"]): Searching algorithm to use.
         
         params_distributions (dict): Search space.
 
@@ -82,7 +74,7 @@ class SearchCV:
             Seed for reproducibility.
             Used in the standard optimization routes to draw points (random, tpe), 
             in the determination of the validation set when early stop is enabled,
-            and in the inner-cross validation procedure (indipendently of the tune algo).
+            and in the inner-cross validation procedure (indipendently of `algo`).
 
         random_state_parameter (str | None):
             Name of the estimator random state parameter.
@@ -104,7 +96,7 @@ class SearchCV:
             Ignored when "early_stop_on_validation_set" is False.
 
         fit_classifier_kwargs (None | dict, optional):
-            A dict unpackaged in the classifier fit calls.
+            A dict unpackaged in the classifier fit call.
             If None (default) an empty dict is created.
             The dict keys must be already adapted to the pipeline if any.
         
@@ -112,17 +104,21 @@ class SearchCV:
             Surrogate model to use in the meta-optimization scenario.
             If str or Path, then the object pointed by the path is used as surrogate model.
             This must be a joblib serialized object.
-            If None the "default" surrogate model acording to `type_estimator` is used instead.
+            If None the "default" surrogate model according to `type_estimator` is used instead.
             Ignored when `algo` is not "meta".
 
         meta_strategy (MetaStrategy, optional):
             Set the strategy used by the metalearning framework to select points.
-            It has no effect when `algo` is different from "meta".
-            In detail the following `SurrogateWorker` utilities are used:
+            It has no effect when `algo` is not "meta".
+            In detail the following `MetadataEvaluator` utilities are used:
             - "best": `propose_n_best`
             - "random_from_best": `propose_random_from_top`
             - "uniform_from_best": `propose_best_uniform`
             See the specific method for more details.
+
+        meta_strategy_params (None | MetaStrategyParams, optional):
+            Meta strategy specifics in form of dataclass.
+            If None the default specifics are applied.
 
         meta_seed (int, optional):
             Seed used specifically to draw condidate points in the meta-optimization scenario.
@@ -184,8 +180,8 @@ class SearchCV:
         *,
         clf_or_pipe: Classifier | Pipeline,
         type_estimator: TunableEstimatorType,
-        type_clf_or_pipe_preprocessing: PreprocessingStrategy | None,
-        algo: MetaAlgo,
+        clf_or_pipe_preprocessing: PreprocessingStrategy,
+        algo: Literal["random", "tpe", "meta"],
         params_distributions: dict,
         n_iter: int,
         n_cv_folds: int,
@@ -208,7 +204,7 @@ class SearchCV:
     ):
         self.clf_or_pipe=clf_or_pipe
         self.type_estimator=type_estimator
-        self.type_clf_or_pipe_preprocessing=type_clf_or_pipe_preprocessing
+        self.clf_or_pipe_preprocessing=clf_or_pipe_preprocessing
         self.algo=algo
         self.params_distributions=params_distributions
         self.random_state_parameter=random_state_parameter
@@ -268,14 +264,11 @@ class SearchCV:
             # we append nan since we do not evaluate the loss
             self.search_losses_.append(np.nan)
             self.build_df_search = False
-            self.save_realtime_df_search_filepath = False
+            self.save_realtime_df_search_filepath = None
 
         if self.algo == "meta":
-            if self.type_clf_or_pipe_preprocessing is None:
-                raise ValueError(
-                    "'type_clf_or_pipe_preprocessing' cannot be None with 'meta' algo."
-                )
-            self._check_meta_strategy_params()
+            check_meta_strategy(self.meta_strategy)
+            check_meta_strategy_params(self.meta_strategy, self.meta_strategy_params, safe_none_params=True)
             self._fit_with_meta_points()
         
         elif self.algo in ["random", "tpe"]:
@@ -319,6 +312,32 @@ class SearchCV:
         Optimize using the meta-inferred points only.        
         Set the `best_params_` attribute.
         '''
+        # 1500 are the points used in our prior for all estimators (for now)
+        # In general drawning too many points can reduce their divergence and therefore hurt performance
+        # TODO: use "new" points also?
+        n_candidate_points = max(1500, self.n_iter) \
+            if self.meta_strategy_params is None \
+            else self.meta_strategy_params.n_candidate_points
+        
+        meta_generator = MetadataGenerator(
+            sampler=HyperoptRandomSampler(),
+            point_corrector=PointCorrector(),
+            mfe=CustomMFE(),
+        )
+
+        meta_generator.fit(
+            X=self._X,
+            y=self._y,
+            hp_space=self.params_distributions,
+            seed=self.meta_seed 
+        )
+
+        metadata, candidate_points = meta_generator.generate(
+            n_points=n_candidate_points,
+            # add the preprocessing to the meta-data
+            mfe_extract_kwargs = {"add_features": {"preprocessing": self.clf_or_pipe_preprocessing}}
+        )
+
         # use the input model or use the default
         surrogate_model = joblib.load(self.meta_surrogate_model) \
             if self.meta_surrogate_model \
@@ -332,42 +351,15 @@ class SearchCV:
             n_points=self.n_iter
         )
 
-        meta_generator = MetadataGenerator(
-            sampler=HyperoptRandomSampler(),
-            point_corrector=PointCorrector(),
-            mfe=CustomMFE(),
-        )
-
-        surrogate_worker = SurrogateWorker(
-            metadata_generator=meta_generator,
+        meta_evaluator = MetadataEvaluator(
             surrogate_framework=surrogate_model,
             acquisition_func=acquisition_func
         )
 
-        surrogate_worker.fit(
-            X=self._X,
-            y=self._y,
-            hp_space=self.params_distributions,
-            seed=self.meta_seed
-        )
-
-        # 1500 are the points used in our prior for all estimators (for now)
-        # In general drawning too many points can reduce their divergence and therefore hurt performance
-        # TODO: use "new" points also?
-        n_candidate_points = max(1500, self.n_iter) \
-            if self.meta_strategy_params is None \
-            else self.meta_strategy_params.n_candidate_points
-
-        _ = surrogate_worker.draw_candidates(
-            n_candidate_points=n_candidate_points,
-            # add the preprocessing to the meta-data
-            mfe_extract_kwargs = {"add_features": {"preprocessing": self.type_clf_or_pipe_preprocessing}}
-        )
-
-        _ = surrogate_worker.evaluate_candidates()
+        _ = meta_evaluator.fit(metadata, candidate_points).evaluate_candidates()
 
         if self.meta_strategy == "best":
-            points = surrogate_worker.propose_n_best(n_best=self.n_iter)
+            points = meta_evaluator.propose_n_best(n_best=self.n_iter)
         
         elif self.meta_strategy == "random_from_best":
             # we use a ratio of 1 to 3 by default when possible, 
@@ -380,7 +372,7 @@ class SearchCV:
             # when not hardcoded in the supplied params
             propose_seed = self.seed if self.meta_strategy_params is None else self.meta_strategy_params.seed
 
-            points = surrogate_worker.propose_random_from_top(
+            points = meta_evaluator.propose_random_from_top(
                 n_proposed=self.n_iter,
                 top=top,
                 seed=propose_seed
@@ -393,14 +385,9 @@ class SearchCV:
             else:
                 step_size = self.meta_strategy_params.step_size
             
-            points = surrogate_worker.propose_uniform_from_top(
+            points = meta_evaluator.propose_uniform_from_top(
                 n_steps=self.n_iter,
                 step_size=step_size
-            )
-        
-        else:
-            raise ValueError(
-                "meta_strategy must be one of: 'best', 'random_from_best', 'uniform_from_best'."
             )
 
         # we do not evaluate the single point since is the best by definition
@@ -587,43 +574,3 @@ class SearchCV:
         for i in range(len(self._dfs_info_iter)):
             self._dfs_info_iter[i]["search_iter"] = i
         return pd.concat(self._dfs_info_iter, axis=0, ignore_index=True)
-
-
-
-    def predict_proba(self, X: pd.DataFrame, **kwargs) -> np.ndarray:
-        check_is_fitted(self, "best_estimator_")
-        return self.best_estimator_.predict_proba(X)
-
-
-
-    def _check_meta_strategy_params(self) -> None:
-        '''Check that the meta strategy and related params are compatible'''
-        if self.meta_strategy_params is None:
-            return None
-        
-        if (
-            self.meta_strategy == "best" and 
-            not isinstance(self.meta_strategy_params, BestMetaStrategyParams)
-        ):
-            raise ValueError((
-                "With 'best' meta_strategy a 'BestMetaStrategyParams'"
-                " object is expected in meta_strategy_params."
-            ))
-        
-        elif (
-            self.meta_strategy == "random_from_best" and 
-            not isinstance(self.meta_strategy_params, RandomFromBestMetaStrategyParams)
-        ):
-            raise ValueError((
-                "With 'random_from_best' meta_strategy a 'RandomFromBestMetaStrategyParams'"
-                " object is expected in meta_strategy_params."
-            ))
-        
-        elif (
-            self.meta_strategy == "uniform_from_best" and
-            not isinstance(self.meta_strategy_params, UniformFromBestMetaStrategyParams)
-        ):
-            raise ValueError((
-                "With 'uniform_from_best' meta_strategy a 'UniformFromBestMetaStrategyParams'"
-                " object is expected in meta_strategy_params."
-            ))

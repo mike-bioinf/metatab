@@ -193,7 +193,7 @@ class AbstractBaseEstimator(ABC):
             estimator = SearchCV(
                 clf_or_pipe=clf_or_pipe,
                 type_estimator=type_estimator,
-                type_clf_or_pipe_preprocessing=self.preprocessing,
+                clf_or_pipe_preprocessing=self.preprocessing,
                 random_state_parameter=random_state_parameter,
                 seed=self.seed,
                 metric_to_minimize="logloss",

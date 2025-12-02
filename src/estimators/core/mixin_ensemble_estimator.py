@@ -19,6 +19,8 @@ class EnsembleEstimatorMixin:
     if TYPE_CHECKING:
         estimator_ : None ## WILL BE THE ENSEMBLE CLASS
 
+    def predict(self, X: XType) -> np.ndarray:
+        pass
 
     def predict_proba(self, X: XType) -> np.ndarray:
         pass

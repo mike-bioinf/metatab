@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 from dataclasses import dataclass
 
 if TYPE_CHECKING:
     from pathlib import Path
     from sklearn.pipeline import Pipeline
-    from hp_search.types import MetaAlgo, MetaStrategy, MetaStrategyParams
+    from metalearning.types import MetaStrategy, MetaStrategyParams
 
 
 
@@ -17,7 +17,7 @@ class TuneConfiguration:
     In particular hosts the parameters that are managed by the
     AbstractBaseEStimator at init level.  
     '''
-    algo: MetaAlgo
+    algo: Literal["random", "tpe", "meta"]
     n_iter: int
     n_cv_repeats: int
     n_cv_folds: int

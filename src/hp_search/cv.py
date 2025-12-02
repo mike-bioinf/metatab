@@ -6,8 +6,7 @@ from copy import deepcopy
 from typing import TYPE_CHECKING, Literal
 from sklearn.model_selection import RepeatedStratifiedKFold
 from sklearn.metrics import log_loss
-from estimators.utils.fit import fit_with_early_stop_on_validation_set
-from hp_search.utils import set_params_into_clf
+from estimators.utils.fit import fit_with_early_stop_on_validation_set, set_params_into_clf
 
 if TYPE_CHECKING:
     from sklearn.pipeline import Pipeline

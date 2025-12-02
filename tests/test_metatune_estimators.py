@@ -1,7 +1,7 @@
 import pytest
 import pandas as pd
 from sklearn.datasets import load_iris
-from hp_search.utils import BestMetaStrategyParams
+from metalearning.utils import BestMetaStrategyParams
 
 from estimators import (
     MetaTuneRandomForestClassifier,

@@ -130,19 +130,6 @@ class DensityFeatureSelector(SelectorMixin, BaseEstimator):
         return self
 
     
-    def get_feature_names_out(self, input_features = None) -> np.ndarray:
-        # when fitted on numpy array the resulting names and order is irrelevant
-        if not hasattr(self, "feature_names_in_"):
-            return np.array([f"col_{i}" for i in self.n_features_in_])
-        return self._selected_features
-
-
-    def _get_support_mask(self) -> np.ndarray:
-        '''Retrieve the fitted feature mask'''
-        check_is_fitted(self, "_mask")
-        return self._mask
-
-    
     @staticmethod
     def _get_indexes_to_retain(
         densities: pd.Series, 
@@ -222,3 +209,16 @@ class DensityFeatureSelector(SelectorMixin, BaseEstimator):
         
         else:
             raise ValueError("strategy must be one of 'exact', 'oversample' or 'undersample'.")
+        
+
+    def _get_support_mask(self) -> np.ndarray:
+        '''Retrieve the fitted feature mask'''
+        check_is_fitted(self, "_mask")
+        return self._mask
+
+
+    def get_feature_names_out(self, input_features = None) -> np.ndarray:
+        # when fitted on numpy array the resulting names and order is irrelevant
+        if not hasattr(self, "feature_names_in_"):
+            return np.array([f"col_{i}" for i in self.n_features_in_])
+        return self._selected_features
