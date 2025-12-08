@@ -12,6 +12,7 @@ from copy import deepcopy
 from pathlib import Path
 from typing import Literal, TYPE_CHECKING
 from functools import partial
+from sklearn.utils.validation import check_is_fitted
 from hp_search.point_corrector import PointCorrector
 from estimators.utils.fit import fit_with_early_stop_on_validation_set, set_params_into_clf
 from metalearning.acquisition_funcs import compute_upper_confidence_bound
@@ -20,6 +21,8 @@ from metalearning.sampler import HyperoptRandomSampler
 from metalearning.metafeatures import CustomMFE
 from metalearning.metadata_evaluator import MetadataEvaluator
 from metalearning.load import query_surrogate_framework
+from metatab_utils.general import ensure_or_create
+from ensemble.utils import collect_sklearn_classification_fit_info_from_data
 
 if TYPE_CHECKING:
     from sklearn.pipeline import Pipeline
@@ -128,8 +131,9 @@ class EnsembleEstimator:
             Ignored when `algo` is not "meta".
         
         raise_error_fit_member (bool, optional):
-            Whether to ignore the errors during the ensemble building process.
+            Whether to ignore fit errors in the ensemble building process.
             If True the process is blocked when an fit error is encountered.
+            Note that time limit errors are considered as fit errors here.
             If False the process goes on.
 
         raise_error_void_ensemble (bool, optional):
@@ -147,16 +151,29 @@ class EnsembleEstimator:
 
         log (int, optional):
             Level of the internal logger. The default assures logs at info level.
+            To suppress it set a value of 40 or 50.
 
     ** Attributes:
+        is_void_ (bool): Flag informing whether the ensemble is void.
         fit_time_ (float): Ensemble total fit time in seconds.
-        succesfull_members_ (list[str]): List with the names of the succesfully fitted members
-        failed_members_ (list[str]): List with the names of the members which fit process failed
+        successful_members_ (list[str]): List with the names of the successfully fitted members.
+        failed_members_ (list[str]): List with the names of the members which fit process failed.
+        successful_hps_confs_ (list[dict]): List of the hps configurations of the successfull members.
+        failed_hps_confs_ (list[dict]): List of the hps configurations of the failed members. 
         df_members_ (pd.DataFrame): DataFrame with info about the members fit process.
+        classes_ (np.ndarray): Array of unique classes seen at fit level.
+        n_features_in_ (int): Number of features seen at fit level.
+        is_cleaned_ (bool): 
+            Flag informing whether the ensemble models have been deleted from disk using the
+            "delete_models_from_disk" method.
+        feature_names_in_ (np.ndarray): 
+            Names of the features seen at fit level.
+            This attribute exists only when the instance is fitted with pandas dataframe 
+            with all string columns.
     '''
     def __init__(
         self,
-        name: str, # a good name is {type_estimator}_{clf_or_pipe_preprocessing}
+        name: str,
         algo: Literal["random", "meta"],
         n_members: int,
         save_path: str | Path,
@@ -205,7 +222,6 @@ class EnsembleEstimator:
         self.time_limit=time_limit
 
 
-
     def fit(self, X: XType, y: YType) -> "EnsembleEstimator":
         start_time = time.time()
 
@@ -217,26 +233,27 @@ class EnsembleEstimator:
             check_meta_strategy_params(self.meta_strategy, self.meta_strategy_params, safe_none_params=True)
         
         logger = self._get_logger()
-        save_path = self.save_path if isinstance(self.save_path, Path) else Path(self.save_path)
-        save_path.mkdir(parents=True, exist_ok=True)
+        logger.info(f"Starting building process of '{self.name}' ensemble.")
+
+        self._save_path = self.save_path if isinstance(self.save_path, Path) else Path(self.save_path)
+        self._save_path.mkdir(parents=True, exist_ok=True)
         
+        fit_classifier_kwargs = ensure_or_create(self.fit_classifier_kwargs, dict)
         hps_confs = self._get_hps_configurations(X, y)
         member_names = [self.name + "_" + str(i) for i in range(self.n_members)]
         
         time_prepation = round((time.time() - start_time)/60, 2)
         logger.info(f"Obtained hps configurations using the {self.algo} algo in {time_prepation} minutes.")
         
-        if self._is_time_limit_violated(start_time) and self.raise_error_void_ensemble:
-            raise ValueError(
-                "No time left after getting the hps configurations. Raise the time limit."
-            )
-        
         if self.early_stop_on_validation_set:
             rng_early_stop = np.random.default_rng(self.seed)
 
         self.failed_members_ = []
-        self.succesful_members_ = []
+        self.successful_members_ = []
+        self.failed_hps_confs_ = []
+        self.successful_hps_confs_ = []
         self._recap_members: list[dict] = []
+        self.is_cleaned_ = False
 
         for hp_conf, member_name in zip(hps_confs, member_names):
             try:
@@ -255,62 +272,165 @@ class EnsembleEstimator:
                         seed=rng_early_stop.integers(low=0, high=2**30),
                         eval_set_parameter=self.eval_set_parameter,
                         validation_set_size=self.validation_set_size,
-                        fit_classifier_kwargs=self.fit_classifier_kwargs,
+                        fit_classifier_kwargs=fit_classifier_kwargs,
                         return_fit_time=True
                     )
                 else:
                     t = time.time()
-                    clf_or_pipe.fit(X, y, **self.fit_classifier_kwargs)
+                    clf_or_pipe.fit(X, y, **fit_classifier_kwargs)
                     fit_time = time.time() - t
 
                 logger.debug(f"'{member_name}' member has been fitted in {round(fit_time / 60, 2)} minutes.")                
                 
                 # save classifier
-                with open(save_path / member_name, "wb") as f:
+                with open(self._save_path / member_name, "wb") as f:
                     pickle.dump(clf_or_pipe, f)
 
                 logger.debug(f"'{member_name}' member saved on disk.")
-
-                self.succesful_members_.append(member_name)
+                
+                # the model is considered successful if fitted AND saved on disk
+                self.successful_members_.append(member_name)
+                self.successful_hps_confs_.append(hp_conf)
 
                 self._recap_members.append({
                     "member": member_name,
-                    "fit_succesful": True,
+                    "fit_successful": True,
                     "fit_time": fit_time,
                     "error": None
                 })
-                
+
             except Exception as e:
                 if self.raise_error_fit_member:
                     raise ValueError(
-                        f"The fit process of the {member_name} ensemble member has failed" +
+                        f"The fit or saving process of the {member_name} ensemble member has failed" +
                         f" with the following error: {e}"
                     )
                 
                 self.failed_members_.append(member_name)
+                self.failed_hps_confs_.append(hp_conf)
 
                 self._recap_members.append({
                     "member": member_name,
-                    "fit_succesful": False,
+                    "fit_successful": False,
                     "fit_time": np.nan,
                     "error": str(e)
                 })
 
-                logger.debug(f"'{member_name}' member fit or storing process has failed.")
+                logger.debug(f"'{member_name}' member fit or saving process has failed.")
         
-        if not self.succesful_members_ and self.raise_error_void_ensemble:
-            raise ValueError("The ensemble is void. All members fit process failed.")
+        self.is_void_ = False if self.successful_members_ else True
+        
+        if self.is_void_ and self.raise_error_void_ensemble:
+            raise ValueError("The ensemble is void. All members fit/saving process failed.")
         
         self.df_members_ = pd.DataFrame(self._recap_members)
+        
+        for k, v in collect_sklearn_classification_fit_info_from_data(X, y).items():
+            setattr(self, k, v)
+        
         self.fit_time_ = time.time() - start_time
         
         logger.info(
             f"Ensemble constructed in {round(self.fit_time_ / 60, 2)} minutes" + 
-            f" with {len(self.succesful_members_)} succesfull fitted members."
+            f" with {len(self.successful_members_)}/{self.n_members} successful fitted members.\n"
         )
 
         return self
 
+
+    def predict(self, X: XType) -> np.ndarray:
+        '''
+        Predict the sample labels. 
+        The labels are inferred on the averaged probabilities.
+        '''
+        self._check_on_predict_calls()
+        return np.argmax(self.predict_proba(X), axis=1)
+    
+
+    def predict_proba(self, X: XType) -> np.ndarray:
+        self._check_on_predict_calls()
+        predictions = self._get_members_predicted_probabilities(X)
+        return np.stack(predictions, axis=0).mean(axis=0)
+
+
+    def get_members_predicted_probabilities(self, X: XType) -> dict[str, np.ndarray]:
+        '''
+        Get the predicted probabilities of the individual ensemble members.
+        Returns a dict of member name - predictions couples.
+        '''
+        self._check_on_predict_calls()
+        predictions = self._get_members_predicted_probabilities(X)
+        return {k:v for k, v in zip(self.successful_members_, predictions)}
+    
+
+    def _get_members_predicted_probabilities(self, X: XType) -> list[np.ndarray]:
+        '''
+        Get the predicted probabilities of the ensemble members in a list
+        that reflects the order of `self.successful_members_`.
+        '''
+        predictions = []
+        for successfull_member in self.successful_members_:
+            path_successful_member = self._save_path / successfull_member
+            member_model: Classifier | Pipeline = self._try_load_model(path_successful_member)
+            predictions.append(member_model.predict_proba(X))
+        return predictions
+
+
+    # We want only this method to work when we raise errors for single
+    # member fails and a fail is encountered for the second to last model.
+    def delete_models_from_disk(self) -> None:
+        '''
+        Delete the ensemble models from disk.
+        Works also for partially fitted ensemble, i.e. ensembles whose fit 
+        process has been stopped before completion for single model fails.
+        '''
+        check_is_fitted(self, "successful_members_")
+
+        if self.is_cleaned_:
+            return None
+        
+        if hasattr(self, "is_void_") and self.is_void_:
+            self.is_cleaned_ = True
+            warnings.warn("The ensemble is void. No model to delete.")
+            return None
+
+        for member in self.successful_members_:
+            file_model = self._save_path / member
+            file_model.unlink(missing_ok=True)
+
+        self.is_cleaned_ = True
+        
+
+    def _check_on_predict_calls(self) -> None:
+        # we perform the fitted check on "fit_time_" since is defined at the end of the fit call. 
+        # This means that "partially fitted" ensemble does not have this attribute. 
+        # We do not want to predict with partially fitted ensemble since 
+        # one should allow for failings if this behaviour is desired.
+        check_is_fitted(self, "fit_time_")
+        self._check_void_ensemble()
+        self._check_cleaned_ensemble()
+
+
+    def _check_void_ensemble(self) -> None:
+        if self.is_void_:
+            raise ValueError("The ensemble is void.")
+    
+
+    def _check_cleaned_ensemble(self) -> None:
+        if self.is_cleaned_:
+            raise ValueError("The ensemble models have been deleted.")
+
+
+    @staticmethod
+    def _try_load_model(path: str | Path) -> Classifier | Pipeline:
+        try:
+            with open(path, "rb") as f:
+                model = pickle.load(f)
+        except Exception as e:
+            raise ValueError(
+                f"Error encountered in the loading process of '{path}': {e}"
+            )
+        return model
 
 
     def _get_logger(self) -> logging.Logger:
@@ -319,14 +439,13 @@ class EnsembleEstimator:
         handler = logging.StreamHandler(sys.stdout)
         handler.setLevel(self.log)
         logger.addHandler(handler)
+        logger.propagate = False
         return logger
-
 
 
     def _is_time_limit_violated(self, start_time: float) -> bool:
         return (time.time() - start_time) > self.time_limit
         
-
 
     def _get_hps_configurations(self, X: XType, y: YType) -> list[dict]:
         sampler = HyperoptRandomSampler()
@@ -348,11 +467,11 @@ class EnsembleEstimator:
         
         elif self.algo == "meta":
             if self.meta_features is None:
-                metafeatures, _ = mfe.fit(X, y).extract(
-                    add_features={"preprocessing": self.clf_or_pipe_preprocessing}
-                )
+                metafeatures, _ = mfe.fit(X, y).extract()
             else:
                 metafeatures = self.meta_features
+                
+            metafeatures["preprocessing"] = self.clf_or_pipe_preprocessing
             
             if self.meta_candidate_points is None:
                 sampler.fit(self.params_distributions, seed=self.meta_seed)
@@ -398,9 +517,9 @@ class EnsembleEstimator:
                 points = meta_evaluator.propose_n_best(n_best=self.n_members)
             
             elif self.meta_strategy == "random_from_best":
-                # we use a ratio of 1 to 6 by default when possible, 
-                # meaning we give "6 choices for point"
-                top = min(self.n_members * 6, n_candidate_points) \
+                # we use a ratio of 1 to 5 by default when possible, 
+                # meaning we give "5 choices for point"
+                top = min(self.n_members * 5, n_candidate_points) \
                     if self.meta_strategy_params is None \
                     else self.meta_strategy_params.top
                 
@@ -415,10 +534,10 @@ class EnsembleEstimator:
                 )
             
             elif self.meta_strategy == "uniform_from_best":
-                # we use a step of 6 by default when possible
+                # we use a step of 5 by default when possible
                 if self.meta_strategy_params is None:
                     max_ratio = int(n_candidate_points / self.n_members)
-                    step_size = 6 if max_ratio > 6 else max_ratio
+                    step_size = 5 if max_ratio > 5 else max_ratio
                 else:
                     step_size = self.meta_strategy_params.step_size
                 

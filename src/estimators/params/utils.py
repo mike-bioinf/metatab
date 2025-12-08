@@ -17,7 +17,7 @@ DEFAULT_ESTIMATORS_TUNE_SPACES = {
 }
 
 
-def pick_estimator_tune_space(space: str, estimator: TunableEstimatorType) -> dict:
+def pick_estimator_tune_space(estimator: TunableEstimatorType, space: str) -> dict:
      match (estimator, space):
         case ("random_forest", "c0"):
             return TuningParams.RF_C0

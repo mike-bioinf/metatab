@@ -1,4 +1,3 @@
-import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
 from estimators.params import TuningParams, DefaultParams
 from metatab_utils.types import XType, YType
@@ -7,6 +6,7 @@ from estimators.core import (
     AbstractBaseEstimator, 
     DefaultEstimatorMixin,
     TunedEstimatorMixin,
+    EnsembleEstimatorMixin,
     BaseMetaEstimator
 )
 
@@ -27,8 +27,7 @@ class MyRandomForestClassifier(DefaultEstimatorMixin, AbstractBaseEstimator):
             y=y,
             classifier_cls=RandomForestClassifier,
             type_estimator="random_forest",
-            is_tuned=False,
-            is_early_stopped=False
+            is_tuned=False
         )
         return self
        
@@ -49,8 +48,28 @@ class MyTunedRandomForestClassifier(TunedEstimatorMixin, AbstractBaseEstimator):
             y=y,
             classifier_cls=RandomForestClassifier,
             type_estimator="random_forest",
-            is_tuned=True,
-            is_early_stopped=False
+            is_tuned=True
+        )
+        return self
+
+
+
+class MyEnsembledRandomForestClassifier(EnsembleEstimatorMixin, AbstractBaseEstimator):
+    '''
+    Implementation of ensemble RandomForestClassifier
+    
+    Attributes:
+        estimator_ (EnsembleEstimator): Fitted EnsembleEstimator object.
+    '''
+    fixed_params = TuningParams.RANDOM_FOREST_FIXED_PARAMS
+    
+    def fit (self, X: XType, y: YType) -> "MyEnsembledRandomForestClassifier":
+        self.estimator_ = super().fit_estimator(
+            X=X,
+            y=y,
+            classifier_cls=RandomForestClassifier,
+            type_estimator="random_forest",
+            is_ensembled=True
         )
         return self
 

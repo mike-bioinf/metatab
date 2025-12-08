@@ -7,14 +7,13 @@ from copy import deepcopy
 from abc import ABC, abstractmethod
 from typing import Literal, TYPE_CHECKING, Callable
 from sklearn.pipeline import Pipeline
-from hp_search.searchcv import SearchCV
-from metatab_utils.general import ensure_or_create, asdict_shallow
 from preprocessing import create_classifier_pipeline
+from metatab_utils.general import ensure_or_create, asdict_shallow
 from estimators.utils.fit import fit_with_early_stop_on_validation_set
+from hp_search.searchcv import SearchCV
+from ensemble.single import EnsembleEstimator
 
 if TYPE_CHECKING:
-    from sklearn.decomposition import PCA
-    from preprocessing import DensityFeatureSelector
     from preprocessing.types import PreprocessingStrategy
     from metatab_utils.types import XType, YType    
     from estimators.utils.types import Classifier, EstimatorType
@@ -37,7 +36,7 @@ class AbstractBaseEstimator(ABC):
         n_threads (int, optional): Number of CPU threads used to fit the estimator. 
         early_stop_configuration (None | EarlyStopConfiguration, optional): Early stop configuration.
         tune_configuration (None | TuneConfiguration, optional): Tune configuration.
-        ensemble_configuration (None | dict, optional): Ensemble configuration.
+        ensemble_configuration (None | EnsembleConfiguration, optional): Ensemble configuration.
     
     ### Important Design Note:
         The estimators concrete classes must implement the `fixed_params` class attribute, 
@@ -69,6 +68,17 @@ class AbstractBaseEstimator(ABC):
         pass
     
 
+    def save(self, filepath: str | Path, check_is_fitted = False) -> None:
+        '''
+        Serielize the instance using pickle.
+        Allows for a conditional check on the "fitted nature" of the estimator.
+        '''
+        if check_is_fitted and not hasattr(self, "estimator_"):
+            raise ValueError("The estimator instance is not fitted (no 'estimator_' attibute).")
+        with open(filepath, "wb") as f:
+            pickle.dump(self, f)
+
+
     def fit_estimator(
         self,
         *,
@@ -76,8 +86,9 @@ class AbstractBaseEstimator(ABC):
         y: YType,
         classifier_cls: Classifier,
         type_estimator: EstimatorType,
-        is_tuned: bool,
-        is_early_stopped: bool,
+        is_tuned: bool = False,
+        is_ensembled: bool = False,
+        is_early_stopped: bool = False,
         eval_set_parameter: str | None = "eval_set",
         early_stop_rounds_parameter: str | None = "early_stopping_rounds", 
         random_state_parameter: str = "random_state",
@@ -85,7 +96,7 @@ class AbstractBaseEstimator(ABC):
         callbacks_on_fixed_params: list[Callable[[dict, pd.Series, bool], dict]] | None = None,
         density_feature_selector_strategy: Literal["exact", "oversample", "undersample"] = "oversample",
         fit_classifier_kwargs: None | dict = None
-    ) -> Classifier | Pipeline | SearchCV:
+    ) -> Classifier | Pipeline | SearchCV | EnsembleEstimator:
         '''
         Utility that abstracts the `fit` logic of concrete estimators.
         This function centralizes the repeated steps involved in preparing 
@@ -104,10 +115,13 @@ class AbstractBaseEstimator(ABC):
             
             type_estimator (EstimatorType): String estimator type.
 
-            is_tuned (bool):
+            is_tuned (bool, optional):
                 Whether the concrete estimator leverages HPs tuning.
 
-            is_early_stopped (bool):
+            is_ensembled (bool, optional):
+                Whether the concrete estimator leverages ensembling.
+
+            is_early_stopped (bool, optional):
                 Whether the concrete estimator leverages early stop on a validation set.
 
             early_stop_rounds_parameter (str | None, optional):
@@ -150,8 +164,11 @@ class AbstractBaseEstimator(ABC):
 
                 
         Returns:
-            Classifier|Pipeline|SearchCV: The fitted inner estimator.
+            Classifier|Pipeline|SearchCV|EnsembleEstimator: 
+            The fitted inner estimator.
         '''
+        self._check_tune_ensemble_flags(is_tuned, is_ensembled)
+        
         self._check_fit_early_stop_inputs(
             is_early_stopped,
             early_stop_rounds_parameter,
@@ -183,13 +200,29 @@ class AbstractBaseEstimator(ABC):
             fit_classifier_kwargs=ensure_or_create(fit_classifier_kwargs, dict),
             clf_or_pipe=clf_or_pipe
         )
-
-        if is_tuned:
-            # searchcv address both early stop and normal scenarios
+        
+        if is_ensembled or is_tuned:
             val_set_size = self.early_stop_configuration.validation_set_size\
                 if is_early_stopped\
                 else 0.0
-            
+
+        if is_ensembled:
+            # ensembleestimator address both early stop and normal scenarios   
+            estimator = EnsembleEstimator(
+                clf_or_pipe=clf_or_pipe,
+                type_estimator=type_estimator,
+                clf_or_pipe_preprocessing=self.preprocessing,
+                seed=self.seed,
+                fit_classifier_kwargs=fit_classifier_kwargs,
+                early_stop_on_validation_set=is_early_stopped,
+                validation_set_size=val_set_size,
+                eval_set_parameter=eval_set_parameter,
+                **asdict_shallow(self.ensemble_configuration)
+            )
+            return estimator.fit(X, y)
+
+        elif is_tuned:
+            # searchcv address both early stop and normal scenarios    
             estimator = SearchCV(
                 clf_or_pipe=clf_or_pipe,
                 type_estimator=type_estimator,
@@ -218,6 +251,14 @@ class AbstractBaseEstimator(ABC):
 
         else:
             return clf_or_pipe.fit(X, y, **fit_classifier_kwargs)
+
+
+    @staticmethod
+    def _check_tune_ensemble_flags(is_tuned: bool, is_ensembled: bool) -> None:
+        if is_tuned and is_ensembled:
+            raise ValueError(
+                "The estimator cannot be tuned and ensembled at the same time."
+            )
 
 
     @staticmethod
@@ -292,66 +333,3 @@ class AbstractBaseEstimator(ABC):
         for callback in callbacks:
             params = callback(params, y, False)
         return params
-
-
-    def save(self, filepath: str | Path, check_is_fitted = False) -> None:
-        '''
-        Serielize the instance using pickle.
-        Allows for a conditional check on the "fitted nature" of the estimator.
-        '''
-        if check_is_fitted and not hasattr(self, "estimator_"):
-            raise ValueError("The estimator instance is not fitted (no 'estimator_' attibute).")
-        with open(filepath, "wb") as f:
-            pickle.dump(self, f)
-    
-
-    def collect_fit_preprocessing_info(
-        self, 
-        clf_or_pipe: Classifier | Pipeline,
-        return_on_classifier: Literal["empty_dict", "error"] = "empty_dict"
-    ) -> dict:
-        '''
-        Returns the preprocessing info from a fitted pipeline.
-        If a classifier is passed in input then it returns an empty dict.
-        '''
-        if not isinstance(clf_or_pipe, Pipeline):
-            if return_on_classifier == "empty_dict":
-                return {}
-            elif return_on_classifier == "error":
-                raise ValueError("Classifier in input. No preprocessing is done.")
-            else:
-                raise ValueError("Unsupported value for 'return_on_classifier' parameter.")
-        
-        # from here we deal with a pipeline
-        if self.preprocessing == "pca":
-            return self._collect_from_pca_preprocessing(clf_or_pipe)
-        elif self.preprocessing == "density_filter":
-            return self._collect_from_density_preprocessing(clf_or_pipe)
-        elif self.preprocessing in ["base", "no"]:
-            return {}
-        else:
-            raise ValueError("Unrecognized preprocessing.")
-
-    
-    @staticmethod
-    def _collect_from_pca_preprocessing(pipeline: Pipeline) -> dict:
-        '''Collect the pca related learned info'''
-        pca: PCA = pipeline.named_steps["pca"]
-        # we wrap the container objects to avoid errors 
-        # in the building process of the prediction dataframe object
-        return {
-            "n_pca_components": pca.n_components_,
-            "explained_variance_ratio": [pca.explained_variance_ratio_],
-            "total_explained_variance_ratio": pca.explained_variance_ratio_.sum()
-        }
-    
-
-    @staticmethod
-    def _collect_from_density_preprocessing(pipeline: Pipeline) -> dict:
-        '''Collect the density related learned info'''
-        density_selector: DensityFeatureSelector = pipeline.named_steps["densityfeatureselector"]
-        return {
-            "density_selection_strategy": density_selector.strategy_,
-            "n_target_features": density_selector.n_target_features_,
-            "minimum_selected_density_score": density_selector.minimum_density_score_
-        }

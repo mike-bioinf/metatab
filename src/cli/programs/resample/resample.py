@@ -5,6 +5,7 @@ from collections import defaultdict
 import numpy as np
 import pandas as pd
 from estimators.estimators import Estimator
+from estimators.utils.pick import pick_estimator_class
 from metatab_utils.prediction import PredictionDataframe
 from metatab_utils.data_loader import DataLoader
 from cli.programs.resample.params import parse_args
@@ -18,7 +19,6 @@ from cli.helper import (
     check_holdout_train_size,
     manage_output_path, 
     adjust_io_paths_,
-    pick_estimator_class,
     resolve_preprocessing_info,
     build_early_stop_configuration,
     build_tune_configuration
@@ -73,7 +73,7 @@ def main():
     logger.debug("Data loaded in memory!\n")
 
     splitter = pick_splitter(pars)
-    estimator_class = pick_estimator_class(pars)
+    estimator_class = pick_estimator_class(pars["estimator"], pars["estimator_mode"])
     rng_estimator = np.random.default_rng(pars["seed_estimator"])
 
     # initialize outputs

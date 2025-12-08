@@ -7,6 +7,7 @@ from metatab_utils.types import XType, YType
 from estimators.core import (
     AbstractBaseEstimator,
     DefaultEstimatorMixin,
+    EnsembleEstimatorMixin,
     TunedEstimatorMixin,
     BaseMetaEstimator
 )
@@ -92,6 +93,32 @@ class MyTunedTabPFNClassifier(TunedEstimatorMixin, AbstractBaseEstimator):
             classifier_cls=TabPFNClassifier,
             type_estimator="tabpfn",
             is_tuned=True,
+            is_early_stopped=False,
+            density_feature_selector_strategy="undersample" # to speed up.
+        )
+        return self
+
+
+
+class MyEnsembledTabPFNClassifier(EnsembleEstimatorMixin, AbstractBaseEstimator):
+    '''
+    Implementation of the ensembled TabPFNClassifier.
+
+    Attributes:
+        estimator_ (EnsembleEstimator): Fitted EnsembleEstimator object.
+    '''
+    fixed_params = TuningParams.TABPFN_FIXED_PARAMS
+
+    @suppress_sklearn_and_tabpfn_warnings
+    def fit(self, X: XType, y: YType) -> "MyTunedTabPFNClassifier":
+        # we download the different tabpfn checkpoint in the user cache dir
+        _ = download_and_return_tabpfn_checkpoints(TABPFN_CHECKPOINTS)
+        self.estimator_ = super().fit_estimator(
+            X=X,
+            y=y,
+            classifier_cls=TabPFNClassifier,
+            type_estimator="tabpfn",
+            is_ensembled=True,
             is_early_stopped=False,
             density_feature_selector_strategy="undersample" # to speed up.
         )

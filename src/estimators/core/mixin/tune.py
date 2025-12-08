@@ -3,6 +3,8 @@ from __future__ import annotations
 import numpy as np
 from typing import TYPE_CHECKING
 from sklearn.utils.validation import check_is_fitted
+from estimators.utils.general import collect_sklearn_classification_fit_info
+from preprocessing.collect import collect_fit_preprocessing_info
 
 if TYPE_CHECKING:
     from hp_search.searchcv import SearchCV
@@ -12,7 +14,7 @@ if TYPE_CHECKING:
 
 class TunedEstimatorMixin:
     '''
-    Mixin providing methods for tuned estimators.
+    Mixin class for the tuned estimator.
     
     Requirements:
     - Concrete class must define `estimator_` attribute (SearchCV instance).
@@ -41,7 +43,10 @@ class TunedEstimatorMixin:
     def collect_fit_preprocessing_info(self) -> dict:
         check_is_fitted(self, "estimator_")
         self._check_estimator_is_refitted()
-        return super().collect_fit_preprocessing_info(self.estimator_.best_estimator_)
+        return collect_fit_preprocessing_info(
+            self.estimator_.best_estimator_,
+            self.preprocessing,
+        )
 
     
     def get_feature_names_in_(self) -> np.ndarray | None:
@@ -58,14 +63,7 @@ class TunedEstimatorMixin:
         '''
         check_is_fitted(self, "estimator_")
         self._check_estimator_is_refitted()
-        out = {
-            "classes_": self.estimator_.best_estimator_.classes_,
-            "n_features_in_": self.estimator_.best_estimator_.n_features_in_,
-        }
-        feature_names_in = getattr(self.estimator_.best_estimator_, "feature_names_in_", None)
-        if feature_names_in is not None:
-            out["feature_names_in_"] = feature_names_in
-        return out
+        return collect_sklearn_classification_fit_info(self.estimator_.best_estimator_)
 
 
     def predict_proba(self, X: XType) -> np.ndarray:

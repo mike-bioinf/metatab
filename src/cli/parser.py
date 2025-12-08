@@ -153,7 +153,7 @@ def make_tune_parser() -> ArgumentParser:
                    to use instead of the default one in the tune meta optimization process. The model must be serialized with joblib.
                    Ignored when '--tune-algo' is not "meta".""")
     
-    # TODO: for now we do not allow to specify the specifics for "random_from_best" and "uniform_from_best" strategies
+    # TODO: for now we do not allow to specify the specifics for the strategies
     p.add_argument("--tune-meta-strategy", choices=["best", "random_from_best", "uniform_from_best"], default="random_from_best",
                    help="""Strategy used to select the points proposed and evaluated by the surrogate model.
                    These points are the ones that will be tested in the inner cv.

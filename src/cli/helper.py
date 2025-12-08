@@ -2,7 +2,6 @@ import logging
 import numpy as np
 import pandas as pd
 from pathlib import Path
-from estimators.estimators import Estimator
 from preprocessing.preprocessing import get_estimator_default_preprocessing
 from estimators.core.configurations import TuneConfiguration, EarlyStopConfiguration
 
@@ -15,27 +14,6 @@ from estimators.utils.constants import (
 from estimators.params.utils import (
     DEFAULT_ESTIMATORS_TUNE_SPACES,
     pick_estimator_tune_space
-)
-
-from estimators.estimators import (
-    MyRandomForestClassifier,
-    MyTunedRandomForestClassifier,
-    MyXGBClassifier,
-    MyESXGBClassifier,
-    MyTunedXGBClassifier,
-    MyTunedESXGBClassifier,
-    MyCatBoostClassifier,
-    MyESCatBoostClassifier,
-    MyTunedCatBoostClassifier,
-    MyTunedESCatBoostClassifier,
-    MyLGBMClassifier,
-    MyESLGBMClassifier,
-    MyTunedLGBMClassifier,
-    MyTunedESLGBMClassifier,
-    MyTabPFNClassifier,
-    MyTunedTabPFNClassifier,
-    # MyAutoTabPFNClassifier,
-    # MyAesFineTunedTabPFNClassifier
 )
 
 
@@ -72,7 +50,7 @@ def check_incompatible_estimator_preprocessing(pars: dict) -> None:
         raise ValueError(f"PCA preprocessing cannot be used with '{estimator}' estimator.")
 
 
-
+### ABSTRACTED IN ESTIMATORS.UTILS.GENERAL
 def check_meta_tuning(pars: dict, logger: logging.Logger) -> None:
     '''
     General check on meta-tuning related options:
@@ -212,54 +190,6 @@ def build_early_stop_configuration(pars: dict) -> None | EarlyStopConfiguration:
         validation_set_size=pars["validation_set_size"]
     )
 
-
-
-def pick_estimator_class(pars: dict) -> Estimator:
-    match (pars["estimator"], pars["estimator_mode"]):
-        case ("random_forest", "default"):
-            return MyRandomForestClassifier
-        case ("random_forest", "tune"):
-            return MyTunedRandomForestClassifier
-        
-        case ("xgb", "default"):
-            return MyXGBClassifier
-        case ("xgb", "tune"):
-            return MyTunedXGBClassifier
-        case ("es_xgb", "default"):
-            return MyESXGBClassifier
-        case ("es_xgb", "tune"):
-            return MyTunedESXGBClassifier
-        
-        case("catboost", "default"):
-            return MyCatBoostClassifier
-        case("catboost", "tune"):
-            return MyTunedCatBoostClassifier
-        case ("es_catboost", "default"):
-            return MyESCatBoostClassifier
-        case("es_catboost", "tune"):
-            return MyTunedESCatBoostClassifier
-        
-        case ("lgbm", "default"):
-            return MyLGBMClassifier
-        case("lgbm", "tune"):
-            return MyTunedLGBMClassifier
-        case ("es_lgbm", "default"):
-            return MyESLGBMClassifier
-        case ("es_lgbm", "tune"):
-            return MyTunedESLGBMClassifier
-
-        case ("tabpfn", "default"):
-            return MyTabPFNClassifier
-        case("tabpfn", "tune"):
-            return MyTunedTabPFNClassifier
-        # case("autotabpfn", _):
-        #     return MyAutoTabPFNClassifier
-        # case("finetunetabpfn", _):
-        #     return MyAesFineTunedTabPFNClassifier
-    
-        case _:
-            raise ValueError("Unsupported estimator.")
-        
 
 
 class FlushStreamHandler(logging.StreamHandler):

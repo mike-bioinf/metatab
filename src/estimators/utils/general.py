@@ -1,6 +1,14 @@
-from typing import Any
+from __future__ import annotations
+
+import warnings
+from typing import Any, TYPE_CHECKING, Literal
 from copy import deepcopy
 from numpy.random import RandomState
+from estimators.params.utils import DEFAULT_ESTIMATORS_TUNE_SPACES
+
+if TYPE_CHECKING:
+    from estimators.utils.types import EstimatorType
+    from preprocessing.types import PreprocessingStrategy
 
 
 
@@ -60,3 +68,68 @@ def update_dict(
     dictionary = deepcopy(dictionary) if copy else dictionary
     dictionary[name_key] = value
     return dictionary
+
+
+# TODO: find a better location for this function
+def check_meta_tuning_options(
+    estimator: EstimatorType, 
+    preprocessing: PreprocessingStrategy, 
+    tune_space: str
+) -> None:
+    '''
+    General check on meta-tuning related options:
+    - checks that the meta-tuning option is requested with the right HPs space.
+    - send a message when the preprocessing option is not suggested for meta-tuning. 
+    '''
+    estimator_default_space = DEFAULT_ESTIMATORS_TUNE_SPACES[estimator][0]
+
+    if tune_space not in ["default", estimator_default_space]:
+        raise ValueError(
+            "'meta' algo can be used only with the estimator default tune space" + 
+            f" ({estimator} --> {estimator_default_space})."
+        )
+
+    if (
+        (estimator == "tabpfn" and preprocessing not in ["estimator_default", "density_filter"]) or
+        (estimator != "tabpfn" and preprocessing not in ["estimator_default", "base"])    
+    ):
+        warnings.warn(
+            "Meta-tuning is less effective when the following estimator-preprocessing couples are NOT respected:" +
+            " tabpfn --> density_filter," +
+            " others estimators --> base."
+        )
+
+
+
+def collect_sklearn_classification_fit_info(
+    obj: Any, 
+    missing_feature_names_in: Literal["error", "none", "skip"] = "skip"
+) -> dict:
+    '''
+    Utility to collect the classical sklearn classification 
+    info `classes_`, `n_features_in_` and `feature_names_in_` 
+    from a generic object. Here we assume that the attributes
+    exists exept for `feature_names_in_`, which is optional.
+    Th behaviour to assume when `feature_names_in_` is missing 
+    is encoded through the `missing_features_names_in` parameter.
+    '''
+    res = {
+        "classes_": obj.classes_,
+        "n_features_in_": obj.n_features_in_
+    }
+    
+    if not hasattr(obj, "feature_names_in_"):
+        if missing_feature_names_in == "error":
+            raise ValueError("obj does not have 'feature_names_in_' attribute.")
+        elif missing_feature_names_in == "none":
+            res["feature_names_in_"] = None
+        elif missing_feature_names_in == "skip":
+            pass
+        else:
+            raise ValueError(
+                "'missing_features_names_in' must be equal to 'error', 'none' or 'skip'."
+            )
+    else:
+        res["feature_names_in_"] = obj.feature_names_in_
+    
+    return res

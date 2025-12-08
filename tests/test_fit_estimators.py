@@ -40,7 +40,7 @@ def verify_presence_nan_in_hpo_losses(
     returns: Literal["bool", "int", "both"]
 ) -> bool|int|tuple[bool,int]:
     '''
-    Checks on the presence of nana values in the search_losses_ of SearchCV instance.
+    Checks on the presence of nan values in the search_losses_ of SearchCV instance.
     When returns is "bool", it returns a bool indicating the presence of nan values.
     When returns is "int", it returns the number of nan values.
     When returns is "both", it returns both as a tuple [bool, int].

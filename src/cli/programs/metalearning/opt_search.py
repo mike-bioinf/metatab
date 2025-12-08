@@ -11,6 +11,7 @@ from time import time
 from typing import TYPE_CHECKING
 from metatab_utils.data_loader import DataLoader
 from hp_search.utils import ConfigSearchCV
+from estimators.utils.pick import pick_estimator_class
 from cli.parser import make_base_parser, make_tune_parser
 
 from cli.helper import (
@@ -18,7 +19,6 @@ from cli.helper import (
     adjust_io_paths_,
     manage_output_path,
     resolve_preprocessing_info,
-    pick_estimator_class,
     create_logger,
     build_early_stop_configuration,
     build_tune_configuration
@@ -98,7 +98,7 @@ def main():
     log_program_setting(logger, pars, name_dataset)
     logger.debug("Data loaded in memory!")
     
-    estimator_class = pick_estimator_class(pars)
+    estimator_class = pick_estimator_class(pars["estimator"], "tune")
 
     estimator: Estimator = estimator_class(
         # here we resolve the preprocessing info in order to store

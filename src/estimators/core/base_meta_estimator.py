@@ -1,7 +1,3 @@
-'''
-In this module we implement the base meta estimator for the estimators py classes.
-'''
-
 from __future__ import annotations
 
 import numpy as np

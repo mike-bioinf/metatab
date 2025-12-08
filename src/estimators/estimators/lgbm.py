@@ -7,8 +7,9 @@ from metatab_utils.types import XType, YType
 
 from estimators.core import (
     AbstractBaseEstimator, 
-    TunedEstimatorMixin, 
     DefaultEstimatorMixin,
+    TunedEstimatorMixin, 
+    EnsembleEstimatorMixin,
     BaseMetaEstimator
 )
 
@@ -155,7 +156,67 @@ class MyTunedESLGBMClassifier(TunedEstimatorMixin, AbstractBaseEstimator):
     @ignore_lgbm_feature_name_warning
     def predict_proba(self, X, **kwargs):
         return super().predict_proba(X)
+ 
+
+
+class MyEnsembledLGBMClassifier(EnsembleEstimatorMixin, AbstractBaseEstimator):
+    '''
+    Implementation of the ensmebled LGBMClassifier without early stop.
+
+    Attributes:
+        estimator_ (EnsembleEstimator): Fitted EnsembleEstimator object.    
+    '''
+    fixed_params=TuningParams.LGBM_FIXED_PARAMS
+        
+    @ignore_lgbm_feature_name_warning
+    def fit(self, X: XType, y: YType) -> "MyEnsembledLGBMClassifier":
+        self.estimator_ = super().fit_estimator(
+            X=X,
+            y=y,
+            classifier_cls=LGBMClassifier,
+            type_estimator="lgbm",
+            is_ensembled=True,
+            callbacks_on_fixed_params=[
+                partial(adjust_objective_logloss_and_num_classes, framework="lightgbm")
+            ]
+        )
+        return self
     
+    @ignore_lgbm_feature_name_warning
+    def predict_proba(self, X, **kwargs):
+        return super().predict_proba(X)   
+
+
+
+class MyEnsembledESLGBMClassifier(EnsembleEstimatorMixin, AbstractBaseEstimator):
+    '''
+    Implementation of the ensmebled LGBMClassifier with early stop.
+    
+    Attributes:
+        estimator_ (EnsembleEstimator): Fitted EnsembleEstimator object.
+    '''
+    fixed_params = TuningParams.ES_LGBM_FIXED_PARAMS
+
+    @ignore_lgbm_feature_name_warning
+    def fit(self, X: XType, y: YType) -> "MyEnsembledESLGBMClassifier":
+        self.estimator_ = super().fit_estimator(
+            X=X,
+            y=y,
+            classifier_cls=LGBMClassifier,
+            type_estimator="es_lgbm",
+            is_ensembled=True,
+            is_early_stopped=True,
+            callbacks_on_fixed_params=[
+                partial(adjust_objective_logloss_and_num_classes, framework="lightgbm"),
+                partial(adjust_es_logloss_metric, framework="lightgbm") 
+            ]
+        )
+        return self
+    
+    @ignore_lgbm_feature_name_warning
+    def predict_proba(self, X, **kwargs):
+        return super().predict_proba(X)
+
 
 
 class MetaTuneLGBMClassifier(BaseMetaEstimator):

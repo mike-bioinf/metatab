@@ -57,7 +57,7 @@ COLUMN_TRANSFORMER_FIXED_PARAMS = {
 
 
 ### TODO: add no preprocessing (we have to regenerate the surrogate models once changed)
-# since handle_unknow was set to 'error'
+# since handle_unknow was previously set to 'error'.
 PREPROCESSING_COLUMN_ENCODING = (
     "preprocessing_column", 
     OneHotEncoder(

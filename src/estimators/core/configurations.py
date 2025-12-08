@@ -5,7 +5,6 @@ from dataclasses import dataclass
 
 if TYPE_CHECKING:
     from pathlib import Path
-    from sklearn.pipeline import Pipeline
     from metalearning.types import MetaStrategy, MetaStrategyParams
 
 
@@ -13,9 +12,8 @@ if TYPE_CHECKING:
 @dataclass
 class TuneConfiguration:
     '''
-    Dataclass that manages some of the SearchCV input parameters.
-    In particular hosts the parameters that are managed by the
-    AbstractBaseEStimator at init level.  
+    Dataclass that manages the tune configuration.
+    Used in input to `AbstractBaseEstimator`.
     '''
     algo: Literal["random", "tpe", "meta"]
     n_iter: int
@@ -24,7 +22,7 @@ class TuneConfiguration:
     params_distributions: dict
     meta_strategy: MetaStrategy
     meta_strategy_params: None | MetaStrategyParams = None
-    meta_surrogate_model: None | Pipeline = None
+    meta_surrogate_model: None | str | Path = None
     meta_seed: int = 42
     raise_error_during_search: None | bool = None
     build_df_search: None | bool = None
@@ -35,7 +33,10 @@ class TuneConfiguration:
 
 @dataclass
 class EarlyStopConfiguration:
-    '''Dataclass that manages the early stop configuration'''
+    '''
+    Dataclass that manages the early stop configuration.
+    Used in input to `AbstractBaseEstimator`.
+    '''
     early_stop_rounds: int = 100
     validation_set_size: float = 0.3
 
@@ -43,5 +44,22 @@ class EarlyStopConfiguration:
 
 @dataclass
 class EnsembleConfiguration:
-    '''Dataclass that manages the ensemble configuration'''
-    pass
+    '''
+    Dataclass that manages the ensemble configuration.
+    Used in input to `AbstractBaseEstimator`.
+    '''
+    name: str
+    algo: Literal["random", "meta"]
+    n_members: int
+    save_path: str | Path
+    params_distributions: dict
+    meta_strategy: MetaStrategy = "random_from_best"
+    meta_strategy_params: None | MetaStrategyParams = None
+    meta_surrogate_model: None | str | Path = None
+    meta_seed: int = 42
+    meta_features: None | dict = None
+    meta_candidate_points: None | list[dict] = None
+    time_limit: int = 10_000_000
+    log: int = 20
+    raise_error_fit_member: bool = False
+    raise_error_void_ensemble: bool = True

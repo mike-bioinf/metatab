@@ -6,13 +6,13 @@ The program seralizes the fitted model in a binary file via pickle.
 import sys
 import argparse
 from estimators.estimators import Estimator
+from estimators.utils.pick import pick_estimator_class
 from metatab_utils.data_loader import DataLoader
 
 from cli.helper import (
     adjust_io_paths_, 
     manage_output_path,
     check_fit_resample_args,
-    pick_estimator_class,
     check_y_is_integer_encoded,
     create_logger,
     build_early_stop_configuration,
@@ -66,7 +66,7 @@ def main():
 
     # here we consider all 3 load methods to retrieve the dataset_name
     fit_dataset_name = dl.train_dataset_name if dl.train_dataset_name else dl.generic_dataset_name
-    estimator_class = pick_estimator_class(pars)
+    estimator_class = pick_estimator_class(pars["estimator"], pars["estimator_mode"])
     
     estimator: Estimator = estimator_class(
         preprocessing=resolve_preprocessing_info(pars),

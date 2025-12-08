@@ -6,8 +6,9 @@ from metatab_utils.types import XType, YType
 
 from estimators.core import (
     AbstractBaseEstimator, 
-    TunedEstimatorMixin, 
     DefaultEstimatorMixin,
+    TunedEstimatorMixin,
+    EnsembleEstimatorMixin,
     BaseMetaEstimator
 )
 
@@ -33,8 +34,6 @@ class MyXGBClassifier(DefaultEstimatorMixin, AbstractBaseEstimator):
             y=y,
             classifier_cls=XGBClassifier,
             type_estimator="xgb",
-            is_early_stopped=False,
-            is_tuned=False,
             callbacks_on_fixed_params=[
                 partial(adjust_objective_logloss_and_num_classes, framework="xgboost")
             ]
@@ -58,8 +57,6 @@ class MyESXGBClassifier(DefaultEstimatorMixin, AbstractBaseEstimator):
             y=y,
             classifier_cls=XGBClassifier,
             type_estimator="es_xgb",
-            is_tuned=False,
-            is_early_stopped=True,
             callbacks_on_fixed_params=[
                 partial(adjust_objective_logloss_and_num_classes, framework="xgboost"),
                 partial(adjust_es_logloss_metric, framework="xgboost")
@@ -85,7 +82,6 @@ class MyTunedXGBClassifier(TunedEstimatorMixin, AbstractBaseEstimator):
             y=y,
             classifier_cls=XGBClassifier,
             type_estimator="xgb",
-            is_early_stopped=False,
             is_tuned=True,
             callbacks_on_fixed_params=[
                 partial(adjust_objective_logloss_and_num_classes, framework="xgboost")
@@ -120,6 +116,57 @@ class MyTunedESXGBClassifier(TunedEstimatorMixin, AbstractBaseEstimator):
         )
         return self
     
+
+
+class MyEnsembledXGBClassifier(EnsembleEstimatorMixin, AbstractBaseEstimator):
+    '''
+    Implementation of the ensembled XGBClassifier.
+
+    Attributes:
+        estimator_ (EnsembleEstimator): Fitted EnsembleEstimator object.
+    '''
+    fixed_params = TuningParams.XGB_FIXED_PARAMS
+
+    def fit(self, X: XType, y: YType) -> "MyEnsembledXGBClassifier":
+        self.estimator_ = super().fit_estimator(
+            X=X,
+            y=y,
+            classifier_cls=XGBClassifier,
+            type_estimator="xgb",
+            is_ensembled=True,
+            callbacks_on_fixed_params=[
+                partial(adjust_objective_logloss_and_num_classes, framework="xgboost")
+            ]
+        )
+        return self
+
+
+
+class MyEnsembledESXGBClassifier(EnsembleEstimatorMixin, AbstractBaseEstimator):
+    '''
+    Implementation of the ensembled XGBClassifier with early stop.
+
+    Attributes:
+        estimator_ (EnsembleEstimator): Fitted EnsembleEstimator object.
+    '''
+    fixed_params = TuningParams.ES_XGB_FIXED_PARAMS
+
+    def fit(self, X: XType, y: YType) -> "MyEnsembledESXGBClassifier":
+        self.estimator_ = super().fit_estimator(
+            X=X,
+            y=y,
+            classifier_cls=XGBClassifier,
+            type_estimator="es_xgb",
+            is_early_stopped=True,
+            is_ensembled=True,
+            callbacks_on_fixed_params=[
+                partial(adjust_objective_logloss_and_num_classes, framework="xgboost"),
+                partial(adjust_es_logloss_metric, framework="xgboost")
+            ],
+            fit_classifier_kwargs={"verbose": False}  # to be effective must be passed to fit
+        )
+        return self
+
 
 
 class MetaTuneXGBClassifier(BaseMetaEstimator):

@@ -11,7 +11,6 @@ from tabpfn_extensions.post_hoc_ensembles.sklearn_interface import AutoTabPFNCla
 # from estimators.tabpfn import SingleDatasetAesFineTunedTabpfnClassifier
 
 
-
 Classifier: TypeAlias = Union[
     RandomForestClassifier,
     XGBClassifier,

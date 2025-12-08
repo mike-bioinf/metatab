@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 from sklearn.utils.validation import check_is_fitted
+from estimators.utils.general import collect_sklearn_classification_fit_info
+from preprocessing.collect import collect_fit_preprocessing_info
 
 if TYPE_CHECKING:
     import numpy as np
@@ -13,7 +15,7 @@ if TYPE_CHECKING:
 
 class DefaultEstimatorMixin:
     '''
-    Mixin class for the default estimators
+    Mixin class for the default estimator.
 
     Requirements:
     - Concrete class must define `estimator_` attribute (Classifier or Pipeline instance).
@@ -40,16 +42,9 @@ class DefaultEstimatorMixin:
         equal to the attributes names.
         '''
         check_is_fitted(self, "estimator_")
-        out = {
-            "classes_": self.estimator_.classes_,
-            "n_features_in_": self.estimator_.n_features_in_,
-        }
-        feature_names_in = getattr(self.estimator_, "feature_names_in_", None)
-        if feature_names_in is not None:
-            out["feature_names_in_"] = feature_names_in
-        return out
+        return collect_sklearn_classification_fit_info(self.estimator_)
 
 
     def collect_fit_preprocessing_info(self) -> dict:
         check_is_fitted(self, "estimator_")
-        return super().collect_fit_preprocessing_info(self.estimator_)
+        return collect_fit_preprocessing_info(self.estimator_, self.preprocessing)

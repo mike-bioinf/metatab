@@ -1,9 +1,13 @@
+from __future__ import annotations
+
 import sys
-from typing import Literal, Callable
+from typing import Literal, Callable, TYPE_CHECKING
 from copy import deepcopy
 from tabpfn.model_loading import _user_cache_dir
 from metatab_utils.general import enlist
-from estimators.utils.types import TunableEstimatorType
+
+if TYPE_CHECKING:
+    from estimators.utils.types import TunableEstimatorType
 
 
 

@@ -4,8 +4,9 @@ from estimators.params import TuningParams, DefaultParams
 from metatab_utils.types import XType, YType
 
 from estimators.core import (
-    TunedEstimatorMixin, 
-    DefaultEstimatorMixin, 
+    DefaultEstimatorMixin,
+    TunedEstimatorMixin,
+    EnsembleEstimatorMixin,
     AbstractBaseEstimator
 )
 
@@ -31,8 +32,6 @@ class MyCatBoostClassifier(DefaultEstimatorMixin, AbstractBaseEstimator):
             y=y,
             classifier_cls=CatBoostClassifier,
             type_estimator="catboost",
-            is_tuned=False,
-            is_early_stopped=False,
             n_threads_parameter="thread_count",
             callbacks_on_fixed_params=[
                 partial(adjust_objective_logloss_and_num_classes, framework="catboost")
@@ -57,7 +56,6 @@ class MyESCatBoostClassifier(DefaultEstimatorMixin, AbstractBaseEstimator):
             y=y,
             classifier_cls=CatBoostClassifier,
             type_estimator="es_catboost",
-            is_tuned=False,
             is_early_stopped=True,
             n_threads_parameter="thread_count",
             callbacks_on_fixed_params=[
@@ -85,7 +83,6 @@ class MyTunedCatBoostClassifier(TunedEstimatorMixin, AbstractBaseEstimator):
             classifier_cls=CatBoostClassifier,
             type_estimator="catboost",
             is_tuned=True,
-            is_early_stopped=False,
             n_threads_parameter="thread_count",
             callbacks_on_fixed_params=[
                 partial(adjust_objective_logloss_and_num_classes, framework="catboost")
@@ -111,6 +108,58 @@ class MyTunedESCatBoostClassifier(TunedEstimatorMixin, AbstractBaseEstimator):
             classifier_cls=CatBoostClassifier,
             type_estimator="es_catboost",
             is_tuned=True,
+            is_early_stopped=True,
+            n_threads_parameter="thread_count",
+            callbacks_on_fixed_params=[
+                partial(adjust_objective_logloss_and_num_classes, framework="catboost"),
+                partial(adjust_es_logloss_metric, framework="catboost")
+            ]
+        )
+        return self
+    
+
+
+class MyEnsembledCatBoostClassifier(EnsembleEstimatorMixin, AbstractBaseEstimator):
+    '''
+    Implementation of ensembled CatBoostClassifier.
+    
+    Attributes:
+        estimator_ (EnsembleEstimator): Fitted EnsembleEstimator object.
+    '''
+    fixed_params=TuningParams.CATBOOST_FIXED_PARAMS
+    
+    def fit(self, X: XType, y: YType) -> "MyEnsembledCatBoostClassifier":
+        self.estimator_ = super().fit_estimator(
+            X=X,
+            y=y,
+            classifier_cls=CatBoostClassifier,
+            type_estimator="catboost",
+            is_ensembled=True,
+            n_threads_parameter="thread_count",
+            callbacks_on_fixed_params=[
+                partial(adjust_objective_logloss_and_num_classes, framework="catboost")
+            ]
+        )
+        return self
+
+
+
+class MyEnsembledESCatBoostClassifier(EnsembleEstimatorMixin, AbstractBaseEstimator):
+    '''
+    Implementation of ensembled CatBoostClassifier with early stop.
+    
+    Attributes:
+        estimator_ (EnsembleEstimator): Fitted EnsembleEstimator object.
+    '''
+    fixed_params=TuningParams.ES_CATBOOST_FIXED_PARAMS
+
+    def fit(self, X: XType, y: YType) -> "MyEnsembledESCatBoostClassifier":
+        self.estimator_ = super().fit_estimator(
+            X=X,
+            y=y,
+            classifier_cls=CatBoostClassifier,
+            type_estimator="es_catboost",
+            is_ensembled=True,
             is_early_stopped=True,
             n_threads_parameter="thread_count",
             callbacks_on_fixed_params=[
