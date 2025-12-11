@@ -8,7 +8,9 @@ from estimators.estimators.xgb import (
     MyEnsembledXGBClassifier,
     MyEnsembledESXGBClassifier,
     MetaTuneXGBClassifier,
-    MetaTuneEsXGBClassifier
+    MetaTuneEsXGBClassifier,
+    MetaEnsembleXGBClassifier,
+    MetaEnsembleEsXGBClassifier
 )
 
 from estimators.estimators.catboost import (
@@ -24,7 +26,8 @@ from estimators.estimators.rf import (
     MyRandomForestClassifier,
     MyTunedRandomForestClassifier,
     MyEnsembledRandomForestClassifier,
-    MetaTuneRandomForestClassifier
+    MetaTuneRandomForestClassifier,
+    MetaEnsembleRandomForestClassifier
 )
 
 from estimators.estimators.lgbm import (
@@ -35,7 +38,9 @@ from estimators.estimators.lgbm import (
     MyEnsembledLGBMClassifier,
     MyEnsembledESLGBMClassifier,
     MetaTuneLGBMClassifier,
-    MetaTuneEsLGBMClassifier
+    MetaTuneEsLGBMClassifier,
+    MetaEnsembleLGBMClassifier,
+    MetaEnsembleEsLGBMClassifier
 )
 
 from estimators.estimators.tabpfn import (
@@ -43,6 +48,7 @@ from estimators.estimators.tabpfn import (
     MyTunedTabPFNClassifier,
     MyEnsembledTabPFNClassifier,
     MetaTuneTabPFNClassifier,
+    MetaEnsembleTabPFNClassifier
     # MyAutoTabPFNClassifier,
     # MyAesFineTunedTabPFNClassifier
 )
@@ -79,6 +85,18 @@ Estimator: TypeAlias = Union[
 ]
 
 
+DefaultEstimator: TypeAlias = Union[
+    MyRandomForestClassifier,
+    MyXGBClassifier,
+    MyESXGBClassifier,
+    MyCatBoostClassifier,
+    MyESCatBoostClassifier,
+    MyLGBMClassifier,
+    MyESLGBMClassifier,
+    MyTabPFNClassifier
+]
+
+
 EnsembledEstimator: TypeAlias = Union[
     MyEnsembledRandomForestClassifier,
     MyEnsembledXGBClassifier,
@@ -87,7 +105,19 @@ EnsembledEstimator: TypeAlias = Union[
     MyEnsembledESCatBoostClassifier,
     MyEnsembledLGBMClassifier,
     MyEnsembledESLGBMClassifier,
-    MyEnsembledTabPFNClassifier,
+    MyEnsembledTabPFNClassifier
+]
+
+
+TunedEstimator: TypeAlias = Union[
+    MyTunedRandomForestClassifier,
+    MyTunedXGBClassifier,
+    MyTunedESXGBClassifier,
+    MyTunedCatBoostClassifier,
+    MyTunedESCatBoostClassifier,
+    MyTunedLGBMClassifier,
+    MyTunedESLGBMClassifier,
+    MyTunedTabPFNClassifier
 ]
 
 
@@ -119,5 +149,7 @@ __all__ = [
     # "MyAutoTabPFNClassifier",
     # "MyAesFineTunedTabPFNClassifier",
     "Estimator",
+    "DefaultEstimator",
+    "TunedEstimator",
     "EnsembledEstimator"
 ]

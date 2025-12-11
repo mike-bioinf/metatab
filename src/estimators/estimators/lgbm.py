@@ -10,7 +10,8 @@ from estimators.core import (
     DefaultEstimatorMixin,
     TunedEstimatorMixin, 
     EnsembleEstimatorMixin,
-    BaseMetaEstimator
+    MetaTuneBaseEstimator,
+    MetaEnsembleBaseEstimator
 )
 
 from estimators.utils.gbdt import ( 
@@ -219,23 +220,42 @@ class MyEnsembledESLGBMClassifier(EnsembleEstimatorMixin, AbstractBaseEstimator)
 
 
 
-class MetaTuneLGBMClassifier(BaseMetaEstimator):
+class MetaTuneLGBMClassifier(MetaTuneBaseEstimator):
     def fit(self, X: XType, y: YType) -> "MetaTuneLGBMClassifier":
         super().fit(X, y, "base", MyTunedLGBMClassifier, TuningParams.LGMB_C0, None)
         return self
 
 
 
-class MetaTuneEsLGBMClassifier(BaseMetaEstimator):
+class MetaTuneEsLGBMClassifier(MetaTuneBaseEstimator):
     def fit(
-        self, X: XType, 
+        self,
+        X: XType, 
         y: YType, 
         early_stop_rounds: int = 100, 
         validation_set_size: float = 0.3
     ) -> "MetaTuneEsLGBMClassifier":
-        early_stop_conf = EarlyStopConfiguration(
-            early_stop_rounds=early_stop_rounds,
-            validation_set_size=validation_set_size
-        )
+        early_stop_conf = EarlyStopConfiguration(early_stop_rounds, validation_set_size)
         super().fit(X, y, "base", MyTunedESLGBMClassifier, TuningParams.LGMB_C0, early_stop_conf)
+        return self
+    
+
+
+class MetaEnsembleLGBMClassifier(MetaEnsembleBaseEstimator):
+    def fit(self, X: XType, y: YType) -> "MetaEnsembleLGBMClassifier":
+        super().fit(X, y, "base", MyEnsembledLGBMClassifier, TuningParams.LGMB_C0, None)
+        return self
+    
+
+
+class MetaEnsembleEsLGBMClassifier(MetaEnsembleBaseEstimator):
+    def fit(
+        self,
+        X: XType, 
+        y: YType, 
+        early_stop_rounds: int = 100, 
+        validation_set_size: float = 0.3
+    ) -> "MetaEnsembleEsLGBMClassifier":
+        early_stop_conf = EarlyStopConfiguration(early_stop_rounds, validation_set_size)
+        super().fit(X, y, "base", MyEnsembledESLGBMClassifier, TuningParams.LGMB_C0, early_stop_conf)
         return self

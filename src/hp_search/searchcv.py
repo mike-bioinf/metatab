@@ -23,7 +23,7 @@ from metalearning.utils import check_meta_strategy, check_meta_strategy_params
 from metatab_utils.general import add_broadcasted_objects_as_column
 from hp_search.point_corrector import PointCorrector
 from hp_search.cv import CrossValidator
-from hp_search.utils import ConfigSearchCV
+from hp_search.config import ConfigSearchCV
 
 if TYPE_CHECKING:
     from preprocessing.types import PreprocessingStrategy
@@ -141,13 +141,7 @@ class SearchCV:
         refit_with_best_hps (None | bool, optional):
             Whether to refit the clf_or_pipe with the best hps from the search.
             If None, the parameter is set via the global `ConfigSearchCV` configuration class.
-
-        save_realtime_df_search_filepath (None | str | Path, optional):
-            Whether to save after each search iteration the df_search.
-            Ignored if `build_df_search` is False.
-            If None, the parameter is set via the global `ConfigSearchCV` configuration class.
-            Forced to False if `n_iter` equal 1. 
-       
+    
 
     ## Attributes:
 
@@ -199,8 +193,7 @@ class SearchCV:
         meta_seed: int = 42,
         raise_error_during_search: None | bool = None,
         build_df_search: None | bool = None,
-        refit_with_best_hps: None | bool = None,
-        save_realtime_df_search_filepath: None | str | Path = None
+        refit_with_best_hps: None | bool = None
     ):
         self.clf_or_pipe=clf_or_pipe
         self.type_estimator=type_estimator
@@ -238,12 +231,8 @@ class SearchCV:
         # controlled by ConfigSearchCV
         self.raise_error_during_search: bool = ConfigSearchCV.get_setting(raise_error_during_search, "raise_error_during_search")
         self.build_df_search: bool = ConfigSearchCV.get_setting(build_df_search, "build_df_search")        
-        self.refit_with_best_hps: bool = ConfigSearchCV.get_setting(refit_with_best_hps, "refit_with_best_hps")
-        self.save_realtime_df_search_filepath: None | str | Path = ConfigSearchCV.get_setting(
-            save_realtime_df_search_filepath, 
-            "save_realtime_df_search_filepath"
-        )
-        
+        self.refit_with_best_hps: bool = ConfigSearchCV.get_setting(refit_with_best_hps, "refit_with_best_hps")    
+
 
 
     def fit(self, X: XType, y: YType) -> "SearchCV":
@@ -264,7 +253,6 @@ class SearchCV:
             # we append nan since we do not evaluate the loss
             self.search_losses_.append(np.nan)
             self.build_df_search = False
-            self.save_realtime_df_search_filepath = None
 
         if self.algo == "meta":
             check_meta_strategy(self.meta_strategy)
@@ -276,13 +264,12 @@ class SearchCV:
 
         else:
             raise ValueError("Unsupported optimization algorithm.")
-                
-        # do not build the dataframe again when is build in realtime
-        if self.build_df_search and not self.save_realtime_df_search_filepath:
+        
+        if self.build_df_search:
             self.df_search_ = self._build_df_search()
 
         # we refit on the original X and y to not influence sklearn expection
-        # about the fit type which is checked at predict time 
+        # about the fit datatype which is checked at predict time 
         if self.refit_with_best_hps:
             best_estimator = deepcopy(self.clf_or_pipe)
             set_params_into_clf(best_estimator, self.best_params_)   
@@ -491,8 +478,8 @@ class SearchCV:
             )
 
             # The code should not fail a single time from here, 
-            # but if it happens then we have external bug/problems that can be confused with 
-            # failed optimization iteration (for example no space and then yes on disk).
+            # but if it happens then we have external bug/problems 
+            # that can be confused with failed optimization iteration.
             # We don't tolerate these errors since external to the optimization procedure.
             try:
                 if self.build_df_search:
@@ -512,14 +499,9 @@ class SearchCV:
                     
                     self._dfs_info_iter.append(df_cv_info)
                     
-                    # here a bit inefficient since we rebuild multiple times
-                    if self.save_realtime_df_search_filepath:
-                        self.df_search_ = self._build_df_search()
-                        self.df_search_.to_csv(self.save_realtime_df_search_filepath, sep="\t", index=False)
-            
             except Exception as e:
                 raise ValueError(
-                    f"Encountered the following error during df_search building or saving process: {e}"
+                    f"Encountered the following error during df_search building process: {e}"
                 )
 
             # this line must be placed after the df_search building code

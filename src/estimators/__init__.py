@@ -4,7 +4,13 @@ from estimators.estimators import (
     MetaTuneEsXGBClassifier,
     MetaTuneTabPFNClassifier,
     MetaTuneLGBMClassifier,
-    MetaTuneEsLGBMClassifier
+    MetaTuneEsLGBMClassifier,
+    MetaEnsembleRandomForestClassifier,
+    MetaEnsembleXGBClassifier,
+    MetaEnsembleEsXGBClassifier,
+    MetaEnsembleTabPFNClassifier,
+    MetaEnsembleLGBMClassifier,
+    MetaEnsembleEsLGBMClassifier
 )
 
 
@@ -14,5 +20,11 @@ __all__ = [
     "MetaTuneEsXGBClassifier",
     "MetaTuneTabPFNClassifier",
     "MetaTuneLGBMClassifier",
-    "MetaTuneEsLGBMClassifier"
+    "MetaTuneEsLGBMClassifier",
+    "MetaEnsembleRandomForestClassifier",
+    "MetaEnsembleXGBClassifier",
+    "MetaEnsembleEsXGBClassifier",
+    "MetaEnsembleTabPFNClassifier",
+    "MetaEnsembleLGBMClassifier",
+    "MetaEnsembleEsLGBMClassifier"
 ]

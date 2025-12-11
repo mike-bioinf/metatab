@@ -5,6 +5,7 @@ from typing import Any, TYPE_CHECKING, Literal
 from copy import deepcopy
 from numpy.random import RandomState
 from estimators.params.utils import DEFAULT_ESTIMATORS_TUNE_SPACES
+from estimators.utils.constants import EARLY_STOPPED_ESTIMATORS
 
 if TYPE_CHECKING:
     from estimators.utils.types import EstimatorType
@@ -85,7 +86,7 @@ def check_meta_tuning_options(
 
     if tune_space not in ["default", estimator_default_space]:
         raise ValueError(
-            "'meta' algo can be used only with the estimator default tune space" + 
+            "'meta' algo can be used only with the estimator default space" + 
             f" ({estimator} --> {estimator_default_space})."
         )
 
@@ -94,10 +95,30 @@ def check_meta_tuning_options(
         (estimator != "tabpfn" and preprocessing not in ["estimator_default", "base"])    
     ):
         warnings.warn(
-            "Meta-tuning is less effective when the following estimator-preprocessing couples are NOT respected:" +
+            "Metalearning is less effective when the following estimator-preprocessing couples are NOT respected:" +
             " tabpfn --> density_filter," +
             " others estimators --> base."
         )
+
+
+# TODO: find a better location for thif function
+def check_early_stop_options(
+    estimator: EstimatorType,
+    early_stop_rounds: int,
+    validation_set_size: float
+) -> None:
+    '''
+    General check on early stop related parameters. In detail checks:
+    1. The estimator is a eraly stopped estimator.
+    2. early_stop_rounds is positive (greater than 0)
+    2. validation_set_size is a positive float in (0, 1].
+    '''
+    if estimator not in EARLY_STOPPED_ESTIMATORS:
+        raise ValueError(f"'{estimator}' is not early stoppable.")
+    if early_stop_rounds < 0:
+        raise ValueError("'early_stop_rounds' must be a >= 0.")
+    if not 0 < validation_set_size <=1:
+        raise ValueError("'validation_set_size' must be a float in (0, 1].")
 
 
 

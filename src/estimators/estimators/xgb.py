@@ -9,7 +9,8 @@ from estimators.core import (
     DefaultEstimatorMixin,
     TunedEstimatorMixin,
     EnsembleEstimatorMixin,
-    BaseMetaEstimator
+    MetaTuneBaseEstimator,
+    MetaEnsembleBaseEstimator
 )
 
 from estimators.utils.gbdt import ( 
@@ -169,14 +170,14 @@ class MyEnsembledESXGBClassifier(EnsembleEstimatorMixin, AbstractBaseEstimator):
 
 
 
-class MetaTuneXGBClassifier(BaseMetaEstimator):
+class MetaTuneXGBClassifier(MetaTuneBaseEstimator):
     def fit(self, X: XType, y: YType) -> "MetaTuneXGBClassifier":
         super().fit(X, y, "base", MyTunedXGBClassifier, TuningParams.XGB_C0, None)
         return self
 
 
 
-class MetaTuneEsXGBClassifier(BaseMetaEstimator):
+class MetaTuneEsXGBClassifier(MetaTuneBaseEstimator):
     def fit(
         self,
         X: XType, 
@@ -184,9 +185,27 @@ class MetaTuneEsXGBClassifier(BaseMetaEstimator):
         early_stop_rounds: int = 100,
         validation_set_size: float = 0.3
     ) -> "MetaTuneEsXGBClassifier":
-        early_stop_conf = EarlyStopConfiguration(
-            early_stop_rounds=early_stop_rounds, 
-            validation_set_size=validation_set_size
-        )
+        early_stop_conf = EarlyStopConfiguration(early_stop_rounds, validation_set_size)
         super().fit(X, y, "base", MyTunedESXGBClassifier, TuningParams.XGB_C0, early_stop_conf)
+        return self
+
+
+
+class MetaEnsembleXGBClassifier(MetaEnsembleBaseEstimator):
+    def fit(self, X: XType, y: YType) -> "MetaEnsembleXGBClassifier":
+        super().fit(X, y, "base", MyEnsembledXGBClassifier, TuningParams.XGB_C0, None)
+        return self
+    
+
+
+class MetaEnsembleEsXGBClassifier(MetaEnsembleBaseEstimator):
+    def fit(
+        self, 
+        X: XType, 
+        y: YType, 
+        early_stop_rounds: int = 100, 
+        validation_set_size: float = 0.3
+    ) -> "MetaEnsembleEsXGBClassifier":
+        early_stop_conf = EarlyStopConfiguration(early_stop_rounds, validation_set_size)
+        super().fit(X, y, "base", MyEnsembledESXGBClassifier, TuningParams.XGB_C0, early_stop_conf)
         return self

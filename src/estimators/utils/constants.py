@@ -27,16 +27,10 @@ NON_EARLY_STOPPED_GPU_ESTIMATORS = [
 ]
 
 
-NON_TUNABLE_ESTIMATORS = [
-    # "autotabpfn",
-    # "finetunetabpfn"
-]
+# NON_TUNABLE_ESTIMATORS = []
 
 
-PCA_INCOMPATIBLE_ESTIMATORS = [
-    # "autotabpfn",
-    # "finetunetabpfn"
-]
+# PCA_INCOMPATIBLE_ESTIMATORS = []
 
 
 GBDT_ESTIMATORS = [

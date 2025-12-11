@@ -16,20 +16,14 @@ class ConfigSearchCV:
     
     - build_df_search (bool): 
         Control whether SearchCV builds the df_search when fitted.
-    
-    - save_realtime_df_search_filepath (str | Path | None):
-        If not None allow to save the df_search after each search iteration at the specified path. 
-        Ignored when "build_df_search" is False.
     '''
     raise_error_during_search = False
     refit_with_best_hps = True
     build_df_search = False
-    save_realtime_df_search_filepath = None
     _attrs = [
         "raise_error_during_search",
         "refit_with_best_hps", 
         "build_df_search", 
-        "save_realtime_df_search_filepath"
     ]
 
     @classmethod

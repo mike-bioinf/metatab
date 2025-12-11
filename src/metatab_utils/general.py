@@ -1,7 +1,13 @@
+from __future__ import annotations
+
 import pandas as pd
 from copy import deepcopy
-from typing import Any, Callable
+from typing import Any, Callable, TYPE_CHECKING
 from dataclasses import fields, is_dataclass
+
+if TYPE_CHECKING:
+    import numpy as np
+    from metatab_utils.types import XType, YType
 
 
 
@@ -172,3 +178,49 @@ def asdict_shallow(obj_dataclass) -> dict:
     if not is_dataclass(obj_dataclass):
         raise ValueError("obj_dataclass must be a dataclass instance.")
     return {field.name: getattr(obj_dataclass, field.name) for field in fields(obj_dataclass)}
+
+
+
+def subset_1d(obj: YType, idx: None | np.ndarray) -> YType:
+    '''
+    Subset a pandas series or 1D numpy array with an array of indices.
+    If idx is None then the original obj is returned.
+    '''
+    if idx is None:
+        return obj
+
+    if isinstance(obj, pd.Series):
+        return obj.iloc[idx]
+
+    return obj[idx]
+
+
+
+def subset_2d(obj: XType, idx_rows: None | np.ndarray, idx_cols: None | np.ndarray) -> XType:
+    '''
+    Subset a pandas DataFrame or 2D numpy array by row and column indices.
+    The sets of indices can be None meaning no subset over that dimension.
+    '''
+    idx_rows = slice(None) if idx_rows is None else idx_rows
+    idx_cols = slice(None) if idx_cols is None else idx_cols
+
+    if isinstance(obj, pd.DataFrame):
+        return obj.iloc[idx_rows, idx_cols]
+
+    return obj[idx_rows, :][:, idx_cols]
+
+
+
+def subset_xy(
+    X: XType, 
+    y: YType, 
+    idx_rows: None | np.ndarray, 
+    idx_cols: None | np.ndarray
+) -> tuple[XType, YType]:
+    '''
+    Subset X and y with binary set of indices. 
+    The utility assumes that X is 2D and y is 1D.
+    '''
+    X_sub = subset_2d(X, idx_rows, idx_cols)
+    y_sub = subset_1d(y, idx_rows)
+    return X_sub, y_sub

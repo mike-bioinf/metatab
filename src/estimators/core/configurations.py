@@ -27,7 +27,6 @@ class TuneConfiguration:
     raise_error_during_search: None | bool = None
     build_df_search: None | bool = None
     refit_with_best_hps: None | bool = None
-    save_realtime_df_search_filepath: None | str | Path = None
 
 
 

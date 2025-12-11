@@ -57,19 +57,20 @@ class EnsembleEstimatorMixin:
     def collect_ensemble_fit_info(self) -> dict:
         check_is_fitted(self, "estimator_")
         return {
-            "is_void": self.estimator_.is_void_,
-            "fit_time": self.estimator_.fit_time_,
-            "successful_members": self.estimator_.successful_members_, 
-            "failed_members": self.estimator_.failed_members_,
-            "successful_hps_confs": self.estimator_.successful_hps_confs_,
-            "failed_hps_confs": self.estimator_.failed_hps_confs_,
-            "df_members": self.estimator_.df_members_
+            "is_void_": self.estimator_.is_void_,
+            "is_cleaned_": self.estimator_.is_cleaned_,
+            "fit_time_": self.estimator_.fit_time_,
+            "successful_members_": self.estimator_.successful_members_, 
+            "failed_members_": self.estimator_.failed_members_,
+            "successful_hps_confs_": self.estimator_.successful_hps_confs_,
+            "failed_hps_confs_": self.estimator_.failed_hps_confs_,
+            "df_members_": self.estimator_.df_members_
         }
 
     
     def collect_fit_preprocessing_info(self) -> dict:
-        # the check is useful also in this case
         check_is_fitted(self, "estimator_")
+        # this check is useful also in this case
         self.estimator_._check_on_predict_calls()
         return collect_fit_preprocessing_info(
             clf_or_pipe=self.estimator_._save_path / self.estimator_.successful_members_[0], 

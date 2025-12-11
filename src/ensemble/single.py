@@ -13,7 +13,6 @@ from pathlib import Path
 from typing import Literal, TYPE_CHECKING
 from functools import partial
 from sklearn.utils.validation import check_is_fitted
-from hp_search.point_corrector import PointCorrector
 from estimators.utils.fit import fit_with_early_stop_on_validation_set, set_params_into_clf
 from metalearning.acquisition_funcs import compute_upper_confidence_bound
 from metalearning.utils import check_meta_strategy, check_meta_strategy_params
@@ -240,7 +239,7 @@ class EnsembleEstimator:
         
         fit_classifier_kwargs = ensure_or_create(self.fit_classifier_kwargs, dict)
         hps_confs = self._get_hps_configurations(X, y)
-        member_names = [self.name + "_" + str(i) for i in range(self.n_members)]
+        member_names = [self.name + "_m" + str(i) for i in range(self.n_members)]
         
         time_prepation = round((time.time() - start_time)/60, 2)
         logger.info(f"Obtained hps configurations using the {self.algo} algo in {time_prepation} minutes.")
@@ -283,7 +282,7 @@ class EnsembleEstimator:
                 logger.debug(f"'{member_name}' member has been fitted in {round(fit_time / 60, 2)} minutes.")                
                 
                 # save classifier
-                with open(self._save_path / member_name, "wb") as f:
+                with open(self._save_path / f"{member_name}.pkl", "wb") as f:
                     pickle.dump(clf_or_pipe, f)
 
                 logger.debug(f"'{member_name}' member saved on disk.")
@@ -370,7 +369,7 @@ class EnsembleEstimator:
         '''
         predictions = []
         for successfull_member in self.successful_members_:
-            path_successful_member = self._save_path / successfull_member
+            path_successful_member = self._save_path / f"{successfull_member}.pkl"
             member_model: Classifier | Pipeline = self._try_load_model(path_successful_member)
             predictions.append(member_model.predict_proba(X))
         return predictions
@@ -449,47 +448,28 @@ class EnsembleEstimator:
 
     def _get_hps_configurations(self, X: XType, y: YType) -> list[dict]:
         sampler = HyperoptRandomSampler()
-        point_corrector = PointCorrector()
         mfe = CustomMFE()
         
         if self.algo == "random":
-            sampler.fit(self.params_distributions, seed=self.seed)
-            
-            points = [
-                point_corrector.correct_point(
-                    point, 
-                    apply_hypeopt_corrections=True, 
-                    estimator=self.type_estimator, 
-                    estimator_corrections="all"
-                )
-                for point in sampler.sample_points(self.n_members)
-            ]
-        
+            sampler.fit(self.params_distributions, seed=self.seed)    
+            points = sampler.sample_points(self.n_members)
+
         elif self.algo == "meta":
             if self.meta_features is None:
                 metafeatures, _ = mfe.fit(X, y).extract()
             else:
                 metafeatures = self.meta_features
-                
+
             metafeatures["preprocessing"] = self.clf_or_pipe_preprocessing
             
             if self.meta_candidate_points is None:
-                sampler.fit(self.params_distributions, seed=self.meta_seed)
-                
                 # 1500 is the number of points in our prior
                 n_candidate_points = 1500 \
                     if self.meta_strategy_params is None \
                     else self.meta_strategy_params.n_candidate_points
                 
-                candidate_points = [
-                    point_corrector.correct_point(
-                        point, 
-                        apply_hypeopt_corrections=True, 
-                        estimator=self.type_estimator, 
-                        estimator_corrections="all"
-                    )
-                    for point in sampler.sample_points(n_candidate_points)
-                ]
+                sampler.fit(self.params_distributions, seed=self.meta_seed)
+                candidate_points = sampler.sample_points(n_candidate_points)
             else:
                 candidate_points = self.meta_candidate_points
             

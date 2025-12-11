@@ -3,17 +3,19 @@ from __future__ import annotations
 import sys
 import logging
 import warnings
+import pickle
 import numpy as np
 import pandas as pd
 from typing import TYPE_CHECKING
 from pathlib import Path
 from sklearn.model_selection import RepeatedStratifiedKFold
 from sklearn.utils.validation import check_is_fitted
+from metatab_utils.general import subset_xy, subset_2d
 from metalearning.metafeatures import CustomMFE
 from estimators.params.utils import pick_estimator_tune_space
 from estimators.utils.pick import pick_estimator_class
 from estimators.core.configurations import EnsembleConfiguration, EarlyStopConfiguration
-from ensemble.utils import BagCV
+from ensemble.utils import BagCV, collect_sklearn_classification_fit_info_from_data
 from ensemble.configuration import UserEnsembleConfiguration, CollectionUserEnsembleConfiguration
 
 if TYPE_CHECKING:
@@ -109,6 +111,14 @@ class FamilyEnsembleEstimator:
         
         df_members_ (pd.DataFrame): 
             DataFrame with info about all members fit process.
+
+        classes_ (np.ndarray): Array of unique classes seen at fit level.
+        
+        n_features_in_ (int): Number of features seen at fit level.
+       
+        feature_names_in_ (np.ndarray): 
+            Names of the features seen at fit level.
+            This attribute exists only when the instance is fitted with pandas dataframe with all string columns.
     '''
     def __init__(
         self,
@@ -155,8 +165,6 @@ class FamilyEnsembleEstimator:
         n_confs = len(confs)
         logger = self._get_logger()
         self._save_path = Path(self.save_path) if isinstance(self.save_path, str) else self.save_path
-        X = X.to_numpy if isinstance(X, pd.DataFrame) else X
-        y = y.to_numpy if isinstance(y, pd.Series) else y
 
         logger.info("Starting Preparation phase.")
 
@@ -173,7 +181,7 @@ class FamilyEnsembleEstimator:
                 random_state=self.bag_cv.seed
             )
 
-            row_idx = [t[0] for i, t in enumerate(bag_cv_splitter.split(X, y)) if i <= n_confs]
+            row_idx = [t[0] for i, t in enumerate(bag_cv_splitter.split(X, y)) if i < n_confs]
         else:
             row_idx = [None] * n_confs
 
@@ -191,7 +199,9 @@ class FamilyEnsembleEstimator:
             ]
         else:
             col_idx = [None] * n_confs
-
+        
+        # we need the cols indices for inference
+        self._col_idx = col_idx
         logger.info("Preparation phase: obtained train cols indices.")
 
         # get metafeatures
@@ -224,19 +234,15 @@ class FamilyEnsembleEstimator:
 
         self.ensembles_: list[EnsembledEstimator] = []
         for rows, cols, ens_classifier in zip(row_idx, col_idx, ens_classifiers):
-            X_clf, y_clf = X, y
-            
-            if rows is not None:
-                X_clf = X_clf[rows, :]
-                y_clf = y_clf[rows]
-            
-            if cols is not None:
-                X_clf = X_clf[:, cols]
-            
+            X_clf, y_clf = subset_xy(X, y, rows, cols)
             self.ensembles_.append(ens_classifier.fit(X_clf, y_clf))
 
         self._collect_inner_ensembles_info()
         self.is_cleaned_ = False
+        
+        for k, v in collect_sklearn_classification_fit_info_from_data(X, y).items():
+            setattr(self, k, v)
+
         logger.info(f"Completed family ensemble building process in {round(self.fit_time_ / 60, 2)} minutes.")
         
         if self.raise_error_void_ensemble and self.is_void_:
@@ -258,7 +264,7 @@ class FamilyEnsembleEstimator:
         Returns:
             np.ndarray: The predicted classes.
         '''
-        self._check_on_predict_calls()
+        self._check_on_predict_calls(X)
         return np.argmax(self.predict_proba(X), axis=1)
 
 
@@ -272,9 +278,13 @@ class FamilyEnsembleEstimator:
         Returns:
             np.ndarray: The predicted probabilities.
         '''
-        self._check_on_predict_calls()
+        self._check_on_predict_calls(X)
         return np.stack(
-            [ens.predict_proba(X) for ens in self.ensembles_ if not ens.estimator_.is_void_],
+            [
+                ens.predict_proba(subset_2d(X, idx_rows=None, idx_cols=cols)) 
+                for ens, cols in zip(self.ensembles_, self._col_idx) 
+                if not ens.estimator_.is_void_
+            ],
             axis=0
         ).mean(axis=0)
 
@@ -290,10 +300,10 @@ class FamilyEnsembleEstimator:
             dict[str, np.ndarray]: 
             A dict with the first-level ensemble names as keys and predictions as values.
         '''
-        self._check_on_predict_calls()
+        self._check_on_predict_calls(X)
         return {
-            ens.estimator_.name: ens.predict_proba(X) 
-            for ens in self.ensembles_ 
+            ens.estimator_.name: ens.predict_proba(subset_2d(X, idx_rows=None, idx_cols=cols)) 
+            for ens, cols in zip(self.ensembles_, self._col_idx) 
             if not ens.estimator_.is_void_
         }
 
@@ -310,10 +320,10 @@ class FamilyEnsembleEstimator:
             A dict with the first-level ensemble names as keys 
             and dicts member_name:probabilities as values.
         '''
-        self._check_on_predict_calls()
+        self._check_on_predict_calls(X)
         return {
-            ens.estimator_.name: ens.get_members_predicted_probabilities(X) 
-            for ens in self.ensembles_
+            ens.estimator_.name: ens.get_members_predicted_probabilities(subset_2d(X, idx_rows=None, idx_cols=cols)) 
+            for ens, cols in zip(self.ensembles_, self._col_idx)
             if not ens.estimator_.is_void_
         }
     
@@ -336,10 +346,26 @@ class FamilyEnsembleEstimator:
         self.is_cleaned_ = True
     
 
-    def _check_on_predict_calls(self) -> None:
+    def save(self, filepath: str | Path, check_is_fitted: bool = False) -> None:
+        '''
+        Serialize the instance using pickle.
+        Parameters:
+            filepath (str | Path): 
+                File in which to serialize the instance.
+            check_is_fitted (bool, optional):
+                Whether to check if the instance is fitted prior serialization.
+        '''
+        if check_is_fitted and not hasattr(self, "ensembles_"):
+            raise ValueError("The ensemble instance is not fitted.")
+        with open(filepath, "wb") as f:
+            pickle.dump(self, f)
+        
+    
+    def _check_on_predict_calls(self, X: XType) -> None:
         check_is_fitted(self, "ensembles_")
         self._check_void_ensemble()
         self._check_cleaned_ensemble()
+        self._check_predict_features(X)
 
 
     def _check_void_ensemble(self) -> None:
@@ -350,6 +376,27 @@ class FamilyEnsembleEstimator:
     def _check_cleaned_ensemble(self) -> None:
         if self.is_cleaned_:
             raise ValueError("The ensemble models have been deleted.")
+
+
+    def _check_predict_features(self, X: XType) -> None:
+        '''
+        Check on the feature space at predict level.
+        Necessary since we can randomize the feature space
+        and mix columns especially when we work on numpy arrays.
+        '''
+        n_features = X.shape[1]
+
+        if n_features != self.n_features_in_:
+            raise ValueError(
+                "Different number of features between fit" + 
+                f" ({self.n_features_in_}) and predict ({n_features}) calls."
+            )
+
+        if isinstance(X, pd.DataFrame) and hasattr(self, "feature_names_in_"):
+            if not all([isinstance(col, str) for col in X.columns]):
+                raise ValueError("X has not all string columns.")
+            if (X.columns != self.feature_names_in_).any():
+                raise ValueError("Different column names between fit and predict calls.")
 
 
     def _collect_inner_ensembles_info(self) -> None:

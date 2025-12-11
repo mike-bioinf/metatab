@@ -10,7 +10,7 @@ import argparse
 from time import time
 from typing import TYPE_CHECKING
 from metatab_utils.data_loader import DataLoader
-from hp_search.utils import ConfigSearchCV
+from hp_search.config import ConfigSearchCV
 from estimators.utils.pick import pick_estimator_class
 from cli.parser import make_base_parser, make_tune_parser
 
@@ -81,8 +81,8 @@ def main():
     # set instruction for building and saving the search data
     ConfigSearchCV.refit_with_best_hps = False
     ConfigSearchCV.build_df_search = True
-    if pars["save_realtime"]:
-        ConfigSearchCV.save_realtime_df_search_filepath = pars["output_file"]
+    # if pars["save_realtime"]:
+    #     ConfigSearchCV.save_realtime_df_search_filepath = pars["output_file"]
     
     dl = DataLoader()
 

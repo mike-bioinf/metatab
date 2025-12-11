@@ -5,7 +5,7 @@ import subprocess
 from abc import ABC, abstractmethod
 from typing import Literal, TYPE_CHECKING
 from metatab_utils.data_loader import DataLoader
-from cli.programs.resample.params import parse_args, adjust_splitting_specs_
+from cli.programs.resample.parser import parse_args, adjust_splitting_specs_
 
 from cli.helper import (
     check_fit_resample_args,

@@ -2,36 +2,43 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Literal
 
-from estimators.estimators.xgb import (
-    MyXGBClassifier,
-    MyESXGBClassifier,
-    MyTunedXGBClassifier,
-    MyTunedESXGBClassifier
-)
-
-from estimators.estimators.catboost import (
-    MyCatBoostClassifier,
-    MyESCatBoostClassifier,
-    MyTunedCatBoostClassifier,
-    MyTunedESCatBoostClassifier
-)
-
 from estimators.estimators.rf import (
     MyRandomForestClassifier,
     MyTunedRandomForestClassifier,
     MyEnsembledRandomForestClassifier
 )
 
+from estimators.estimators.xgb import (
+    MyXGBClassifier,
+    MyESXGBClassifier,
+    MyTunedXGBClassifier,
+    MyTunedESXGBClassifier,
+    MyEnsembledXGBClassifier,
+    MyEnsembledESXGBClassifier
+)
+
+from estimators.estimators.catboost import (
+    MyCatBoostClassifier,
+    MyESCatBoostClassifier,
+    MyTunedCatBoostClassifier,
+    MyTunedESCatBoostClassifier,
+    MyEnsembledCatBoostClassifier,
+    MyEnsembledESCatBoostClassifier
+)
+
 from estimators.estimators.lgbm import (
     MyLGBMClassifier,
     MyESLGBMClassifier,
     MyTunedLGBMClassifier,
-    MyTunedESLGBMClassifier
+    MyTunedESLGBMClassifier,
+    MyEnsembledLGBMClassifier,
+    MyEnsembledESLGBMClassifier
 )
 
 from estimators.estimators.tabpfn import (
     MyTabPFNClassifier,
     MyTunedTabPFNClassifier,
+    MyEnsembledTabPFNClassifier
     # MyAutoTabPFNClassifier,
     # MyAesFineTunedTabPFNClassifier
 )
@@ -58,33 +65,50 @@ def pick_estimator_class(
             return MyXGBClassifier
         case ("xgb", "tune"):
             return MyTunedXGBClassifier
+        case ("xgb", "ensemble"):
+            return MyEnsembledXGBClassifier
+
         case ("es_xgb", "default"):
             return MyESXGBClassifier
         case ("es_xgb", "tune"):
             return MyTunedESXGBClassifier
-        
+        case ("es_xgb", "ensemble"):
+            return MyEnsembledESXGBClassifier
+
         case("catboost", "default"):
             return MyCatBoostClassifier
         case("catboost", "tune"):
             return MyTunedCatBoostClassifier
+        case("catboost", "ensemble"):
+            return MyEnsembledCatBoostClassifier
+        
         case ("es_catboost", "default"):
             return MyESCatBoostClassifier
         case("es_catboost", "tune"):
             return MyTunedESCatBoostClassifier
-        
+        case("es_catboost", "ensemble"):
+            return MyEnsembledESCatBoostClassifier
+
         case ("lgbm", "default"):
             return MyLGBMClassifier
         case("lgbm", "tune"):
             return MyTunedLGBMClassifier
+        case("lgbm", "ensemble"):
+            return MyEnsembledLGBMClassifier
+        
         case ("es_lgbm", "default"):
             return MyESLGBMClassifier
         case ("es_lgbm", "tune"):
             return MyTunedESLGBMClassifier
+        case("es_lgbm", "ensemble"):
+            return MyEnsembledESLGBMClassifier
 
         case ("tabpfn", "default"):
             return MyTabPFNClassifier
         case("tabpfn", "tune"):
             return MyTunedTabPFNClassifier
+        case("tabpfn", "ensemble"):
+            return MyEnsembledTabPFNClassifier
         # case("autotabpfn", _):
         #     return MyAutoTabPFNClassifier
         # case("finetunetabpfn", _):

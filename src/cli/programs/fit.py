@@ -22,7 +22,7 @@ from cli.helper import (
 
 from cli.parser import (
     make_base_parser,
-    make_extra_fit_parser,
+    make_fit_parser,
     make_tune_parser
 )
 
@@ -31,8 +31,8 @@ from cli.parser import (
 def parse_args(args):
     p = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter)
     sub_estimator_mode = p.add_subparsers(required=True, title="Estimator Mode", description="valid subcommands")
-    p_default = sub_estimator_mode.add_parser("default", parents=[make_base_parser(), make_extra_fit_parser()])
-    p_tune = sub_estimator_mode.add_parser("tune", parents=[make_base_parser(), make_extra_fit_parser(), make_tune_parser()])
+    p_default = sub_estimator_mode.add_parser("default", parents=[make_base_parser(), make_fit_parser()])
+    p_tune = sub_estimator_mode.add_parser("tune", parents=[make_base_parser(), make_fit_parser(), make_tune_parser()])
     p_default.set_defaults(estimator_mode="default")
     p_tune.set_defaults(estimator_mode="tune")
     return p.parse_args(args)

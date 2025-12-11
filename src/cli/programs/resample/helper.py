@@ -14,16 +14,6 @@ if TYPE_CHECKING:
 
 
 
-def log_program_setting(pars: dict, logger: Logger, name_dataset: str) -> None:
-    if pars["estimator_mode"] == "tune":
-        logger.debug(
-            f"\nLaunching {pars["tune_algo"]} tuned {pars["estimator"]} with {pars["tune_space"]} space on {name_dataset}!"
-        )
-    else:
-       logger.debug(f"\nLaunching {pars["estimator"]} on {name_dataset}!")
-
-
-
 def log_iteration(pars: dict, fold: int, repetition: int, logger: Logger) -> None:
     if pars["splitting_mode"] == "cv":
         logger.debug(f'Running on fold {fold} of repetition {repetition}:')
@@ -57,9 +47,9 @@ def get_resample_iteration_signature(repeat: int | NAType, fold: int) -> str:
     - {fold} in holdout
     '''
     if pd.isna(repeat):
-        return f"{repeat}{fold}"
-    else:
         return f"{fold}"
+    else:
+        return f"{repeat}{fold}"
 
 
 
@@ -105,11 +95,9 @@ def populate_dict_lists_(dictionary: dict[str, list], **kwargs) -> None:
 def create_json_configuration_file(pars: dict, filepath: str | Path) -> None:
     '''Create a json representation of the input program configuration'''
     corrected_pars = {}
-
     # Path object cannot be serialized in json
     for k, v in pars.items():
         corrected_pars[k] = str(v) if isinstance(v, Path) else v    
-    
     with open(filepath, "w") as f:
         json.dump(corrected_pars, f, indent=4)
 

@@ -68,7 +68,7 @@ class AbstractBaseEstimator(ABC):
         pass
     
 
-    def save(self, filepath: str | Path, check_is_fitted = False) -> None:
+    def save(self, filepath: str | Path, check_is_fitted: bool = False) -> None:
         '''
         Serielize the instance using pickle.
         Allows for a conditional check on the "fitted nature" of the estimator.

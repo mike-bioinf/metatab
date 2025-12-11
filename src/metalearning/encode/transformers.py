@@ -8,6 +8,13 @@ from metatab_utils.general import enlist
 
 
 
+## TODO: apport the following changes to the transformers:
+# .) remove check_on_fit and learn sklearn attributes at fit level
+# .) do check for all str columns
+# .) in transform check for number and names features
+# The changes will break existent models, so do these when you are ready
+# to recreate the models (both LOO eventually and finals)
+
 class NanToNone(TransformerMixin, BaseEstimator):
     '''
     Scikit-like transformer to convert nan to None.

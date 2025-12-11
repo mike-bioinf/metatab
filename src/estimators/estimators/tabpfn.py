@@ -9,7 +9,8 @@ from estimators.core import (
     DefaultEstimatorMixin,
     EnsembleEstimatorMixin,
     TunedEstimatorMixin,
-    BaseMetaEstimator
+    MetaTuneBaseEstimator,
+    MetaEnsembleBaseEstimator
 )
 
 ## TODO: to clear in accordance to Auto and finetune versions
@@ -126,9 +127,16 @@ class MyEnsembledTabPFNClassifier(EnsembleEstimatorMixin, AbstractBaseEstimator)
 
 
 
-class MetaTuneTabPFNClassifier(BaseMetaEstimator):
+class MetaTuneTabPFNClassifier(MetaTuneBaseEstimator):
     def fit(self, X: XType, y: YType) -> "MetaTuneTabPFNClassifier":
         super().fit(X, y, "density_filter", MyTunedTabPFNClassifier, TuningParams.TABPFN_C0, None)
+        return self
+
+
+
+class MetaEnsembleTabPFNClassifier(MetaEnsembleBaseEstimator):
+    def fit(self, X: XType, y:YType) -> "MetaEnsembleTabPFNClassifier":
+        super().fit(X, y, "density_filter", MyEnsembledTabPFNClassifier, TuningParams.TABPFN_C0, None)
         return self
 
 

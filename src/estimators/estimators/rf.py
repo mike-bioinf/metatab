@@ -7,7 +7,8 @@ from estimators.core import (
     DefaultEstimatorMixin,
     TunedEstimatorMixin,
     EnsembleEstimatorMixin,
-    BaseMetaEstimator
+    MetaTuneBaseEstimator,
+    MetaEnsembleBaseEstimator
 )
 
 
@@ -75,7 +76,14 @@ class MyEnsembledRandomForestClassifier(EnsembleEstimatorMixin, AbstractBaseEsti
 
 
 
-class MetaTuneRandomForestClassifier(BaseMetaEstimator):
+class MetaTuneRandomForestClassifier(MetaTuneBaseEstimator):
     def fit(self, X: XType, y: YType) -> "MetaTuneRandomForestClassifier":
         super().fit(X, y, "base", MyTunedRandomForestClassifier, TuningParams.RF_C0, None)
+        return self
+
+
+
+class MetaEnsembleRandomForestClassifier(MetaEnsembleBaseEstimator):
+    def fit(self, X: XType, y: YType) -> "MetaEnsembleRandomForestClassifier":
+        super().fit(X, y, "base", MyEnsembledRandomForestClassifier, TuningParams.RF_C0, None)
         return self

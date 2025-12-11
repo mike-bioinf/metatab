@@ -7,11 +7,10 @@ from metatab_utils.general import enlist
 from preprocessing.types import PreprocessingStrategy
 from metalearning.types import MetaStrategy, MetaStrategyParams
 from estimators.utils.types import TunableEstimatorType
-from estimators.utils.general import check_meta_tuning_options
+from estimators.utils.general import check_meta_tuning_options, check_early_stop_options
 from pydantic import BaseModel, ConfigDict, field_serializer, model_validator
 
-from estimators.utils.constants import (
-    EARLY_STOPPED_ESTIMATORS, 
+from estimators.utils.constants import ( 
     NON_EARLY_STOPPED_ESTIMATORS,
     NON_EARLY_STOPPED_CPU_ESTIMATORS,
     NON_EARLY_STOPPED_GPU_ESTIMATORS
@@ -76,11 +75,9 @@ class UserEnsembleConfiguration(BaseModel):
 
     @model_validator(mode="after")
     def general_check_after_validation(self) -> "UserEnsembleConfiguration":
+        if self.early_stop_on_validation_set: 
+            check_early_stop_options(self.estimator, self.early_stop_rounds, self.validation_set_size)
         check_meta_strategy_params(self.meta_strategy, self.meta_strategy_params, safe_none_params=True)
-
-        if self.early_stop_on_validation_set and self.estimator not in EARLY_STOPPED_ESTIMATORS:
-            raise ValueError(f"'{self.estimator}' is not early stoppable.")        
-
         check_meta_tuning_options(self.estimator, self.preprocessing, self.tune_space)
         return self
 
@@ -91,6 +88,7 @@ class UserEnsembleConfiguration(BaseModel):
     
 
 
+
 class CollectionUserEnsembleConfiguration:
     '''
     Parameters:
@@ -98,7 +96,7 @@ class CollectionUserEnsembleConfiguration:
             Single or list of UserEnsembleConfiguration objects.
     '''
     def __init__(self, configurations: UserEnsembleConfiguration | list[UserEnsembleConfiguration]):
-        self.configurations=enlist(configurations)
+        self.configurations: list[UserEnsembleConfiguration] = enlist(configurations)
         self._check_confs()
 
 
@@ -186,7 +184,7 @@ class CollectionUserEnsembleConfiguration:
         for i, estimator in enumerate(target_estimators):
             collection.append(
                 UserEnsembleConfiguration(
-                    name="ensemble" + f"_{i}",
+                    name="ens" + f"{i}",
                     algo=ensemble_algo,
                     n_members=n_members,
                     estimator=estimator,

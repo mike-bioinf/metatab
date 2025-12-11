@@ -25,7 +25,7 @@ def collect_sklearn_classification_fit_info_from_data(X: XType, y: YType) -> dic
     possible the `feature_names_in_` info using these string as keys. 
     '''
     y = y.to_numpy() if isinstance(y, pd.Series) else y
-    res = {"classes_": np.unique(y), "n_features_in": X.shape[1]}
+    res = {"classes_": np.unique(y), "n_features_in_": X.shape[1]}
 
     if isinstance(X, pd.DataFrame) and all([isinstance(col, str) for col in X.columns]):
         feature_names_in = X.columns
