@@ -12,7 +12,6 @@ from metalearning.load import query_surrogate_framework
 
 from cli.programs.resample.helper import (
     pick_splitter,
-    create_json_configuration_file,
     get_repetition_fold,
     log_iteration,
     populate_dict_lists_,
@@ -22,6 +21,7 @@ from cli.programs.resample.helper import (
 
 from cli.helper import (
     create_logger,
+    create_json_configuration_file,
     check_target_feature,
     check_early_stop_parameters,
     check_holdout_train_size,

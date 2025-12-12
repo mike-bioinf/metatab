@@ -10,7 +10,6 @@ from estimators.utils.general import check_y_is_integer_encoded
 
 from cli.programs.resample.helper import (
     pick_splitter,
-    create_json_configuration_file,
     get_repetition_fold,
     log_iteration,
     populate_dict_lists_,
@@ -19,6 +18,7 @@ from cli.programs.resample.helper import (
 
 from cli.helper import (
     create_logger,
+    create_json_configuration_file,
     check_target_feature,
     check_early_stop_parameters,
     check_holdout_train_size,
@@ -39,7 +39,6 @@ def main_default(pars: dict):
 
     adjust_io_paths_(pars, "input_data", "output_dir")
     manage_output_path(pars, "output_dir", True)
-    early_stop_conf = build_early_stop_configuration(pars)
 
     if pars["save_estimators"]:
         estimators_folder = pars["output_dir"] / "estimators"
@@ -61,6 +60,7 @@ def main_default(pars: dict):
     logger.debug(f"\nLaunching {pars["estimator"]} on {name_dataset}!")
 
     splitter = pick_splitter(pars)
+    early_stop_conf = build_early_stop_configuration(pars)
     estimator_class = pick_estimator_class(pars["estimator"], pars["estimator_mode"])
     rng_estimator = np.random.default_rng(pars["seed_estimator"])
 

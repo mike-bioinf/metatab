@@ -1,4 +1,3 @@
-import re
 import sys
 import numpy as np
 import pandas as pd
@@ -6,15 +5,12 @@ from time import time
 from collections import defaultdict
 from metatab_utils.data_loader import DataLoader
 from metatab_utils.prediction import PredictionDataframe
-from metalearning.load import query_surrogate_framework
 from estimators.utils.general import check_y_is_integer_encoded
-from ensemble.configuration import CollectionUserEnsembleConfiguration
 from ensemble.family import FamilyEnsembleEstimator
 from ensemble.utils import BagCV
 
 from cli.programs.resample.helper import (
     pick_splitter,
-    create_json_configuration_file,
     get_repetition_fold,
     log_iteration,
     populate_dict_lists_,
@@ -23,29 +19,15 @@ from cli.programs.resample.helper import (
 
 from cli.helper import (
     create_logger,
+    create_json_configuration_file,
     check_target_feature,
     check_holdout_train_size,
     adjust_io_paths_,
-    manage_output_path
+    manage_output_path,
+    get_ensemble_configuration,
+    downaload_required_surrogate_models
 )
 
-
-
-
-def get_ensemble_configuration(user_conf: str) -> CollectionUserEnsembleConfiguration:
-    if re.match(r'^(all|cpu|gpu)_(meta|random)_\d+$', user_conf):
-        return CollectionUserEnsembleConfiguration.create_predefined_collection(user_conf)
-    else:
-        return CollectionUserEnsembleConfiguration.load_json(user_conf)
-
-
-def downaload_required_surrogate_models(collection: CollectionUserEnsembleConfiguration) -> None:
-    '''Donload the surrogate models of the used meta-estimators'''
-    [
-        query_surrogate_framework(conf.estimator) 
-        for conf in collection.configurations 
-        if conf.algo == "meta"
-    ]
 
 
 

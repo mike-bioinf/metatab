@@ -1,5 +1,5 @@
 """
-Program to do inference on a dataset using an serialized external fitted model via the "fit" program.
+Program to do inference on a dataset using an serialized fitted model via the "fit" program.
 """
 
 import sys
@@ -9,7 +9,7 @@ from metatab_utils.data_loader import DataLoader
 from metatab_utils.prediction import PredictionDataframe
 from estimators.estimators import Estimator
 from estimators.utils.general import check_y_is_integer_encoded
-from cli.programs.predict.params import parse_args
+from ensemble.family import FamilyEnsembleEstimator
 
 from cli.helper import (
     adjust_io_paths_, 
@@ -19,10 +19,10 @@ from cli.helper import (
 )
 
 from cli.programs.predict.helper import (
-    check_type_deserialized_object,
+    parse_args,
+    check_is_estimator_object,
     check_estimator_is_fitted
 )
-
 
 
 
@@ -38,7 +38,7 @@ def main():
     with open(pars["file_estimator"], "rb") as f:
         estimator: Estimator = pickle.load(f)
 
-    check_type_deserialized_object(estimator)
+    check_is_estimator_object(estimator)
     check_estimator_is_fitted(estimator)
     logger.debug("Estimator deserialized!")
 
@@ -60,7 +60,11 @@ def main():
     # here we consider all 3 load methods to retrieve the predict dataset name
     predict_dataset_name = dl.test_dataset_name if dl.test_dataset_name else dl.generic_dataset_name
     fit_dataset_name = estimator._fit_dataset_name_
-    fit_preprocessing_dict = estimator.collect_fit_preprocessing_info()
+    
+    if isinstance(estimator, FamilyEnsembleEstimator):
+        fit_preprocessing_dict = {}
+    else:
+        fit_preprocessing_dict = estimator.collect_fit_preprocessing_info()
 
     # uniform feature space if requested
     if pars["x_uniform"]:
@@ -87,11 +91,10 @@ def main():
     )
     
     pdf.compute_metrics(multiclass="average", average_strategy="macro")
-
     filename = f"pred_df__{fit_dataset_name}__{predict_dataset_name}.txt"
     filepath = pars["output_dir"] / filename
     pdf.to_csv(filepath, sep="\t", index=False)
-    logger.debug(f"Output created to {filepath}.")
+    logger.debug(f"Output created at: {filepath}.")
 
 
 

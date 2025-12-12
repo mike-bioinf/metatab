@@ -98,7 +98,7 @@ def main():
     
     log_program_setting(pars, logger)
 
-    # the sep specification is uniformed accross our programs
+    # the sep specification is uniform accross our programs
     df_search = pd.read_csv(pars["input_file"], sep="\t")
     logger.debug("Search data loaded in memory!")
 
@@ -128,9 +128,6 @@ def main():
     loss_col = df_search_agg["loss"]
     df_search_agg["z_normalized_loss"] = (loss_col - loss_col.mean()) / loss_col.std()
     del df_search_agg["loss"]
-
-    # add preprocessing column
-    df_search_agg["preprocessing"] = pars["preprocessing"]
     
     # add metafeatures
     mfe = CustomMFE(seed=pars["seed"])
@@ -141,6 +138,9 @@ def main():
         warnings.filterwarnings(action="ignore", category=pd.errors.PerformanceWarning)
         df_search_agg = df_search_agg.assign(**metafeatures).copy()
 
+    # add preprocessing column as last column
+    df_search_agg["preprocessing"] = pars["preprocessing"]
+    
     # save
     df_search_agg.to_csv(pars["output_file"], sep="\t", index=False)
     logger.debug(f"Output saved at {pars["output_file"]}")

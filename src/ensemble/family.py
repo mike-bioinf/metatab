@@ -355,6 +355,16 @@ class FamilyEnsembleEstimator:
         self.is_cleaned_ = True
     
 
+    def get_feature_names_in_(self) -> np.ndarray | None:
+        '''
+        Get the 'feature_names_in_' attribute or None 
+        when the instance has been fitted on numpy arrays. 
+        Raise an error when the instance is not fitted.
+        '''
+        check_is_fitted(self, "ensembles_")
+        return getattr(self, "feature_names_in_", None)
+    
+
     def save(self, filepath: str | Path, check_is_fitted: bool = False) -> None:
         '''
         Serialize the instance using pickle.

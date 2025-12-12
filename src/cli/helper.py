@@ -1,9 +1,13 @@
+import re
+import json
 import logging
 from pathlib import Path
 from typing import Literal
 from preprocessing.preprocessing import get_estimator_default_preprocessing
 from estimators.params.utils import pick_estimator_tune_space
 from estimators.utils.constants import EARLY_STOPPED_ESTIMATORS
+from metalearning.load import query_surrogate_framework
+from ensemble.configuration import CollectionUserEnsembleConfiguration
 
 from estimators.core.configurations import (
     EarlyStopConfiguration,
@@ -93,6 +97,16 @@ def resolve_preprocessing_info(pars: dict) -> str:
     return pars["preprocessing"]
 
 
+def create_json_configuration_file(pars: dict, filepath: str | Path) -> None:
+    '''Create a json representation of the input program configuration'''
+    corrected_pars = {}
+    # Path object cannot be serialized in json
+    for k, v in pars.items():
+        corrected_pars[k] = str(v) if isinstance(v, Path) else v    
+    with open(filepath, "w") as f:
+        json.dump(corrected_pars, f, indent=4)
+
+
 def build_tune_configuration(pars: dict) -> TuneConfiguration:
     return TuneConfiguration(
         algo=pars["tune_algo"],
@@ -126,6 +140,29 @@ def build_early_stop_configuration(pars: dict) -> None | EarlyStopConfiguration:
         early_stop_rounds=pars["early_stop_rounds"],
         validation_set_size=pars["validation_set_size"]
     )
+
+
+def get_ensemble_configuration(user_conf: str) -> CollectionUserEnsembleConfiguration:
+    '''
+    Helper for family-ensemble scenario.
+    Create the CollectionUserEnsembleConfiguration from user input.
+    '''
+    if re.match(r'^(all|cpu|gpu)_(meta|random)_\d+$', user_conf):
+        return CollectionUserEnsembleConfiguration.create_predefined_collection(user_conf)
+    else:
+        return CollectionUserEnsembleConfiguration.load_json(user_conf)
+
+
+def downaload_required_surrogate_models(collection: CollectionUserEnsembleConfiguration) -> None:
+    '''
+    Helper for family-ensemble scenario.
+    Donwload the surrogate models of the requested meta-estimators.
+    '''
+    [
+        query_surrogate_framework(conf.estimator)
+        for conf in collection.configurations 
+        if conf.algo == "meta"
+    ]
 
 
 class FlushStreamHandler(logging.StreamHandler):

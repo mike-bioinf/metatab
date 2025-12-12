@@ -21,7 +21,6 @@ def log_iteration(pars: dict, fold: int, repetition: int, logger: Logger) -> Non
         logger.debug(f'Running holdout iteration {fold}:')
 
 
-
 def get_repetition_fold(iteration: int, pars: dict) -> tuple[int|NAType, int]: 
     '''
     Utility to get the repetition and fold info based 
@@ -39,7 +38,6 @@ def get_repetition_fold(iteration: int, pars: dict) -> tuple[int|NAType, int]:
     return repetition, fold
 
 
-
 def get_resample_iteration_signature(repeat: int | NAType, fold: int) -> str:
     '''
     Get the iteration signature as string, that is: 
@@ -52,13 +50,11 @@ def get_resample_iteration_signature(repeat: int | NAType, fold: int) -> str:
         return f"{repeat}{fold}"
 
 
-
 def get_iteration_estimator_filepath(pars: dict, repeat: int | NAType, fold: int) -> str:
     '''Get the filename made of the estimator name and current iteration info'''
     resample_iteration_signature = get_resample_iteration_signature(repeat, fold)
     filename = f"{pars["estimator"]}_{resample_iteration_signature}.pkl"
     return f"{pars["output_dir"]}/estimators/{filename}"
-
 
 
 def pick_splitter(pars: dict):
@@ -84,23 +80,10 @@ def pick_splitter(pars: dict):
     return splitter
 
 
-
 def populate_dict_lists_(dictionary: dict[str, list], **kwargs) -> None:
     '''Utility to extend in place the dictionary internal lists'''
     for key, value in kwargs.items():
         dictionary[key].append(value)
-
-
-
-def create_json_configuration_file(pars: dict, filepath: str | Path) -> None:
-    '''Create a json representation of the input program configuration'''
-    corrected_pars = {}
-    # Path object cannot be serialized in json
-    for k, v in pars.items():
-        corrected_pars[k] = str(v) if isinstance(v, Path) else v    
-    with open(filepath, "w") as f:
-        json.dump(corrected_pars, f, indent=4)
-
 
 
 def silent_nanmin(a: np.ndarray) -> np.ndarray:

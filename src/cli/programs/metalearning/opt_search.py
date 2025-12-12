@@ -1,6 +1,6 @@
 """
-Program to run an optmization search on some data with some ml algo.
-The program allows to specify the search settings controlled by the tune arguments parser.
+Program to run an optimization search on some data with some ml algo.
+The program allows to specify the search settings controlled by the tune parser.
 """
 
 from __future__ import annotations
@@ -12,10 +12,17 @@ from typing import TYPE_CHECKING
 from metatab_utils.data_loader import DataLoader
 from hp_search.config import ConfigSearchCV
 from estimators.utils.pick import pick_estimator_class
-from cli.parser import make_base_parser, make_tune_parser
+from estimators.utils.general import check_y_is_integer_encoded
+
+from cli.parser import (
+    make_base_parser, 
+    make_tune_parser, 
+    make_extra_base_parser
+)
 
 from cli.helper import (
     check_target_feature,
+    check_early_stop_parameters,
     adjust_io_paths_,
     manage_output_path,
     resolve_preprocessing_info,
@@ -32,13 +39,9 @@ if TYPE_CHECKING:
 
 
 def parse_args(args):
-    p = argparse.ArgumentParser(parents=[make_base_parser(), make_tune_parser()])
-    p.add_argument("-i", "--input-data", required=True, help="Path to the dataset folder/file.")
-    p.add_argument("-o", "--output-file", required=True, help="Output filepath.")
+    p = argparse.ArgumentParser(parents=[make_base_parser(), make_extra_base_parser(), make_tune_parser()])
+    p.add_argument("--output-file", required=True, help="Name of the file created in output at '--output-dir' location.")
     p.add_argument("--seed", default=42, type=int, help="Seed used to control randomness.")
-    p.add_argument("--save-realtime", action="store_true", 
-                help="""Enables to save the search results after every search iteration. 
-                Adds a bit of overhead. Highly suggested for long jobs.""")
     return p.parse_args(args)
 
 
@@ -47,7 +50,7 @@ def log_program_setting(logger: Logger, pars: dict, name_dataset: str):
     logger.debug((
         f"\nLaunching {pars["tune_algo"]} search on {name_dataset} with"
         f" {pars["estimator"]} on the {pars["tune_space"]} tune space, with"
-        f" {pars["tune_n_iter"]} iterations and {pars["tune_n_cv_repeats"]}-repeat {pars["tune_n_cv_folds"]}-fold cv.\n"
+        f" {pars["tune_n_iter"]} iterations and {pars["tune_n_cv_repeats"]}-repeat {pars["tune_n_cv_folds"]}-fold cv."
     ))
 
 
@@ -64,16 +67,16 @@ def check_n_iter(pars: dict) -> None:
 
 
 
-
 def main():
     logger = create_logger(sys.stdout)
     pars = vars(parse_args(sys.argv[1:]))
 
     check_target_feature(pars)
+    check_early_stop_parameters(pars)
     check_n_iter(pars)
     
-    adjust_io_paths_(pars, "input_data", "output_file")
-    manage_output_path(pars, "output_file", False)
+    adjust_io_paths_(pars, "input_data", "output_dir")
+    manage_output_path(pars, "output_dir", True)
     
     early_stop_configuration = build_early_stop_configuration(pars)
     tune_configuration = build_tune_configuration(pars)
@@ -81,8 +84,6 @@ def main():
     # set instruction for building and saving the search data
     ConfigSearchCV.refit_with_best_hps = False
     ConfigSearchCV.build_df_search = True
-    # if pars["save_realtime"]:
-    #     ConfigSearchCV.save_realtime_df_search_filepath = pars["output_file"]
     
     dl = DataLoader()
 
@@ -94,7 +95,8 @@ def main():
     )
 
     X, y, name_dataset = dl.X, dl.y, dl.generic_dataset_name
-    
+    check_y_is_integer_encoded(y)
+
     log_program_setting(logger, pars, name_dataset)
     logger.debug("Data loaded in memory!")
     
@@ -115,11 +117,10 @@ def main():
     fit_time = round(((time() - starting_time)/60), ndigits=2)
     logger.debug(f"Completed search with runtime of {fit_time} minutes.")
 
-    if not pars["save_realtime"]:
-        df_search = estimator.estimator_.df_search_
-        df_search.to_csv(pars["output_file"], sep="\t", index=False)
-
-    logger.debug(f"File created at location: {pars['output_file']}")
+    output_filepath = pars["output_dir"] / pars["output_file"]
+    df_search = estimator.estimator_.df_search_
+    df_search.to_csv(output_filepath, sep="\t", index=False)
+    logger.debug(f"Output file created at: {output_filepath}.")
 
 
 
