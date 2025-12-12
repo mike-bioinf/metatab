@@ -43,8 +43,7 @@ from estimators.estimators import (
     MyEnsembledESLGBMClassifier,
     MyTabPFNClassifier,
     MyTunedTabPFNClassifier,
-    MyEnsembledTabPFNClassifier,
-    # MyAesFineTunedTabPFNClassifier
+    MyEnsembledTabPFNClassifier
 )
 
 if TYPE_CHECKING:
@@ -123,14 +122,6 @@ TEST_TABPFN_FIXED_PARAMS = {
     "ignore_pretraining_limits": True
 }
 
-# TEST_FINETUNED_TABPFN_FIXED_PARAMS = {
-#     "finetune_setup": {"max_steps": 2},
-#     "tabpfn_classifier_params": {"ignore_pretraining_limits": True},
-#     "n_accumulation_steps": 1,
-#     "log": False
-# }
-
-
 
 
 ### Function to fit the estimators on the iris dataset --------------------------------------------------------------
@@ -186,8 +177,7 @@ ESTIMATOR_DEFAULT_CONFIGS = {
     "my_es_catboost_classifier.pkl": (MyESCatBoostClassifier, TEST_ESCATBOOST_FIXED_PARAMS, None, None, None),
     "my_lgbm_classifier.pkl": (MyLGBMClassifier, TEST_LGBM_FIXED_PARAMS, None, None, None),
     "my_es_lgbm_classifier.pkl": (MyESLGBMClassifier, TEST_ESLGBM_FIXED_PARAMS, None, None, None),
-    "my_tabpfn_classifier.pkl": (MyTabPFNClassifier, TEST_TABPFN_FIXED_PARAMS, None, None, None),
-    #"my_aesfinetunedtabpfn_classifier.pkl": (MyAesFineTunedTabPFNClassifier, TEST_FINETUNED_TABPFN_FIXED_PARAMS, None, None),
+    "my_tabpfn_classifier.pkl": (MyTabPFNClassifier, TEST_TABPFN_FIXED_PARAMS, None, None, None)
 }
 
 

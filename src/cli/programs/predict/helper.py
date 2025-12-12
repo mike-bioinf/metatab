@@ -25,9 +25,7 @@ from estimators.estimators import (
     MyEnsembledESLGBMClassifier,
     MyTabPFNClassifier,
     MyTunedTabPFNClassifier,
-    MyEnsembledTabPFNClassifier,
-    # MyAutoTabPFNClassifier,
-    # MyAesFineTunedTabPFNClassifier
+    MyEnsembledTabPFNClassifier
 )
 
 
@@ -60,8 +58,6 @@ def check_is_estimator_object(obj) -> None:
             MyTabPFNClassifier,
             MyTunedTabPFNClassifier,
             MyEnsembledTabPFNClassifier,
-            # MyAutoTabPFNClassifier,
-            # MyAesFineTunedTabPFNClassifier,
             FamilyEnsembleEstimator
         )
     ):

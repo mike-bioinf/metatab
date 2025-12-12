@@ -5,10 +5,6 @@ from xgboost import XGBClassifier
 from catboost import CatBoostClassifier
 from lightgbm import LGBMClassifier
 from tabpfn import TabPFNClassifier
-from tabpfn_extensions.post_hoc_ensembles.sklearn_interface import AutoTabPFNClassifier
-
-# circular import error
-# from estimators.tabpfn import SingleDatasetAesFineTunedTabpfnClassifier
 
 
 Classifier: TypeAlias = Union[
@@ -16,9 +12,7 @@ Classifier: TypeAlias = Union[
     XGBClassifier,
     CatBoostClassifier,
     LGBMClassifier,
-    TabPFNClassifier, 
-    AutoTabPFNClassifier, 
-    #SingleDatasetAesFineTunedTabpfnClassifier
+    TabPFNClassifier
 ]
 
 
@@ -77,7 +71,5 @@ EstimatorType = Literal[
     "es_lgbm",
     "catboost",
     "es_catboost",
-    "tabpfn",
-    "autotabpfn",
-    "finetunetabpfn"
+    "tabpfn"
 ]

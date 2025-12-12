@@ -49,8 +49,6 @@ from estimators.estimators.tabpfn import (
     MyEnsembledTabPFNClassifier,
     MetaTuneTabPFNClassifier,
     MetaEnsembleTabPFNClassifier
-    # MyAutoTabPFNClassifier,
-    # MyAesFineTunedTabPFNClassifier
 )
 
 
@@ -79,9 +77,7 @@ Estimator: TypeAlias = Union[
     MyEnsembledESLGBMClassifier,
     MyTabPFNClassifier,
     MyTunedTabPFNClassifier,
-    MyEnsembledTabPFNClassifier,
-    # MyAutoTabPFNClassifier,
-    # MyAesFineTunedTabPFNClassifier
+    MyEnsembledTabPFNClassifier
 ]
 
 
@@ -146,8 +142,6 @@ __all__ = [
     "MyTabPFNClassifier",
     "MyTunedTabPFNClassifier",
     "MyEnsembledTabPFNClassifier",
-    # "MyAutoTabPFNClassifier",
-    # "MyAesFineTunedTabPFNClassifier",
     "Estimator",
     "DefaultEstimator",
     "TunedEstimator",

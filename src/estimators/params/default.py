@@ -63,31 +63,3 @@ class DefaultParams:
         # that leads to testing data loss with small sparse data
         "inference_config": {"MIN_UNIQUE_FOR_NUMERICAL_FEATURES": 0}
     }
-
-    AUTOTABPFN_DEFAULT_PARAMS = {
-        # TODO: keep max_time fixed at 3 hour or adapt it depending on the scenario in some way?
-        # max_time of 3 hours set based on 7 days job time wall and classic 50 iteration 
-        # done in a resampling strategy. However sometimes we do not use 50 repeats.
-        # In addition we use this value also in the fit program where we fit one time.
-        "max_time": 10800,   # 3 hours
-        "eval_metric": "log_loss",
-        "presets": "best_quality",
-        "phe_init_args": {"verbosity": 0}, # dict passed to autogluon TabularPredictor
-        "n_ensemble_models": 20,
-        "n_estimators": 8,
-        "ignore_pretraining_limits": True
-    }
-
-    AESFINETUNEDTABPFN_DEFAULT_PARAMS = {
-        "finetune_setup": {"max_steps": 10000}, # high value to stop on other conditions
-        "tabpfn_classifier_params": {
-            "ignore_pretraining_limits": True,
-            "inference_config": {"MIN_UNIQUE_FOR_NUMERICAL_FEATURES": 0} 
-        },
-        # we finetune the post-trained model (realtabpfn) since is the one used for other tabpfn-based estimators
-        "model_path": "default", 
-        "learning_rate": 1e-5, # default
-        "batch_size": 1, # default (currently enforced)
-        "n_accumulation_steps": 10,  # more than default (1) since tabpfn is a meta-estimator
-        "log": False
-    }

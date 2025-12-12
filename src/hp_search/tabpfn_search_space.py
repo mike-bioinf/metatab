@@ -12,9 +12,8 @@ from tabpfn.model_loading import _user_cache_dir, download_model
 
 
 
-
 TABPFN_CHECKPOINTS = [
-   "tabpfn-v2-classifier-finetuned-zk73skhh.ckpt", # is the new default
+    "tabpfn-v2-classifier-finetuned-zk73skhh.ckpt", # is the new default
     "tabpfn-v2-classifier.ckpt", # old default
     "tabpfn-v2-classifier-od3j1g5m.ckpt",
     "tabpfn-v2-classifier-gn2p4bpt.ckpt",

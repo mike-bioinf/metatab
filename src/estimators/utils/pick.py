@@ -39,8 +39,6 @@ from estimators.estimators.tabpfn import (
     MyTabPFNClassifier,
     MyTunedTabPFNClassifier,
     MyEnsembledTabPFNClassifier
-    # MyAutoTabPFNClassifier,
-    # MyAesFineTunedTabPFNClassifier
 )
 
 if TYPE_CHECKING:
@@ -109,10 +107,6 @@ def pick_estimator_class(
             return MyTunedTabPFNClassifier
         case("tabpfn", "ensemble"):
             return MyEnsembledTabPFNClassifier
-        # case("autotabpfn", _):
-        #     return MyAutoTabPFNClassifier
-        # case("finetunetabpfn", _):
-        #     return MyAesFineTunedTabPFNClassifier
     
         case _:
             raise ValueError("Unrecognized estimator-mode combination.")

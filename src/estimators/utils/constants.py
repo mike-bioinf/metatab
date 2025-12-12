@@ -63,7 +63,5 @@ ALL_ESTIMATORS = [
     "es_lgbm",
     "catboost",
     "es_catboost",
-    "tabpfn",
-    # "autotabpfn",
-    # "finetunetabpfn"
+    "tabpfn"
 ]
