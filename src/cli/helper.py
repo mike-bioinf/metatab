@@ -1,6 +1,4 @@
 import logging
-import numpy as np
-import pandas as pd
 from pathlib import Path
 from typing import Literal
 from preprocessing.preprocessing import get_estimator_default_preprocessing
@@ -51,24 +49,6 @@ def check_holdout_train_size(pars: dict) -> None:
         raise ValueError(
             "'holdout_train_size' must be a float in (0, 1)."
         )
-
-
-def check_y_is_integer_encoded(y: pd.Series, is_predict_scenario: bool = False) -> None:
-    '''
-    Checks that y is integer encoded. 
-    This is essential to avoid errors in metrics computation.
-    Raises different error messages depending on the scenario.
-    '''
-    y = y.to_numpy()
-
-    if not np.issubdtype(y.dtype, np.integer):
-        message = "Target variable y must be integer-encoded (e.g., 0, 1, 2, ...)."
-        if is_predict_scenario:
-            message += (
-                " Note: in binary classification, class `1` is treated as the reference class"
-                " in performance metrics computation."
-            )
-        raise ValueError(message)
     
 
 def adjust_io_paths_(pars: dict, input_arg: str, output_arg: str) -> None:

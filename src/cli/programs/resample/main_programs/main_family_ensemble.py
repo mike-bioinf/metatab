@@ -7,6 +7,7 @@ from collections import defaultdict
 from metatab_utils.data_loader import DataLoader
 from metatab_utils.prediction import PredictionDataframe
 from metalearning.load import query_surrogate_framework
+from estimators.utils.general import check_y_is_integer_encoded
 from ensemble.configuration import CollectionUserEnsembleConfiguration
 from ensemble.family import FamilyEnsembleEstimator
 from ensemble.utils import BagCV
@@ -25,8 +26,7 @@ from cli.helper import (
     check_target_feature,
     check_holdout_train_size,
     adjust_io_paths_,
-    manage_output_path,
-    check_y_is_integer_encoded
+    manage_output_path
 )
 
 
@@ -72,7 +72,7 @@ def main_family_ensemble(pars: dict):
     )
 
     X, y = dl.X, dl.y
-    check_y_is_integer_encoded(y, is_predict_scenario=True)
+    check_y_is_integer_encoded(y)
     name_dataset = dl.generic_dataset_name
     logger.debug(f"\nBuilding family-ensemble on {name_dataset}!")
     splitter = pick_splitter(pars)

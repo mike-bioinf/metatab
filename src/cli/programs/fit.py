@@ -7,13 +7,13 @@ import sys
 import argparse
 from estimators.estimators import Estimator
 from estimators.utils.pick import pick_estimator_class
+from estimators.utils.general import check_y_is_integer_encoded
 from metatab_utils.data_loader import DataLoader
 
 from cli.helper import (
     adjust_io_paths_, 
     manage_output_path,
     check_fit_resample_args,
-    check_y_is_integer_encoded,
     create_logger,
     build_early_stop_configuration,
     build_tune_configuration,

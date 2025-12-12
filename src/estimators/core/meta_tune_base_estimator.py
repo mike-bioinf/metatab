@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import numpy as np
 from typing import TYPE_CHECKING
-from sklearn.utils.validation import check_is_fitted
+from sklearn.utils.validation import check_is_fitted, check_X_y
+from sklearn.base import BaseEstimator, ClassifierMixin
+from estimators.utils.general import check_predict_features, check_y_is_integer_encoded
 from estimators.core.configurations import TuneConfiguration, EarlyStopConfiguration
 
 if TYPE_CHECKING:
@@ -14,7 +16,7 @@ if TYPE_CHECKING:
 
 
 
-class MetaTuneBaseEstimator:
+class MetaTuneBaseEstimator(ClassifierMixin, BaseEstimator):
     def __init__(
         self,
         n_iter: int = 1,
@@ -170,15 +172,18 @@ class MetaTuneBaseEstimator:
         early_stop_configuration: None | EarlyStopConfiguration
     ) -> "MetaTuneBaseEstimator":
         '''
-        Fit the meta estimator.
+        Fit the metatune estimator.
 
         Parameters:
             X (XType): Train data.
             
             y (YType): Train labels.
             
+            preprocessing (PreprocessingStrategy):
+                Preprocessing strategy to use.
+            
             concrete_estimator_class (Estimator): 
-                Estimator class to instantiate.
+                Tuned estimator class to instantiate.
             
             tuning_params (dict): 
                 Tune space. Must be compatible with the surrogate model.
@@ -189,6 +194,9 @@ class MetaTuneBaseEstimator:
         Returns:
             self
         '''
+        check_y_is_integer_encoded(y)
+        check_X_y(X, y, dtype=None, ensure_all_finite=False)
+
         tune_configuration = TuneConfiguration(
             algo="meta",
             n_iter=self.n_iter,
@@ -212,9 +220,8 @@ class MetaTuneBaseEstimator:
         )
 
         self.estimator_ = estimator.fit(X, y)
-        fit_info = self.estimator_.collect_sklearn_fit_info()
 
-        for k, v in fit_info.items():
+        for k, v in self.estimator_.collect_sklearn_fit_info().items():
             setattr(self, k, v)
         
         if self.build_df_search:
@@ -237,6 +244,7 @@ class MetaTuneBaseEstimator:
             np.ndarray: The predicted classes.
         '''
         check_is_fitted(self, "estimator_")
+        check_predict_features(self, X)
         return self.estimator_.predict(X)
 
 
@@ -251,4 +259,5 @@ class MetaTuneBaseEstimator:
             np.ndarray: The class probabilities of the input samples.
         '''
         check_is_fitted(self, "estimator_")
+        check_predict_features(self, X)
         return self.estimator_.predict_proba(X)

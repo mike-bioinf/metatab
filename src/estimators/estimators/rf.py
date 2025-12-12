@@ -64,7 +64,7 @@ class MyEnsembledRandomForestClassifier(EnsembleEstimatorMixin, AbstractBaseEsti
     '''
     fixed_params = TuningParams.RANDOM_FOREST_FIXED_PARAMS
     
-    def fit (self, X: XType, y: YType) -> "MyEnsembledRandomForestClassifier":
+    def fit(self, X: XType, y: YType) -> "MyEnsembledRandomForestClassifier":
         self.estimator_ = super().fit_estimator(
             X=X,
             y=y,

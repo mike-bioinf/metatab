@@ -6,6 +6,7 @@ from metatab_utils.data_loader import DataLoader
 from metatab_utils.prediction import PredictionDataframe
 from estimators.utils.pick import pick_estimator_class
 from estimators.estimators import DefaultEstimator
+from estimators.utils.general import check_y_is_integer_encoded
 
 from cli.programs.resample.helper import (
     pick_splitter,
@@ -24,7 +25,6 @@ from cli.helper import (
     adjust_io_paths_,
     manage_output_path,
     build_early_stop_configuration,
-    check_y_is_integer_encoded,
     resolve_preprocessing_info
 )
 
@@ -55,7 +55,7 @@ def main_default(pars: dict):
     )
 
     X, y = dl.X, dl.y
-    check_y_is_integer_encoded(y, is_predict_scenario=True)
+    check_y_is_integer_encoded(y)
     name_dataset = dl.generic_dataset_name
 
     logger.debug(f"\nLaunching {pars["estimator"]} on {name_dataset}!")

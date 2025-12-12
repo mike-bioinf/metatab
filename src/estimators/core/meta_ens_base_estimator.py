@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
-from sklearn.utils.validation import check_is_fitted
+from sklearn.base import ClassifierMixin, BaseEstimator
+from sklearn.utils.validation import check_is_fitted, check_X_y
+from estimators.utils.general import check_predict_features, check_y_is_integer_encoded
 from estimators.core.configurations import EarlyStopConfiguration, EnsembleConfiguration
 
 if TYPE_CHECKING:
@@ -14,7 +16,7 @@ if TYPE_CHECKING:
 
 
 
-class MetaEnsembleBaseEstimator:
+class MetaEnsembleBaseEstimator(ClassifierMixin, BaseEstimator):
     def __init__(
         self,
         save_path: str | Path,
@@ -186,6 +188,32 @@ class MetaEnsembleBaseEstimator:
         tuning_params: dict,
         early_stop_configuration: None | EarlyStopConfiguration
     ):
+        '''
+        Fit the metaensemble estimator.
+
+        Parameters:
+            X (XType): Train data.
+            
+            y (YType): Train labels.
+            
+            preprocessing (PreprocessingStrategy):
+                Preprocessing strategy to use.
+
+            concrete_estimator_class (Estimator): 
+                Ensembled estimator class to instantiate.
+            
+            tuning_params (dict): 
+                Tune space. Must be compatible with the surrogate model.
+            
+            early_stop_configuration (None | EarlyStopConfiguration):
+                Must be implemented by the early stopped concrete estimators.
+        
+        Returns:
+            self
+        '''
+        check_y_is_integer_encoded(y)
+        check_X_y(X, y, dtype=None, ensure_all_finite=False)
+
         ens_conf = EnsembleConfiguration(
             name=self.name,
             algo="meta",
@@ -232,6 +260,7 @@ class MetaEnsembleBaseEstimator:
             np.ndarray: The predicted classes.
         '''
         check_is_fitted(self, "estimator_")
+        check_predict_features(self, X)
         return self.estimator_.predict(X)
 
 
@@ -246,6 +275,7 @@ class MetaEnsembleBaseEstimator:
             np.ndarray: The class probabilities of the input samples.
         '''
         check_is_fitted(self, "estimator_")
+        check_predict_features(self, X)
         return self.estimator_.predict_proba(X)
     
 
@@ -261,6 +291,7 @@ class MetaEnsembleBaseEstimator:
             The dict with member names as keys and predicted probabilities as values.
         '''
         check_is_fitted(self, "estimator_")
+        check_predict_features(self, X)
         return self.estimator_.get_members_predicted_probabilities(X)
     
 

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import warnings
+import numpy as np
+import pandas as pd
 from typing import Any, TYPE_CHECKING, Literal
 from copy import deepcopy
 from numpy.random import RandomState
@@ -8,6 +10,7 @@ from estimators.params.utils import DEFAULT_ESTIMATORS_TUNE_SPACES
 from estimators.utils.constants import EARLY_STOPPED_ESTIMATORS
 
 if TYPE_CHECKING:
+    from metatab_utils.types import XType, YType
     from estimators.utils.types import EstimatorType
     from preprocessing.types import PreprocessingStrategy
 
@@ -154,3 +157,48 @@ def collect_sklearn_classification_fit_info(
         res["feature_names_in_"] = obj.feature_names_in_
     
     return res
+
+
+
+def collect_sklearn_classification_fit_info_from_data(X: XType, y: YType) -> dict:
+    '''
+    Collect the tipical sklearn classification info from the fit data.
+    In detail we derive the `classes_`, `n_features_in_` and when
+    possible the `feature_names_in_` info using these string as keys. 
+    '''
+    y = y.to_numpy() if isinstance(y, pd.Series) else y
+    res = {"classes_": np.unique(y), "n_features_in_": X.shape[1]}
+
+    if isinstance(X, pd.DataFrame) and all([isinstance(col, str) for col in X.columns]):
+        res["feature_names_in_"] = X.columns
+    
+    return res
+
+
+
+def check_predict_features(obj: Any, X: XType) -> None:
+    '''
+    Check done on X passed in predict_* methods for sklearn-like estimators objects 
+    that learn `n_features_in_` and `feature_names_in_` attributes at fit level.
+    '''
+    n_features = X.shape[1]
+
+    if n_features != obj.n_features_in_:
+        raise ValueError(
+            "Different number of features between fit" + 
+            f" ({obj.n_features_in_}) and predict ({n_features}) calls."
+        )
+
+    if isinstance(X, pd.DataFrame) and hasattr(obj, "feature_names_in_"):
+        if not all([isinstance(col, str) for col in X.columns]):
+            raise ValueError("X has not all string columns.")
+        if (X.columns != obj.feature_names_in_).any():
+            raise ValueError("Different column names between fit and predict calls.")
+
+
+
+def check_y_is_integer_encoded(y: YType) -> None:
+    '''Checks that y is integer encoded and dtyped'''
+    y = y.to_numpy() if isinstance(y, pd.Series) else y
+    if not np.issubdtype(y.dtype, np.integer):
+        raise ValueError("Target variable y must be integer encoded and dtyped.")

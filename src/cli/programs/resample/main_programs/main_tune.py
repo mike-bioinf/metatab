@@ -7,7 +7,7 @@ from metatab_utils.data_loader import DataLoader
 from metatab_utils.prediction import PredictionDataframe
 from estimators.utils.pick import pick_estimator_class
 from estimators.estimators import TunedEstimator
-from estimators.utils.general import check_meta_tuning_options
+from estimators.utils.general import check_meta_tuning_options, check_y_is_integer_encoded
 from metalearning.load import query_surrogate_framework
 
 from cli.programs.resample.helper import (
@@ -29,7 +29,6 @@ from cli.helper import (
     manage_output_path,
     build_early_stop_configuration,
     build_tune_configuration,
-    check_y_is_integer_encoded,
     resolve_preprocessing_info
 )
 
@@ -68,7 +67,7 @@ def main_tune(pars: dict):
     )
 
     X, y = dl.X, dl.y
-    check_y_is_integer_encoded(y, is_predict_scenario=True)
+    check_y_is_integer_encoded(y)
     name_dataset = dl.generic_dataset_name
 
     logger.debug(

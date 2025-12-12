@@ -21,8 +21,8 @@ from estimators.utils.gbdt import (
 
 
 
-## We have to use this decorator on predict methods of all LGBM classes and 
-## on the fit of the tuned classes since prediction is performed in cross validation
+# We have to use this decorator on predict methods of all LGBM classes and 
+# on the fit of the tuned ones since predict mthods are called in the optimization
 def ignore_lgbm_feature_name_warning(method):
     '''
     Method decorator to filter the warning "X does not have valid feature names"
@@ -38,53 +38,61 @@ def ignore_lgbm_feature_name_warning(method):
 
 
 
-class MyLGBMClassifier(DefaultEstimatorMixin, AbstractBaseEstimator):
+class LGBMPredictMixin:
     '''
-    Implementation of default library LGBMClassifier without tuning and early stop.
+    Allows to wrap the predict methods with the 
+    "ignore_lgbm_feature_name_warning" decorator. 
+    Needs to be inserted as first class in the inheritance chain.
+    '''
+    @ignore_lgbm_feature_name_warning
+    def predict(self, X):
+        return super().predict(X)
+
+    @ignore_lgbm_feature_name_warning
+    def predict_proba(self, X):
+        return super().predict_proba(X)
+    
+
+
+
+class MyLGBMClassifier(LGBMPredictMixin, DefaultEstimatorMixin, AbstractBaseEstimator):
+    '''
+    Implementation of default library LGBMClassifier.
 
     Attributes:
         estimator_ (LGBMClassifier|Pipeline): Fitted classifier or pipeline object.
     '''
     fixed_params=DefaultParams.LGBM_DEFAULT_PARAMS
 
-    @ignore_lgbm_feature_name_warning
     def fit(self, X: XType, y: YType) -> "MyLGBMClassifier":
         self.estimator_ = super().fit_estimator(
             X=X,
             y=y,
             classifier_cls=LGBMClassifier,
             type_estimator="lgbm",
-            is_tuned=False,
-            is_early_stopped=False,
             callbacks_on_fixed_params=[
                 partial(adjust_objective_logloss_and_num_classes, framework="lightgbm")
             ]
         )
         return self
 
-    @ignore_lgbm_feature_name_warning
-    def predict_proba(self, X, **kwargs):
-        return super().predict_proba(X)
 
 
-
-class MyESLGBMClassifier(DefaultEstimatorMixin, AbstractBaseEstimator):
+class MyESLGBMClassifier(LGBMPredictMixin, DefaultEstimatorMixin, AbstractBaseEstimator):
     '''
-    Implementation of the default library LGBMClassifier with early stop and without tuning. 
+    Implementation of the default library LGBMClassifier with early stop. 
     
     Attributes:
         estimator_ (LGBMClassifier|Pipeline): Fitted classifier or pipeline object.
     '''
     fixed_params=DefaultParams.ES_LGBM_DEFAULT_PARAMS
 
-    @ignore_lgbm_feature_name_warning
     def fit(self, X: XType, y: YType) -> "MyESLGBMClassifier":
         self.estimator_ = super().fit_estimator(
             X=X,
             y=y,
             classifier_cls=LGBMClassifier,
             type_estimator="es_lgbm",
-            is_tuned=False,
             is_early_stopped=True,
             callbacks_on_fixed_params=[
                 partial(adjust_objective_logloss_and_num_classes, framework="lightgbm"),
@@ -93,13 +101,9 @@ class MyESLGBMClassifier(DefaultEstimatorMixin, AbstractBaseEstimator):
         )
         return self
 
-    @ignore_lgbm_feature_name_warning
-    def predict_proba(self, X, **kwargs):
-        return super().predict_proba(X)
 
 
-
-class MyTunedLGBMClassifier(TunedEstimatorMixin, AbstractBaseEstimator):
+class MyTunedLGBMClassifier(LGBMPredictMixin, TunedEstimatorMixin, AbstractBaseEstimator):
     '''
     Implementation of the tuned LGBMClassifier without early stop.
 
@@ -116,20 +120,15 @@ class MyTunedLGBMClassifier(TunedEstimatorMixin, AbstractBaseEstimator):
             classifier_cls=LGBMClassifier,
             type_estimator="lgbm",
             is_tuned=True,
-            is_early_stopped=False,
             callbacks_on_fixed_params=[
                 partial(adjust_objective_logloss_and_num_classes, framework="lightgbm")
             ]
         )
         return self
-    
-    @ignore_lgbm_feature_name_warning
-    def predict_proba(self, X, **kwargs):
-        return super().predict_proba(X)
 
 
 
-class MyTunedESLGBMClassifier(TunedEstimatorMixin, AbstractBaseEstimator):
+class MyTunedESLGBMClassifier(LGBMPredictMixin, TunedEstimatorMixin, AbstractBaseEstimator):
     '''
     Implementation of the tuned LGBMClassifier with early stop.
     
@@ -153,23 +152,18 @@ class MyTunedESLGBMClassifier(TunedEstimatorMixin, AbstractBaseEstimator):
             ]
         )
         return self
-    
-    @ignore_lgbm_feature_name_warning
-    def predict_proba(self, X, **kwargs):
-        return super().predict_proba(X)
  
 
 
-class MyEnsembledLGBMClassifier(EnsembleEstimatorMixin, AbstractBaseEstimator):
+class MyEnsembledLGBMClassifier(LGBMPredictMixin, EnsembleEstimatorMixin, AbstractBaseEstimator):
     '''
-    Implementation of the ensmebled LGBMClassifier without early stop.
+    Implementation of the ensembled LGBMClassifier without early stop.
 
     Attributes:
         estimator_ (EnsembleEstimator): Fitted EnsembleEstimator object.    
     '''
     fixed_params=TuningParams.LGBM_FIXED_PARAMS
         
-    @ignore_lgbm_feature_name_warning
     def fit(self, X: XType, y: YType) -> "MyEnsembledLGBMClassifier":
         self.estimator_ = super().fit_estimator(
             X=X,
@@ -182,14 +176,10 @@ class MyEnsembledLGBMClassifier(EnsembleEstimatorMixin, AbstractBaseEstimator):
             ]
         )
         return self
-    
-    @ignore_lgbm_feature_name_warning
-    def predict_proba(self, X, **kwargs):
-        return super().predict_proba(X)   
 
 
 
-class MyEnsembledESLGBMClassifier(EnsembleEstimatorMixin, AbstractBaseEstimator):
+class MyEnsembledESLGBMClassifier(LGBMPredictMixin, EnsembleEstimatorMixin, AbstractBaseEstimator):
     '''
     Implementation of the ensmebled LGBMClassifier with early stop.
     
@@ -198,7 +188,6 @@ class MyEnsembledESLGBMClassifier(EnsembleEstimatorMixin, AbstractBaseEstimator)
     '''
     fixed_params = TuningParams.ES_LGBM_FIXED_PARAMS
 
-    @ignore_lgbm_feature_name_warning
     def fit(self, X: XType, y: YType) -> "MyEnsembledESLGBMClassifier":
         self.estimator_ = super().fit_estimator(
             X=X,
@@ -213,21 +202,17 @@ class MyEnsembledESLGBMClassifier(EnsembleEstimatorMixin, AbstractBaseEstimator)
             ]
         )
         return self
-    
-    @ignore_lgbm_feature_name_warning
-    def predict_proba(self, X, **kwargs):
-        return super().predict_proba(X)
 
 
 
-class MetaTuneLGBMClassifier(MetaTuneBaseEstimator):
+class MetaTuneLGBMClassifier(LGBMPredictMixin, MetaTuneBaseEstimator):
     def fit(self, X: XType, y: YType) -> "MetaTuneLGBMClassifier":
         super().fit(X, y, "base", MyTunedLGBMClassifier, TuningParams.LGMB_C0, None)
         return self
 
 
 
-class MetaTuneEsLGBMClassifier(MetaTuneBaseEstimator):
+class MetaTuneEsLGBMClassifier(LGBMPredictMixin, MetaTuneBaseEstimator):
     def fit(
         self,
         X: XType, 
@@ -238,17 +223,17 @@ class MetaTuneEsLGBMClassifier(MetaTuneBaseEstimator):
         early_stop_conf = EarlyStopConfiguration(early_stop_rounds, validation_set_size)
         super().fit(X, y, "base", MyTunedESLGBMClassifier, TuningParams.LGMB_C0, early_stop_conf)
         return self
-    
 
 
-class MetaEnsembleLGBMClassifier(MetaEnsembleBaseEstimator):
+
+class MetaEnsembleLGBMClassifier(LGBMPredictMixin, MetaEnsembleBaseEstimator):
     def fit(self, X: XType, y: YType) -> "MetaEnsembleLGBMClassifier":
         super().fit(X, y, "base", MyEnsembledLGBMClassifier, TuningParams.LGMB_C0, None)
         return self
-    
 
 
-class MetaEnsembleEsLGBMClassifier(MetaEnsembleBaseEstimator):
+
+class MetaEnsembleEsLGBMClassifier(LGBMPredictMixin, MetaEnsembleBaseEstimator):
     def fit(
         self,
         X: XType, 

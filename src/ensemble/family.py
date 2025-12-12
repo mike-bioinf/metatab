@@ -9,13 +9,20 @@ import pandas as pd
 from typing import TYPE_CHECKING
 from pathlib import Path
 from sklearn.model_selection import RepeatedStratifiedKFold
-from sklearn.utils.validation import check_is_fitted
+from sklearn.utils.validation import check_is_fitted, check_X_y
 from metatab_utils.general import subset_xy, subset_2d
 from metalearning.metafeatures import CustomMFE
 from estimators.params.utils import pick_estimator_tune_space
-from estimators.utils.pick import pick_estimator_class
 from estimators.core.configurations import EnsembleConfiguration, EarlyStopConfiguration
-from ensemble.utils import BagCV, collect_sklearn_classification_fit_info_from_data
+from estimators.utils.pick import pick_estimator_class
+
+from estimators.utils.general import (
+    check_predict_features,
+    check_y_is_integer_encoded,
+    collect_sklearn_classification_fit_info_from_data
+)
+
+from ensemble.utils import BagCV
 from ensemble.configuration import UserEnsembleConfiguration, CollectionUserEnsembleConfiguration
 
 if TYPE_CHECKING:
@@ -156,7 +163,9 @@ class FamilyEnsembleEstimator:
         Returns:
             self
         '''
-        self._check_inputs()
+        self._check_initialization_inputs()
+        check_y_is_integer_encoded(y)
+        check_X_y(X, y, dtype=None, ensure_all_finite=False)
 
         confs = [self.configuration]\
             if isinstance(self.configuration, UserEnsembleConfiguration)\
@@ -365,7 +374,7 @@ class FamilyEnsembleEstimator:
         check_is_fitted(self, "ensembles_")
         self._check_void_ensemble()
         self._check_cleaned_ensemble()
-        self._check_predict_features(X)
+        check_predict_features(self, X)
 
 
     def _check_void_ensemble(self) -> None:
@@ -376,27 +385,6 @@ class FamilyEnsembleEstimator:
     def _check_cleaned_ensemble(self) -> None:
         if self.is_cleaned_:
             raise ValueError("The ensemble models have been deleted.")
-
-
-    def _check_predict_features(self, X: XType) -> None:
-        '''
-        Check on the feature space at predict level.
-        Necessary since we can randomize the feature space
-        and mix columns especially when we work on numpy arrays.
-        '''
-        n_features = X.shape[1]
-
-        if n_features != self.n_features_in_:
-            raise ValueError(
-                "Different number of features between fit" + 
-                f" ({self.n_features_in_}) and predict ({n_features}) calls."
-            )
-
-        if isinstance(X, pd.DataFrame) and hasattr(self, "feature_names_in_"):
-            if not all([isinstance(col, str) for col in X.columns]):
-                raise ValueError("X has not all string columns.")
-            if (X.columns != self.feature_names_in_).any():
-                raise ValueError("Different column names between fit and predict calls.")
 
 
     def _collect_inner_ensembles_info(self) -> None:
@@ -481,6 +469,7 @@ class FamilyEnsembleEstimator:
 
     def _get_logger(self) -> logging.Logger:
         logger = logging.getLogger(self.name)
+        logger.handlers.clear()
         logger.setLevel(logging.DEBUG)
         handler = logging.StreamHandler(sys.stdout)
         handler.setLevel(self.log)
@@ -489,7 +478,7 @@ class FamilyEnsembleEstimator:
         return logger
 
     
-    def _check_inputs(self) -> None:
+    def _check_initialization_inputs(self) -> None:
         if not isinstance(
             self.configuration, 
             (UserEnsembleConfiguration, CollectionUserEnsembleConfiguration)

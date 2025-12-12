@@ -8,12 +8,12 @@ import numpy as np
 from metatab_utils.data_loader import DataLoader
 from metatab_utils.prediction import PredictionDataframe
 from estimators.estimators import Estimator
+from estimators.utils.general import check_y_is_integer_encoded
 from cli.programs.predict.params import parse_args
 
 from cli.helper import (
     adjust_io_paths_, 
     manage_output_path,
-    check_y_is_integer_encoded,
     check_target_feature, 
     create_logger
 )
@@ -54,7 +54,7 @@ def main():
     )
 
     X_test, y_test = dl.X_test, dl.y_test
-    check_y_is_integer_encoded(y_test, is_predict_scenario=True)
+    check_y_is_integer_encoded(y_test)
     logger.debug("Data loaded in memory!")
 
     # here we consider all 3 load methods to retrieve the predict dataset name

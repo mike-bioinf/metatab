@@ -66,17 +66,17 @@ class TunedEstimatorMixin:
         return collect_sklearn_classification_fit_info(self.estimator_.best_estimator_)
 
 
-    def predict_proba(self, X: XType) -> np.ndarray:
-        check_is_fitted(self, "estimator_")
-        self._check_estimator_is_refitted()
-        return self.estimator_.best_estimator_.predict_proba(X)
-
-
     def predict(self, X: XType) -> np.ndarray:
         check_is_fitted(self, "estimator_")
         self._check_estimator_is_refitted()
         return self.estimator_.best_estimator_.predict(X)
 
+
+    def predict_proba(self, X: XType) -> np.ndarray:
+        check_is_fitted(self, "estimator_")
+        self._check_estimator_is_refitted()
+        return self.estimator_.best_estimator_.predict_proba(X)
+    
 
     def _check_estimator_is_refitted(self) -> None:
         if not self.estimator_.refit_with_best_hps:

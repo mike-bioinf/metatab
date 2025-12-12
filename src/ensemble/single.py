@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Literal, TYPE_CHECKING
 from functools import partial
 from sklearn.utils.validation import check_is_fitted
+from estimators.utils.general import collect_sklearn_classification_fit_info_from_data
 from estimators.utils.fit import fit_with_early_stop_on_validation_set, set_params_into_clf
 from metalearning.acquisition_funcs import compute_upper_confidence_bound
 from metalearning.utils import check_meta_strategy, check_meta_strategy_params
@@ -21,7 +22,6 @@ from metalearning.metafeatures import CustomMFE
 from metalearning.metadata_evaluator import MetadataEvaluator
 from metalearning.load import query_surrogate_framework
 from metatab_utils.general import ensure_or_create
-from ensemble.utils import collect_sklearn_classification_fit_info_from_data
 
 if TYPE_CHECKING:
     from sklearn.pipeline import Pipeline
@@ -368,8 +368,8 @@ class EnsembleEstimator:
         that reflects the order of `self.successful_members_`.
         '''
         predictions = []
-        for successfull_member in self.successful_members_:
-            path_successful_member = self._save_path / f"{successfull_member}.pkl"
+        for member in self.successful_members_:
+            path_successful_member = self._save_path / f"{member}.pkl"
             member_model: Classifier | Pipeline = self._try_load_model(path_successful_member)
             predictions.append(member_model.predict_proba(X))
         return predictions
@@ -394,7 +394,7 @@ class EnsembleEstimator:
             return None
 
         for member in self.successful_members_:
-            file_model = self._save_path / member
+            file_model = self._save_path / f"{member}.pkl"
             file_model.unlink(missing_ok=True)
 
         self.is_cleaned_ = True
@@ -434,6 +434,7 @@ class EnsembleEstimator:
 
     def _get_logger(self) -> logging.Logger:
         logger = logging.getLogger(self.name)
+        logger.handlers.clear()
         logger.setLevel(logging.DEBUG)
         handler = logging.StreamHandler(sys.stdout)
         handler.setLevel(self.log)

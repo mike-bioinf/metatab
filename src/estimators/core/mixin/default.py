@@ -25,6 +25,11 @@ class DefaultEstimatorMixin:
         estimator_ : Classifier | Pipeline
 
 
+    def predict(self, X: XType) -> np.ndarray:
+        check_is_fitted(self, "estimator_")
+        return self.estimator_.predict(X)
+
+    
     def predict_proba(self, X: XType) -> np.ndarray:
         check_is_fitted(self, "estimator_")
         return self.estimator_.predict_proba(X)

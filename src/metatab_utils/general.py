@@ -218,7 +218,7 @@ def subset_xy(
     idx_cols: None | np.ndarray
 ) -> tuple[XType, YType]:
     '''
-    Subset X and y with binary set of indices. 
+    Subset X and y a with binary set of indices. 
     The utility assumes that X is 2D and y is 1D.
     '''
     X_sub = subset_2d(X, idx_rows, idx_cols)
