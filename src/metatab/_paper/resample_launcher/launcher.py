@@ -1,8 +1,8 @@
 import re
 import sys
 import subprocess
-from cli.programs.resample.parser import parse_args
-from ensemble.configuration import CollectionUserEnsembleConfiguration
+from metatab.cli.programs.resample.parser import parse_args
+from metatab.ensemble.configuration import CollectionUserEnsembleConfiguration
 
 from .constants import (
     CPU_ESTIMATORS, 
@@ -67,14 +67,14 @@ class ResampleLauncher:
             
             if re.match(r'^(all|cpu|gpu)_(meta|random)_\d+$', configuration):
                 device, _, _ = configuration.split("_")
-                device == "gpu" if device == "all" else device
+                device = "gpu" if device == "all" else device
             else:
                 # we evaluate whether gpu-based estimators are requested
                 conf_collection = CollectionUserEnsembleConfiguration.load_json(configuration)
                 device = "cpu"
                 for conf in conf_collection.configurations:
                     if conf.estimator in ALL_GPU_ESTIMATORS:
-                        device == "gpu"
+                        device = "gpu"
                         break
                 
         else:

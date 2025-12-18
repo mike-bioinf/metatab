@@ -24,7 +24,7 @@ from metatab.cli.helper import (
     build_ensemble_configuration,
     resolve_preprocessing_info,
     get_ensemble_configuration,
-    downaload_required_surrogate_models,
+    download_required_surrogate_models,
     create_json_configuration_file
 )
 
@@ -100,7 +100,7 @@ def main():
     if pars["estimator_mode"] == "family_ensemble":
         configuration = get_ensemble_configuration(pars["ensemble_configuration"])
         # this is to avoid the first download inside the fit call inflating times
-        downaload_required_surrogate_models(configuration)
+        download_required_surrogate_models(configuration)
 
         estimator = FamilyEnsembleEstimator(
             name=pars["ensemble_name"],

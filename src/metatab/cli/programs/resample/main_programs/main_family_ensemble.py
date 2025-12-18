@@ -25,7 +25,7 @@ from metatab.cli.helper import (
     adjust_io_paths_,
     manage_output_path,
     get_ensemble_configuration,
-    downaload_required_surrogate_models
+    download_required_surrogate_models
 )
 
 
@@ -72,7 +72,7 @@ def main_family_ensemble(pars: dict):
     rng_ensemble = np.random.default_rng(pars["seed_estimator"])
     configuration = get_ensemble_configuration(pars["ensemble_configuration"])
     # this is to avoid the first download inside the fit call inflating times
-    downaload_required_surrogate_models(configuration)
+    download_required_surrogate_models(configuration)
 
 
     # run resampling

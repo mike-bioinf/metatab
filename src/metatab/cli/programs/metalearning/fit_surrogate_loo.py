@@ -41,7 +41,7 @@ def parse_args(args):
                    of the dataset excluded with a joblib extension.""")
 
     p.add_argument("-y", "--column-metric", default="z_normalized_loss", 
-                   help="Name of the perfomance metric column to treat as the y target.")
+                   help="Name of the performance metric column to treat as the y target.")
 
     p.add_argument("-e", "--estimator", required=True, 
                    choices=["random_forest", "xgb", "es_xgb", "catboost", "es_catboost", "lgbm", "es_lgbm", "tabpfn"],

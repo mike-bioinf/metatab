@@ -153,7 +153,7 @@ def get_ensemble_configuration(user_conf: str) -> CollectionUserEnsembleConfigur
         return CollectionUserEnsembleConfiguration.load_json(user_conf)
 
 
-def downaload_required_surrogate_models(collection: CollectionUserEnsembleConfiguration) -> None:
+def download_required_surrogate_models(collection: CollectionUserEnsembleConfiguration) -> None:
     '''
     Helper for family-ensemble scenario.
     Donwload the surrogate models of the requested meta-estimators.
