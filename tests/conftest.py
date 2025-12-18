@@ -11,82 +11,108 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 from sklearn.datasets import load_iris
 from functools import partial
-from estimators import Estimator
-from estimators.params import TuningParams
+from metatab.estimators.params import TuningParams
 
-from estimators import (
+from metatab.estimators.core.configurations import (
+    EarlyStopConfiguration, 
+    TuneConfiguration,
+    EnsembleConfiguration
+)
+
+from metatab.estimators.estimators import (
     MyRandomForestClassifier,
     MyTunedRandomForestClassifier,
+    MyEnsembledRandomForestClassifier,
     MyXGBClassifier,
     MyESXGBClassifier,
     MyTunedXGBClassifier, 
     MyTunedESXGBClassifier,
+    MyEnsembledXGBClassifier,
+    MyEnsembledESXGBClassifier,
     MyCatBoostClassifier,
     MyESCatBoostClassifier,
     MyTunedCatBoostClassifier,
     MyTunedESCatBoostClassifier,
+    MyEnsembledCatBoostClassifier,
+    MyEnsembledESCatBoostClassifier,
     MyLGBMClassifier,
     MyESLGBMClassifier,
     MyTunedLGBMClassifier,
     MyTunedESLGBMClassifier,
+    MyEnsembledLGBMClassifier,
+    MyEnsembledESLGBMClassifier,
     MyTabPFNClassifier,
     MyTunedTabPFNClassifier,
-    MyAesFineTunedTabPFNClassifier
+    MyEnsembledTabPFNClassifier
 )
 
 if TYPE_CHECKING:
     import pandas as pd
+    from metatab.estimators.estimators import Estimator
 
 
 
 
 ### We define different parameters configuration to speed up the fitting procedure ----------------------------------
 
-TEST_TUNE_CONFIGURATION = {
-    "configuration": "c0",
-    "algo": "random",
-    "n_iter": 5,
-    "n_repeats": 1,
-    "n_splits": 3
-}
+TEST_TUNE_CONFIGURATION = TuneConfiguration(
+    algo="random",
+    n_iter=5,
+    n_cv_repeats=1,
+    n_cv_folds=2,
+    meta_strategy="best",
+    params_distributions="" ## will be overwritten
+)
+
+
+TEST_ENSEMBLE_CONFIGURATION = EnsembleConfiguration(
+    name="test",
+    algo="random",
+    n_members=1,
+    save_path="", ## will be overwritten
+    params_distributions="", ## will be overwritten
+    raise_error_void_ensemble=False,
+    log=50
+)
+
 
 TEST_RANDOM_FOREST_FIXED_PARAMS = {
-    "n_estimators": 10
+    "n_estimators": 3
 }
 
 TEST_XGB_FIXED_PARAMS = {
-    "n_estimators": 10,
+    "n_estimators": 3,
     "verbosity": 0
 }
 
 TEST_ESXGB_FIXED_PARAMS = {
-    "n_estimators": 10,
+    "n_estimators": 3,
     "eval_metric": "logloss_to_adjust",
     "verbose_eval": False,
     "verbosity": 0
 }
 
 TEST_CATBOOST_FIXED_PARAMS = {
-    "n_estimators": 10,
+    "n_estimators": 3,
     "verbose": False,
     "allow_writing_files": False
 }
 
 TEST_ESCATBOOST_FIXED_PARAMS = {
-    "n_estimators": 10,
+    "n_estimators": 3,
     "eval_metric": "logloss_to_adjust",
     "verbose": False,
     "allow_writing_files": False
 }
 
 TEST_LGBM_FIXED_PARAMS = {
-    "n_estimators": 10,
+    "n_estimators": 3,
     "min_child_samples": 1,
     "verbose": -1
 }
 
 TEST_ESLGBM_FIXED_PARAMS = {
-    "n_estimators": 10,
+    "n_estimators": 3,
     "metric": "logloss_to_adjust",
     "min_child_samples": 1,
     "verbose": -1
@@ -96,14 +122,6 @@ TEST_TABPFN_FIXED_PARAMS = {
     "ignore_pretraining_limits": True
 }
 
-TEST_FINETUNED_TABPFN_FIXED_PARAMS = {
-    "finetune_setup": {"max_steps": 2},
-    "tabpfn_classifier_params": {"ignore_pretraining_limits": True},
-    "n_accumulation_steps": 1,
-    "log": False
-}
-
-
 
 
 ### Function to fit the estimators on the iris dataset --------------------------------------------------------------
@@ -111,7 +129,8 @@ def _fit_estimator(
     *,
     estimator: Estimator,
     fixed_params: dict | None,
-    tune_configuration: dict | None,
+    tune_configuration: TuneConfiguration | None,
+    ensemble_configuration: EnsembleConfiguration | None,
     params_distributions: dict | None,
     file: str | Path, 
     X: pd.DataFrame, 
@@ -122,14 +141,20 @@ def _fit_estimator(
     fixed_params = {} if fixed_params is None else fixed_params
 
     if tune_configuration:
-        tune_configuration["params_distributions"] = params_distributions
+        tune_configuration = deepcopy(tune_configuration)
+        tune_configuration.params_distributions = params_distributions
+
+    if ensemble_configuration:
+        ensemble_configuration = deepcopy(ensemble_configuration)
+        ensemble_configuration.params_distributions = params_distributions
     
     estimator = estimator(
-        preprocessing="base", 
+        preprocessing="estimator_default",
         seed=0,
         n_threads=4,
-        early_stopping_rounds=4,
-        tune_configuration=tune_configuration
+        early_stop_configuration=EarlyStopConfiguration(),
+        tune_configuration=tune_configuration,
+        ensemble_configuration=ensemble_configuration
     )
 
     # overwriting fixed_params class attribute
@@ -145,33 +170,45 @@ _fit_estimator_on_iris = partial(_fit_estimator, X=X, y=y)
 
 ### Configurations to test + fixture -----------------------------------------------------------------------
 ESTIMATOR_DEFAULT_CONFIGS = {
-    "my_rf_classifier.pkl": (MyRandomForestClassifier, TEST_RANDOM_FOREST_FIXED_PARAMS, None, None),
-    "my_xgb_classifier.pkl": (MyXGBClassifier, TEST_XGB_FIXED_PARAMS, None, None),
-    "my_es_xgb_classifier.pkl": (MyESXGBClassifier, TEST_ESXGB_FIXED_PARAMS, None, None),
-    "my_catboost_classifier.pkl": (MyCatBoostClassifier, TEST_CATBOOST_FIXED_PARAMS, None, None),
-    "my_es_catboost_classifier.pkl": (MyESCatBoostClassifier, TEST_ESCATBOOST_FIXED_PARAMS, None, None),
-    "my_lgbm_classifier.pkl": (MyLGBMClassifier, TEST_LGBM_FIXED_PARAMS, None, None),
-    "my_es_lgbm_classifier.pkl": (MyESLGBMClassifier, TEST_ESLGBM_FIXED_PARAMS, None, None),
-    "my_tabpfn_classifier.pkl": (MyTabPFNClassifier, TEST_TABPFN_FIXED_PARAMS, None, None),
-    "my_aesfinetunedtabpfn_classifier.pkl": (MyAesFineTunedTabPFNClassifier, TEST_FINETUNED_TABPFN_FIXED_PARAMS, None, None),
+    "my_rf_classifier.pkl": (MyRandomForestClassifier, TEST_RANDOM_FOREST_FIXED_PARAMS, None, None, None),
+    "my_xgb_classifier.pkl": (MyXGBClassifier, TEST_XGB_FIXED_PARAMS, None, None, None),
+    "my_es_xgb_classifier.pkl": (MyESXGBClassifier, TEST_ESXGB_FIXED_PARAMS, None, None, None),
+    "my_catboost_classifier.pkl": (MyCatBoostClassifier, TEST_CATBOOST_FIXED_PARAMS, None, None, None),
+    "my_es_catboost_classifier.pkl": (MyESCatBoostClassifier, TEST_ESCATBOOST_FIXED_PARAMS, None, None, None),
+    "my_lgbm_classifier.pkl": (MyLGBMClassifier, TEST_LGBM_FIXED_PARAMS, None, None, None),
+    "my_es_lgbm_classifier.pkl": (MyESLGBMClassifier, TEST_ESLGBM_FIXED_PARAMS, None, None, None),
+    "my_tabpfn_classifier.pkl": (MyTabPFNClassifier, TEST_TABPFN_FIXED_PARAMS, None, None, None)
 }
 
 
 ESTIMATOR_TUNE_CONFIGS = {
-    "my_tuned_rf_classifier.pkl": (MyTunedRandomForestClassifier, TEST_RANDOM_FOREST_FIXED_PARAMS, TEST_TUNE_CONFIGURATION, TuningParams.RF_C0),
-    "my_tuned_xgb_classifier.pkl": (MyTunedXGBClassifier, TEST_XGB_FIXED_PARAMS, TEST_TUNE_CONFIGURATION, TuningParams.XGB_C0),
-    "my_tuned_es_xgb_classifier.pkl": (MyTunedESXGBClassifier, TEST_ESXGB_FIXED_PARAMS, TEST_TUNE_CONFIGURATION, TuningParams.XGB_C0),
-    "my_tuned_catboost_classifier.pkl": (MyTunedCatBoostClassifier, TEST_CATBOOST_FIXED_PARAMS, TEST_TUNE_CONFIGURATION, TuningParams.CATBOOST_C0),
-    "my_tuned_es_catboost_classifier.pkl": (MyTunedESCatBoostClassifier, TEST_ESCATBOOST_FIXED_PARAMS, TEST_TUNE_CONFIGURATION, TuningParams.CATBOOST_C0),
-    "my_tuned_lgbm_classifier.pkl": (MyTunedLGBMClassifier, TEST_LGBM_FIXED_PARAMS, TEST_TUNE_CONFIGURATION, TuningParams.LGMB_C0),
-    "my_tuned_es_lgbm_classifier.pkl": (MyTunedESLGBMClassifier, TEST_ESLGBM_FIXED_PARAMS, TEST_TUNE_CONFIGURATION, TuningParams.LGMB_C0),
-    "my_tuned_tabpfn_classifier.pkl": (MyTunedTabPFNClassifier, TEST_TABPFN_FIXED_PARAMS, TEST_TUNE_CONFIGURATION, TuningParams.TABPFN_C0),
+    "my_tuned_rf_classifier.pkl": (MyTunedRandomForestClassifier, TEST_RANDOM_FOREST_FIXED_PARAMS, TEST_TUNE_CONFIGURATION, None, TuningParams.RF_C0),
+    "my_tuned_xgb_classifier.pkl": (MyTunedXGBClassifier, TEST_XGB_FIXED_PARAMS, TEST_TUNE_CONFIGURATION, None, TuningParams.XGB_C0),
+    "my_tuned_es_xgb_classifier.pkl": (MyTunedESXGBClassifier, TEST_ESXGB_FIXED_PARAMS, TEST_TUNE_CONFIGURATION, None, TuningParams.XGB_C0),
+    "my_tuned_catboost_classifier.pkl": (MyTunedCatBoostClassifier, TEST_CATBOOST_FIXED_PARAMS, TEST_TUNE_CONFIGURATION, None, TuningParams.CATBOOST_C0),
+    "my_tuned_es_catboost_classifier.pkl": (MyTunedESCatBoostClassifier, TEST_ESCATBOOST_FIXED_PARAMS, TEST_TUNE_CONFIGURATION, None, TuningParams.CATBOOST_C0),
+    "my_tuned_lgbm_classifier.pkl": (MyTunedLGBMClassifier, TEST_LGBM_FIXED_PARAMS, TEST_TUNE_CONFIGURATION, None, TuningParams.LGMB_C0),
+    "my_tuned_es_lgbm_classifier.pkl": (MyTunedESLGBMClassifier, TEST_ESLGBM_FIXED_PARAMS, TEST_TUNE_CONFIGURATION, None, TuningParams.LGMB_C0),
+    "my_tuned_tabpfn_classifier.pkl": (MyTunedTabPFNClassifier, TEST_TABPFN_FIXED_PARAMS, TEST_TUNE_CONFIGURATION, None, TuningParams.TABPFN_C0),
+}
+
+
+ESTIMATOR_ENSEMBLE_CONFIGS = {
+    "my_ensembled_rf_classifier.pkl": (MyEnsembledRandomForestClassifier, TEST_RANDOM_FOREST_FIXED_PARAMS, None, TEST_ENSEMBLE_CONFIGURATION, TuningParams.RF_C0),
+    "my_ensembled_xgb_classifier.pkl": (MyEnsembledXGBClassifier, TEST_XGB_FIXED_PARAMS, None, TEST_ENSEMBLE_CONFIGURATION, TuningParams.XGB_C0),
+    "my_ensembled_es_xgb_classifier.pkl": (MyEnsembledESXGBClassifier, TEST_ESXGB_FIXED_PARAMS, None, TEST_ENSEMBLE_CONFIGURATION, TuningParams.XGB_C0),
+    "my_ensembled_catboost_classifier.pkl": (MyEnsembledCatBoostClassifier, TEST_CATBOOST_FIXED_PARAMS, None, TEST_ENSEMBLE_CONFIGURATION, TuningParams.CATBOOST_C0),
+    "my_ensembled_es_catboost_classifier.pkl": (MyEnsembledESCatBoostClassifier, TEST_ESCATBOOST_FIXED_PARAMS, None, TEST_ENSEMBLE_CONFIGURATION, TuningParams.CATBOOST_C0),
+    "my_ensembled_lgbm_classifier.pkl": (MyEnsembledLGBMClassifier, TEST_LGBM_FIXED_PARAMS, None, TEST_ENSEMBLE_CONFIGURATION, TuningParams.LGMB_C0),
+    "my_ensembled_es_lgbm_classifier.pkl": (MyEnsembledESLGBMClassifier, TEST_ESLGBM_FIXED_PARAMS, None, TEST_ENSEMBLE_CONFIGURATION, TuningParams.LGMB_C0),
+    "my_ensembled_tabpfn_classifier.pkl": (MyEnsembledTabPFNClassifier, TEST_TABPFN_FIXED_PARAMS, None, TEST_ENSEMBLE_CONFIGURATION, TuningParams.TABPFN_C0),
 }
 
 
 ESTIMATOR_ALL_CONFIGS = {
     **ESTIMATOR_DEFAULT_CONFIGS,
-    **ESTIMATOR_TUNE_CONFIGS
+    **ESTIMATOR_TUNE_CONFIGS,
+    **ESTIMATOR_ENSEMBLE_CONFIGS
 }
 
 
@@ -183,11 +220,16 @@ def fit_estimators_on_iris(tmp_path_factory) -> Path:
     '''
     tmp_estimators_folder = tmp_path_factory.mktemp("estimators")
 
-    for filename, (cls, fixed_params, tune_configuration, tune_space) in ESTIMATOR_ALL_CONFIGS.items():
+    for filename, (cls, fixed_params, tune_conf, ensemble_conf, tune_space) in ESTIMATOR_ALL_CONFIGS.items():
+        if ensemble_conf:
+            name_ensemble = re.sub("\\.pkl", "", filename)
+            ensemble_conf.save_path = tmp_path_factory.mktemp(name_ensemble)
+
         _fit_estimator_on_iris(
             estimator=cls,
             fixed_params=fixed_params,
-            tune_configuration=tune_configuration,
+            tune_configuration=tune_conf,
+            ensemble_configuration=ensemble_conf,
             params_distributions=tune_space,
             file=tmp_estimators_folder / filename,
         )
@@ -228,12 +270,12 @@ def _fit_alternative_tune_spaces(
     '''
     for space in spaces:
         conf = deepcopy(TEST_TUNE_CONFIGURATION)
-        conf["configuration"] = space
         params = getattr(TuningParams, f"{tuning_param_prefix}_C{re.sub("c", "", space)}")
         _fit_estimator_on_iris(
             estimator=cls,
             fixed_params=fixed_params,
             tune_configuration=conf,
+            ensemble_configuration=None,
             params_distributions=params,
             file=folder / f"{basename_models}_{space}.pkl",
         )

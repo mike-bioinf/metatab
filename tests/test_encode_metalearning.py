@@ -5,14 +5,14 @@ import pandas as pd
 from pathlib import Path
 from typing import Literal
 from sklearn.pipeline import make_pipeline
-from estimators.types import TUNABLE_ESTIMATOR_TYPE
-from metalearning.encode.encode import get_encoding_scheme
-from metalearning.encode.transformers import NanToNone, ColToStr, InfToNan
+from metatab.estimators.utils.types import TunableEstimatorType
+from metatab.metalearning.encode.encode import get_encoding_scheme
+from metatab.metalearning.encode.transformers import NanToNone, ColToStr, InfToNan
 
 
 
 def load_metadata(
-    estimator: TUNABLE_ESTIMATOR_TYPE,
+    estimator: TunableEstimatorType,
     preprocessing: Literal["base", "density_filter", "pca"] = "base"
 ) -> pd.DataFrame:
     df = pd.read_csv(Path(__file__).parent / "data/metadata" / f"{estimator}.txt", sep="\t")
@@ -24,7 +24,7 @@ def load_metadata(
 def test_that_nan_to_none_transformer_works():
     metadata = load_metadata("tabpfn")
     assert metadata["inference_config__OUTLIER_REMOVAL_STD"].isna().any()
-    nan_to_none = NanToNone("inference_config__OUTLIER_REMOVAL_STD", check_on_fit=False).set_output(transform="pandas")
+    nan_to_none = NanToNone("inference_config__OUTLIER_REMOVAL_STD").set_output(transform="pandas")
     # test that set_output framework works
     trans_metadata = nan_to_none.fit_transform(metadata)
     assert isinstance(trans_metadata, pd.DataFrame)
@@ -40,7 +40,7 @@ def test_that_nan_to_none_transformer_works():
 def test_that_col_to_str_transformer_works():
     metadata = load_metadata("tabpfn")
     assert pd.api.types.is_numeric_dtype(metadata["z_normalized_loss"].dtype)
-    col_to_str = ColToStr("z_normalized_loss", check_on_fit=False).set_output(transform="pandas")
+    col_to_str = ColToStr("z_normalized_loss").set_output(transform="pandas")
     trans_metadata = col_to_str.fit_transform(metadata)
     # test that set_output framework works
     assert isinstance(trans_metadata, pd.DataFrame)
@@ -54,7 +54,7 @@ def test_that_col_to_str_transformer_works():
 
 def test_that_inf_to_nan_transformer_works():
     X = pd.DataFrame([[np.inf, -np.inf], [1, None]], dtype="object")
-    transformer = InfToNan(check_on_fit=False).set_output(transform="pandas")
+    transformer = InfToNan().set_output(transform="pandas")
     X_trans = transformer.fit_transform(X)
     assert X_trans.iloc[1, 1] is None, "InfToNan automatically downcast columns and values."
     assert X_trans.iloc[0, :].isna().sum() == 2, "InfToNan does not convert +/- inf values to nan"

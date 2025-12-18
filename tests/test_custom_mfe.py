@@ -1,8 +1,8 @@
 import pytest
 import pandas as pd
 from sklearn.datasets import make_classification
-from metalearning.metafeatures import CustomMFE
-from metalearning.metafeatures import MAP_SPARSE_METAFEATURES
+from metatab.metalearning.metafeatures import CustomMFE
+from metatab.metalearning.metafeatures import MAP_SPARSE_METAFEATURES
 
 
 

@@ -1,6 +1,6 @@
 import pytest
 import sys
-from hp_search.point_corrector import PointCorrector
+from metatab.hp_search.point_corrector import PointCorrector
 from tabpfn.model_loading import _user_cache_dir
 
 

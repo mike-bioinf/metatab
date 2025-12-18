@@ -1,11 +1,11 @@
 import numpy as np
 import pandas as pd
 from sklearn.datasets import make_classification
-from hp_search.point_corrector import PointCorrector
-from metalearning.sampler import HyperoptRandomSampler
-from metalearning.generator import MetadataGenerator
-from metalearning.metafeatures import CustomMFE
-from estimators.params import TuningParams
+from metatab.hp_search.point_corrector import PointCorrector
+from metatab.metalearning.sampler import HyperoptRandomSampler
+from metatab.metalearning.metadata_generator import MetadataGenerator
+from metatab.metalearning.metafeatures import CustomMFE
+from metatab.estimators.params import TuningParams
 
 
 
