@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import sys
+import json
 import joblib
 import logging
-import requests
+from importlib.metadata import version
+from packaging.version import Version
+from packaging.specifiers import SpecifierSet
 from typing import TYPE_CHECKING
-from platformdirs import user_cache_path
+from huggingface_hub import hf_hub_download
 
 if TYPE_CHECKING:
     from sklearn.pipeline import Pipeline
@@ -13,42 +16,60 @@ if TYPE_CHECKING:
 
 
 
-def download_surrogate_framework(type_estimator: TunableEstimatorType) -> None:
+def download_surrogate_framework(type_estimator: TunableEstimatorType) -> str:
     '''
     Download the surrogate model/framework for the input estimator 
-    from the hugging face repo in the user metatab cache directory.
+    from the hugging face repo in the user hf cache directory.
+    Returns the user system model filepath.
     '''
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.INFO)
+    logger.propagate=False
+    logger.handlers.clear()
     handler = logging.StreamHandler(stream=sys.stdout)
     handler.setLevel(logging.INFO)
     logger.addHandler(handler)
-    
-    model = f"surrogate_framework_for_{type_estimator}.joblib"
-    cache_dir = user_cache_path("metatab")
-    cache_dir.mkdir(exist_ok=True)
-    logger.info(f"Attempting to download the surrogate model from HuggingFace in: {cache_dir}")
 
-    dest = cache_dir / model
-    src = f"https://huggingface.co/piupo/metatab_surrogate_pipelines/resolve/main/models/{model}"
-    r = requests.get(src)
+    logger.info(f"Attempting to download the surrogate model from HuggingFace.")
 
-    try:
-        r.raise_for_status()
-    except Exception as e:
-        raise ValueError(f"The model request process failed with the following error {e}")
-
-    ## TODO: add a progress bar?
-    with open(dest, "wb") as f:
-        f.write(r.content)
+    model_filepath = hf_hub_download(
+        repo_id="piupo/metatab_surrogate_pipelines",
+        filename=f"surrogate_framework_for_{type_estimator}.joblib",
+        subfolder=resolve_surrogate_models_folder()
+    )
 
     logger.info("Download completed!")
+    return model_filepath
+
+
+
+def resolve_surrogate_models_folder() -> str:
+    '''
+    Returns the name of the subfolder containing the 
+    surrogate models compatible with the user metatab version.
+    '''
+    # we download the latest manifest version
+    path_manifest = hf_hub_download(
+        repo_id="piupo/metatab_surrogate_pipelines",
+        filename="manifest.json"
+    )
+
+    with open(path_manifest, "r") as f:
+        manifest: dict = json.load(f)
+
+    package_version = Version(version("metatab"))
+    
+    for _, dict_info in manifest.items():
+        if package_version in SpecifierSet(dict_info["package_versions"]):
+            return dict_info["models_subpackage"]
+
+    raise ValueError(
+        "No compatible surrogate model found for this metatab version."
+        " Please report this issue on GitHub."
+    )
 
 
 
 def query_surrogate_framework(type_estimator: TunableEstimatorType) -> Pipeline:
     '''Retrieve the fitted surrogate framework for the input type_estimator'''
-    surrogate_model_path = user_cache_path("metatab") / f"surrogate_framework_for_{type_estimator}.joblib"
-    if not surrogate_model_path.exists():
-        download_surrogate_framework(type_estimator)
-    return joblib.load(surrogate_model_path)
+    return joblib.load(download_surrogate_framework(type_estimator))

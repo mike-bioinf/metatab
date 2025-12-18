@@ -56,12 +56,10 @@ COLUMN_TRANSFORMER_FIXED_PARAMS = {
 }
 
 
-### TODO: add no preprocessing (we have to regenerate the surrogate models once changed)
-# since handle_unknow was previously set to 'error'.
 PREPROCESSING_COLUMN_ENCODING = (
     "preprocessing_column", 
     OneHotEncoder(
-        categories=[["base", "pca", "density_filter"]], 
+        categories=[["no", "base", "pca", "density_filter"]], 
         handle_unknown="ignore",  # to maintain model functionality when we add more preprocessig options
         sparse_output=False
     ),
@@ -80,9 +78,9 @@ def create_preprocessing_encoding() -> ColumnTransformer:
 
 
 HPS_ENCODING_SCHEME_RANDOM_FOREST = [
-    NanToNone("max_features", check_on_fit=True), 
-    ColToStr("max_features", check_on_fit=True),
-    InfToNan(check_on_fit=True),
+    NanToNone("max_features"), 
+    ColToStr("max_features"),
+    InfToNan(),
     ColumnTransformer(
         transformers=[
             (
@@ -103,22 +101,16 @@ HPS_ENCODING_SCHEME_RANDOM_FOREST = [
 
 
 HPS_ENCODING_SCHEME_TABPFN = [
-    NanToNone(
-        columns=[
-            "inference_config__OUTLIER_REMOVAL_STD", 
-            "inference_config__SUBSAMPLE_SAMPLES"
-        ], 
-        check_on_fit=True
-        ),
-    ColToStr(
-        columns=[
-            "inference_config__OUTLIER_REMOVAL_STD", 
-            "inference_config__SUBSAMPLE_SAMPLES", 
-            "inference_config__PREPROCESS_TRANSFORMS"
-        ],
-        check_on_fit=True
-    ),
-    InfToNan(check_on_fit=True),
+    NanToNone([
+        "inference_config__OUTLIER_REMOVAL_STD", 
+        "inference_config__SUBSAMPLE_SAMPLES"
+    ]),
+    ColToStr([
+        "inference_config__OUTLIER_REMOVAL_STD", 
+        "inference_config__SUBSAMPLE_SAMPLES", 
+        "inference_config__PREPROCESS_TRANSFORMS"
+    ]),
+    InfToNan(),
     ColumnTransformer(
         transformers=[
             (  
@@ -152,21 +144,21 @@ HPS_ENCODING_SCHEME_TABPFN = [
 
 
 HPS_ENCODING_SCHEME_XGB = [
-    InfToNan(check_on_fit=True),
+    InfToNan(),
     ColumnTransformer(
         transformers=[
             (
-                "ordinal",
-                OrdinalEncoder(
-                    categories=[
-                        ["depthwise"],
-                        ["exact"]
-                    ]
+                "binary",
+                OrdinalEncoder(categories=[["depthwise", "lossguide"]]),
+                ["grow_policy"]
+            ),
+            (
+                "onehot",
+                OneHotEncoder(
+                    categories=[["exact", "hist", "approx"]], 
+                    sparse_output=False
                 ),
-                [
-                    "grow_policy",
-                    "tree_method"
-                ]
+                ["tree_method"]
             ),
             PREPROCESSING_COLUMN_ENCODING
         ],
@@ -177,21 +169,27 @@ HPS_ENCODING_SCHEME_XGB = [
 
 
 HPS_ENCODING_SCHEME_CATBOOST = [
-    InfToNan(check_on_fit=True),
+    InfToNan(),
     ColumnTransformer(
         transformers=[
             (
-                "ordinal",
+                "onehot",
+                OneHotEncoder(
+                    categories=[["SymmetricTree", "Depthwise", "Lossguide"]],
+                    sparse_output=True,
+                ),
+                ["grow_policy"]
+            ),
+            (
+                "binary",
                 OrdinalEncoder(
                     categories=[
-                        ["Cosine"],
-                        ["SymmetricTree"],
-                        ["Plain"]
+                        ["Cosine", "L2"],
+                        ["Plain", "Ordered"]
                     ]
                 ),
                 [
                     "score_function",
-                    "grow_policy",
                     "boosting_type"
                 ]
             ),
@@ -204,7 +202,7 @@ HPS_ENCODING_SCHEME_CATBOOST = [
 
 
 HPS_ENCODING_SCHEME_LGBM = [
-    InfToNan(check_on_fit=True),
+    InfToNan(),
     create_preprocessing_encoding(),
     VarianceThreshold()
 ]

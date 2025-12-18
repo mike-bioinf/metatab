@@ -178,8 +178,8 @@ def collect_sklearn_classification_fit_info_from_data(X: XType, y: YType) -> dic
 
 def check_predict_features(obj: Any, X: XType) -> None:
     '''
-    Check done on X passed in predict_* methods for sklearn-like estimators objects 
-    that learn `n_features_in_` and `feature_names_in_` attributes at fit level.
+    Check done on the X passed in predict_*/tranform methods for sklearn-like estimators 
+    objects that learn `n_features_in_` and `feature_names_in_` attributes at fit level.
     '''
     n_features = X.shape[1]
 
