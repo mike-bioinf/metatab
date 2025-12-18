@@ -1,9 +1,9 @@
 import pytest
 import pandas as pd
 from sklearn.datasets import load_iris
-from metalearning.utils import BestMetaStrategyParams
+from metatab.metalearning.utils import BestMetaStrategyParams
 
-from estimators import (
+from metatab.estimators import (
     MetaTuneRandomForestClassifier,
     MetaTuneXGBClassifier,
     MetaTuneEsXGBClassifier,

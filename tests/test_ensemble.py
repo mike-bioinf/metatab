@@ -1,6 +1,6 @@
 import json
-from metalearning.utils import BestMetaStrategyParams
-from ensemble.configuration import UserEnsembleConfiguration, CollectionUserEnsembleConfiguration
+from metatab.metalearning.utils import BestMetaStrategyParams
+from metatab.ensemble.configuration import UserEnsembleConfiguration, CollectionUserEnsembleConfiguration
 
 
 

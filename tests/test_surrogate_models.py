@@ -1,8 +1,8 @@
 import pytest
 import json
 from sklearn.datasets import make_regression
-from metalearning.surrogate_rf import SurrogateRandomForestRegressor
-from metalearning.load import resolve_surrogate_models_folder
+from metatab.metalearning.surrogate_rf import SurrogateRandomForestRegressor
+from metatab.metalearning.load import resolve_surrogate_models_folder
 
 
 
@@ -47,12 +47,12 @@ def test_resolve_surrogate_models_folder_utility(
     manifest_path.write_text(json.dumps(TEST_MANIFEST))
 
     monkeypatch.setattr(
-        "metalearning.load.hf_hub_download",
+        "metatab.metalearning.load.hf_hub_download",
         lambda *args, **kwargs: str(manifest_path)
     )
 
     monkeypatch.setattr(
-        "metalearning.load.version",
+        "metatab.metalearning.load.version",
         lambda *args, **kwargs: pkg_version
     )
 

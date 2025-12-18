@@ -3,13 +3,13 @@ import numpy as np
 import pandas as pd
 from copy import deepcopy
 from sklearn.datasets import make_classification
-from estimators.params import TuningParams
-from hp_search.point_corrector import PointCorrector
-from metalearning.metadata_generator import MetadataGenerator
-from metalearning.sampler import HyperoptRandomSampler
-from metalearning.metafeatures import CustomMFE
-from metalearning.load import query_surrogate_framework
-from metalearning.feature_sensitivity import _permute_block, compute_feature_sensitivity_map
+from metatab.estimators.params import TuningParams
+from metatab.hp_search.point_corrector import PointCorrector
+from metatab.metalearning.metadata_generator import MetadataGenerator
+from metatab.metalearning.sampler import HyperoptRandomSampler
+from metatab.metalearning.metafeatures import CustomMFE
+from metatab.metalearning.load import query_surrogate_framework
+from metatab.metalearning.feature_sensitivity import _permute_block, compute_feature_sensitivity_map
 from pymfe.mfe import MFE
 
 

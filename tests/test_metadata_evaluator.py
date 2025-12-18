@@ -2,14 +2,14 @@ import numpy as np
 import pandas as pd
 from functools import partial
 from sklearn.datasets import make_classification
-from estimators.params import TuningParams
-from hp_search.point_corrector import PointCorrector
-from metalearning.metadata_evaluator import MetadataEvaluator
-from metalearning.sampler import HyperoptRandomSampler
-from metalearning.metafeatures import CustomMFE
-from metalearning.metadata_generator import MetadataGenerator
-from metalearning.acquisition_funcs import compute_upper_confidence_bound
-from metalearning.load import query_surrogate_framework
+from metatab.estimators.params import TuningParams
+from metatab.hp_search.point_corrector import PointCorrector
+from metatab.metalearning.metadata_evaluator import MetadataEvaluator
+from metatab.metalearning.sampler import HyperoptRandomSampler
+from metatab.metalearning.metafeatures import CustomMFE
+from metatab.metalearning.metadata_generator import MetadataGenerator
+from metatab.metalearning.acquisition_funcs import compute_upper_confidence_bound
+from metatab.metalearning.load import query_surrogate_framework
 
 
 

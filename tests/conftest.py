@@ -11,15 +11,15 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 from sklearn.datasets import load_iris
 from functools import partial
-from estimators.params import TuningParams
+from metatab.estimators.params import TuningParams
 
-from estimators.core.configurations import (
+from metatab.estimators.core.configurations import (
     EarlyStopConfiguration, 
     TuneConfiguration,
     EnsembleConfiguration
 )
 
-from estimators.estimators import (
+from metatab.estimators.estimators import (
     MyRandomForestClassifier,
     MyTunedRandomForestClassifier,
     MyEnsembledRandomForestClassifier,
@@ -48,7 +48,7 @@ from estimators.estimators import (
 
 if TYPE_CHECKING:
     import pandas as pd
-    from estimators.estimators import Estimator
+    from metatab.estimators.estimators import Estimator
 
 
 

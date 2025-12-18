@@ -1,10 +1,10 @@
 import numpy as np
 import pandas as pd
 from hyperopt.pyll.stochastic import sample
-from hp_search.cv import CrossValidator
+from metatab.hp_search.cv import CrossValidator
 from lightgbm import LGBMClassifier
-from estimators.params import TuningParams
-from estimators.estimators.lgbm import ignore_lgbm_feature_name_warning
+from metatab.estimators.params import TuningParams
+from metatab.estimators.estimators.lgbm import ignore_lgbm_feature_name_warning
 from sklearn.datasets import load_iris
 
 

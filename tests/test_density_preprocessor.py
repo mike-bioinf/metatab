@@ -1,7 +1,7 @@
 import pytest
 import numpy as np
 import pandas as pd
-from preprocessing import DensityFeatureSelector
+from metatab.preprocessing import DensityFeatureSelector
 
 
 

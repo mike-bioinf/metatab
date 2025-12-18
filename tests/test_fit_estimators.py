@@ -4,8 +4,8 @@ import numpy as np
 from pathlib import Path
 from typing import Literal
 from sklearn.datasets import load_iris
-from estimators.estimators import Estimator
-from hp_search.searchcv import SearchCV
+from metatab.estimators.estimators import Estimator
+from metatab.hp_search.searchcv import SearchCV
 
 from tests.conftest import (
     ESTIMATOR_TUNE_CONFIGS, 

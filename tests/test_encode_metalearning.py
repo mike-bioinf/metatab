@@ -5,9 +5,9 @@ import pandas as pd
 from pathlib import Path
 from typing import Literal
 from sklearn.pipeline import make_pipeline
-from estimators.utils.types import TunableEstimatorType
-from metalearning.encode.encode import get_encoding_scheme
-from metalearning.encode.transformers import NanToNone, ColToStr, InfToNan
+from metatab.estimators.utils.types import TunableEstimatorType
+from metatab.metalearning.encode.encode import get_encoding_scheme
+from metatab.metalearning.encode.transformers import NanToNone, ColToStr, InfToNan
 
 
 

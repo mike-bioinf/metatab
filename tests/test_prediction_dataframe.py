@@ -2,7 +2,7 @@ import pytest
 import numpy as np
 import pandas as pd
 from typing import Literal
-from metatab_utils.prediction import PredictionDataframe
+from metatab.metatab_utils.prediction import PredictionDataframe
 
 
 
