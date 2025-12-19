@@ -25,7 +25,6 @@ from metatab.cli.helper import (
     check_early_stop_parameters,
     adjust_io_paths_,
     manage_output_path,
-    resolve_preprocessing_info,
     create_logger,
     build_early_stop_configuration,
     build_tune_configuration
@@ -103,9 +102,7 @@ def main():
     estimator_class = pick_estimator_class(pars["estimator"], "tune")
 
     estimator: Estimator = estimator_class(
-        # here we resolve the preprocessing info in order to store
-        # the explicit preprocessing in the search data
-        preprocessing=resolve_preprocessing_info(pars),
+        preprocessing=pars["preprocessing"],
         seed=pars["seed"],
         n_threads=pars["nthreads"],
         early_stop_configuration=early_stop_configuration,

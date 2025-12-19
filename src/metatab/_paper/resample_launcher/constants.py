@@ -1,7 +1,7 @@
 CPU_ESTIMATORS = [
     "random_forest",
-    "xgboost",
-    "es_xgboost",
+    "xgb",
+    "es_xgb",
     "catboost",
     "es_catboost",
     "lgbm",

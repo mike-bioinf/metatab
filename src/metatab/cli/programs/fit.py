@@ -22,7 +22,6 @@ from metatab.cli.helper import (
     build_early_stop_configuration,
     build_tune_configuration,
     build_ensemble_configuration,
-    resolve_preprocessing_info,
     get_ensemble_configuration,
     download_required_surrogate_models,
     create_json_configuration_file
@@ -129,7 +128,7 @@ def main():
         estimator_class = pick_estimator_class(pars["estimator"], pars["estimator_mode"])
         
         estimator: Estimator = estimator_class(
-            preprocessing=resolve_preprocessing_info(pars),
+            preprocessing=pars["preprocessing"],
             seed=pars["seed"],
             n_threads=pars["nthreads"],
             early_stop_configuration=early_stop_conf,

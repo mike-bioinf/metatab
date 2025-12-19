@@ -115,6 +115,13 @@ class ResampleLauncher:
                 "--mem-per-gpu=32G"
             ]
 
+        # add the constant instuctions
+        device_instructions = device_instructions + [
+            "--job-name=resample_tabpfn",
+            "--output=resample_%j.out",
+            "--error=resample_%j.err"
+        ]
+        
         self.slurm_instructions = device_instructions
 
 

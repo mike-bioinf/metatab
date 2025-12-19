@@ -167,6 +167,9 @@ def main_ensemble(pars: dict):
             estimator.estimator_.delete_models_from_disk()
             iter_folder_models.rmdir()
 
+    
+    if not pars["save_estimators"]:
+        (output_dir / "models").rmdir() 
 
     df_pred_results.build_from_data(**dict_results, save_path=output_dir)
 

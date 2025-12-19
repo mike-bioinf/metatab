@@ -31,6 +31,7 @@ class TuningParams:
         "n_estimators": 1000
     }
 
+    ## TODO: add criterion when you update the prior (future work)
     RF_C0 = {
         "max_features": hp.choice("max_features", [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, None, "sqrt", "log2"]),
         "min_samples_split": hp.choice("min_samples_split", list(range(2, 16))),

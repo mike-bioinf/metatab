@@ -202,12 +202,14 @@ def make_ensemble_parser() -> ArgumentParser:
                    Ignored when '--ensemble-algo' is not "meta".""")
     
     # TODO: for now we do not allow to specify the specifics for the strategies
-    p.add_argument("--ensemble-meta-strategy", choices=["best", "random_from_best", "uniform_from_best", "random_uniform_from_best"], default="random_uniform_from_best",
+    p.add_argument("--ensemble-meta-strategy",
+                   choices=["best", "random_from_best", "uniform_from_best", "random_uniform_from_best"], 
+                   default="random_uniform_from_best",
                    help="""Strategy used to select the hps points evaluated by the surrogate model.
                    -best: The n 'ensemble-n-members' best points according to the surrogate model are selected.
                    -random_from_best: 'ensemble-n-members' points are selected randomly from the best.
                    -uniform_from_best: 'ensemble-n-members' points are selected with a fixed step size from the best.
-                   -random_uniform_from_best: '--tune-n-iter' points are selected randomly in intervals defined with a fixed step size from the best.
+                   -random_uniform_from_best: '--ensemble-n-iter' points are selected randomly in intervals defined with a fixed step size from the best.
                    Ignored when the '--ensemble-algo' is not "meta".""")
     
     return p

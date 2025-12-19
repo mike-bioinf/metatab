@@ -7,7 +7,7 @@ from metatab.cli.programs.resample.main_programs.main_family_ensemble import mai
 
 
 
-if __name__ == "__main__":
+def main():
     pars = vars(parse_args(sys.argv[1:]))
     if pars["estimator_mode"] == "default":
         main_default(pars)
@@ -17,3 +17,8 @@ if __name__ == "__main__":
         main_ensemble(pars)
     elif pars["estimator_mode"] == "family_ensemble":
         main_family_ensemble(pars)
+
+
+
+if __name__ == "__main__":
+    main()
