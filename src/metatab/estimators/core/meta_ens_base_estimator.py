@@ -23,7 +23,7 @@ class MetaEnsembleBaseEstimator(ClassifierMixin, BaseEstimator):
         name: str = "meta_ens",
         n_members: int = 16,
         meta_surrogate_model: None | str | Path = None,
-        meta_strategy: MetaStrategy = "random_from_best",
+        meta_strategy: MetaStrategy = "random_uniform_from_best",
         meta_strategy_params: None | MetaStrategyParams = None,
         meta_seed: int = 42,
         seed: int = 0,
@@ -82,19 +82,18 @@ class MetaEnsembleBaseEstimator(ClassifierMixin, BaseEstimator):
                 In other terms the number of hps configuration to derive.
 
             meta_surrogate_model (None | str | Path, optional):
-                Surrogate model to use in the meta-optimization scenario.
+                Surrogate model to use for point performance prediction.
                 If str or Path, then the object pointed by the path is used as surrogate model.
                 This must be a joblib serialized object.
-                If None the "default" surrogate model according to `type_estimator` is used instead.
-                Ignored when `algo` is not "meta".
+                If None the "default" surrogate model is used.
 
             meta_strategy (MetaStrategy, optional):
                 Set the strategy used by the metalearning framework to select points.
-                It has no effect when `algo` is not "meta".
                 In detail the following `MetadataEvaluator` utilities are used:
                 - "best": `propose_n_best`
                 - "random_from_best": `propose_random_from_top`
-                - "uniform_from_best": `propose_best_uniform`
+                - "uniform_from_best": `propose_uniform_from_top`
+                - "random_uniform_from_best": `propose_random_uniform_from_top`
                 See the specific method for more details.
 
             meta_strategy_params (None | MetaStrategyParams, optional):

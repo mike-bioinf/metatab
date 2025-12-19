@@ -6,6 +6,7 @@ from sklearn.feature_selection import VarianceThreshold
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 from metatab.preprocessing.density_selector import DensityFeatureSelector
+from metatab.preprocessing.utils import get_estimator_default_preprocessing
 
 if TYPE_CHECKING:
     from metatab.estimators.utils.types import Classifier, EstimatorType
@@ -27,7 +28,7 @@ def create_classifier_pipeline(
     preprocessing + classifier, preprocessing only, or just the classifier.
 
     Parameters:
-        preprocessing (PREPROCESSING): 
+        preprocessing (PreprocessingStrategy): 
             Preprocessing strategy to follow. Supported values:
             - "no": No preprocessing, returns bare classifier
             - "base": VarianceThreshold only
@@ -89,14 +90,6 @@ def create_classifier_pipeline(
         )
     else:
         raise ValueError("Unsupported preprocessing.")
-
-
-# this is used also in helper programs
-def get_estimator_default_preprocessing(type_estimator: EstimatorType):
-    if type_estimator == "tabpfn":
-        return "density_filter"
-    else:
-        return "base"
 
 
 def _create_base_pipeline(

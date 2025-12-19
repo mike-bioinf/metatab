@@ -74,7 +74,6 @@ def update_dict(
     return dictionary
 
 
-# TODO: find a better location for this function
 def check_meta_tuning_options(
     estimator: EstimatorType, 
     preprocessing: PreprocessingStrategy, 
@@ -104,7 +103,6 @@ def check_meta_tuning_options(
         )
 
 
-# TODO: find a better location for thif function
 def check_early_stop_options(
     estimator: EstimatorType,
     early_stop_rounds: int,

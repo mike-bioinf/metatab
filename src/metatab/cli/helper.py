@@ -3,7 +3,6 @@ import json
 import logging
 from pathlib import Path
 from typing import Literal
-from metatab.preprocessing.preprocessing import get_estimator_default_preprocessing
 from metatab.estimators.params.utils import pick_estimator_tune_space
 from metatab.estimators.utils.constants import EARLY_STOPPED_ESTIMATORS
 from metatab.metalearning.load import query_surrogate_framework
@@ -88,13 +87,6 @@ def manage_output_path(pars: dict, output_arg: str, is_folder: bool) -> None:
         raise FileNotFoundError(f"{out_folder} does not exists!")
     elif not out_folder.exists() and pars["create_outdir"]:
         out_folder.mkdir(parents=True, exist_ok=True)
-
-
-def resolve_preprocessing_info(pars: dict) -> str:
-    '''Resolves and returns the explicit preprocessing info'''
-    if pars["preprocessing"] == "estimator_default":
-        return get_estimator_default_preprocessing(pars["estimator"])
-    return pars["preprocessing"]
 
 
 def create_json_configuration_file(pars: dict, filepath: str | Path) -> None:

@@ -16,7 +16,7 @@ from sklearn.utils.validation import check_is_fitted
 from metatab.estimators.utils.general import collect_sklearn_classification_fit_info_from_data
 from metatab.estimators.utils.fit import fit_with_early_stop_on_validation_set, set_params_into_clf
 from metatab.metalearning.acquisition_funcs import compute_upper_confidence_bound
-from metatab.metalearning.utils import check_meta_strategy, check_meta_strategy_params
+from metatab.metalearning.utils import check_meta_strategy, check_meta_strategy_params, get_estimator_n_candidate_points
 from metatab.metalearning.sampler import HyperoptRandomSampler
 from metatab.metalearning.metafeatures import CustomMFE
 from metatab.metalearning.metadata_evaluator import MetadataEvaluator
@@ -26,7 +26,7 @@ from metatab.metatab_utils.general import ensure_or_create
 if TYPE_CHECKING:
     from sklearn.pipeline import Pipeline
     from metatab.estimators.utils.types import Classifier, TunableEstimatorType
-    from metatab.preprocessing.types import PreprocessingStrategy
+    from metatab.preprocessing.types import ResolvedPreprocessingStrategy
     from metatab.metalearning.types import MetaStrategy, MetaStrategyParams
     from metatab.metatab_utils.types import XType, YType
 
@@ -66,7 +66,7 @@ class EnsembleEstimator:
             String estimator type. 
             Info needed in meta-optimization (`meta` algo).
             
-        clf_or_pipe_preprocessing (PreprocessingStrategy):
+        clf_or_pipe_preprocessing (ResolvedPreprocessingStrategy):
             Type of preprocessing used for the clf_or_pipe object.
             Info needed in meta-optimization (`meta` algo).
 
@@ -103,7 +103,8 @@ class EnsembleEstimator:
             In detail the following `MetadataEvaluator` utilities are used:
             - "best": `propose_n_best`
             - "random_from_best": `propose_random_from_top`
-            - "uniform_from_best": `propose_best_uniform`
+            - "uniform_from_best": `propose_uniform_from_top`
+            - "random_uniform_from_best": `propose_random_uniform_from_top`
             See the specific method for more details.
 
         meta_strategy_params (None | MetaStrategyParams, optional):
@@ -178,14 +179,14 @@ class EnsembleEstimator:
         save_path: str | Path,
         clf_or_pipe: Classifier | Pipeline,
         type_estimator: TunableEstimatorType,
-        clf_or_pipe_preprocessing: PreprocessingStrategy,
+        clf_or_pipe_preprocessing: ResolvedPreprocessingStrategy,
         params_distributions: dict,
         early_stop_on_validation_set: bool, 
         eval_set_parameter: str = "eval_set",
         validation_set_size: float = 0.3,
         fit_classifier_kwargs: None | dict = None,
         meta_surrogate_model: None | str | Path = None,
-        meta_strategy: MetaStrategy = "random_from_best",
+        meta_strategy: MetaStrategy = "random_uniform_from_best",
         meta_strategy_params: None | MetaStrategyParams = None,
         meta_seed: int = 42,
         meta_features: None | dict = None,
@@ -464,8 +465,7 @@ class EnsembleEstimator:
             metafeatures["preprocessing"] = self.clf_or_pipe_preprocessing
             
             if self.meta_candidate_points is None:
-                # 1500 is the number of points in our prior
-                n_candidate_points = 1500 \
+                n_candidate_points = get_estimator_n_candidate_points(self.type_estimator) \
                     if self.meta_strategy_params is None \
                     else self.meta_strategy_params.n_candidate_points
                 
@@ -498,27 +498,24 @@ class EnsembleEstimator:
                 points = meta_evaluator.propose_n_best(n_best=self.n_members)
             
             elif self.meta_strategy == "random_from_best":
-                # we use a ratio of 1 to 5 by default when possible, 
-                # meaning we give "5 choices for point"
-                top = min(self.n_members * 5, n_candidate_points) \
+                # we use a ratio of 1 to 3 by default when possible, 
+                # meaning we give "3 choices for point"
+                top = min(self.n_members * 3, n_candidate_points) \
                     if self.meta_strategy_params is None \
                     else self.meta_strategy_params.top
                 
-                # we use the "normal" seed of the instance to allow variability,
-                # when not hardcoded in the supplied params
-                propose_seed = self.seed if self.meta_strategy_params is None else self.meta_strategy_params.seed
-
+                # we use the instance seed to allow variability when not hardcoded in the supplied params
                 points = meta_evaluator.propose_random_from_top(
                     n_proposed=self.n_members,
                     top=top,
-                    seed=propose_seed
+                    seed=self.seed if self.meta_strategy_params is None else self.meta_strategy_params.seed
                 )
             
             elif self.meta_strategy == "uniform_from_best":
-                # we use a step of 5 by default when possible
+                # we use a step of 3 by default when possible
                 if self.meta_strategy_params is None:
                     max_ratio = int(n_candidate_points / self.n_members)
-                    step_size = 5 if max_ratio > 5 else max_ratio
+                    step_size = 3 if max_ratio > 3 else max_ratio
                 else:
                     step_size = self.meta_strategy_params.step_size
                 
@@ -526,5 +523,20 @@ class EnsembleEstimator:
                     n_steps=self.n_members,
                     step_size=step_size
                 )
-        
+
+            elif self.meta_strategy == "random_uniform_from_best":
+                # we use a step of 3 by default when possible
+                if self.meta_strategy_params is None:
+                    max_ratio = int(n_candidate_points / self.n_members)
+                    step_size = 3 if max_ratio > 3 else max_ratio
+                else:
+                    step_size = self.meta_strategy_params.step_size
+
+                # we use the instance seed to allow variability when not hardcoded in the supplied params
+                points = meta_evaluator.propose_random_uniform_from_top(
+                    n_steps=self.n_members,
+                    step_size=step_size,
+                    seed=self.seed if self.meta_strategy_params is None else self.meta_strategy_params.seed
+                )
+
         return points

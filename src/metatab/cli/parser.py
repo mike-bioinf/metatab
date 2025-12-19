@@ -44,7 +44,7 @@ def make_extra_base_parser() -> ArgumentParser:
     p.add_argument("-p", "--preprocessing", default="estimator_default", 
                     choices=["estimator_default", "base", "density_filter", "pca", "no"],
                     help= """Preprocessing to apply on the feature space. In detail:
-                    -estimator_default: Automatically select from the following options the prepocessing according to the estimator used.
+                    -estimator_default: Automatically select from the following options the preprocessing according to the estimator used.
                     -base: Filtering of constant features.
                     -density_filter: The number of columns is reduced to 500 (approximately) keeping only the most dense features.
                     -pca: PCA preprocessing retaining the N principal components explaining the 95 percent of the variance.
@@ -154,12 +154,13 @@ def make_tune_parser() -> ArgumentParser:
                    Ignored when '--tune-algo' is not "meta".""")
     
     # TODO: for now we do not allow to specify the specifics for the strategies
-    p.add_argument("--tune-meta-strategy", choices=["best", "random_from_best", "uniform_from_best"], default="best",
+    p.add_argument("--tune-meta-strategy", choices=["best", "random_from_best", "uniform_from_best", "random_uniform_from_best"], default="best",
                    help="""Strategy used to select the points proposed and evaluated by the surrogate model.
                    These points are the ones that will be tested in the inner cv.
                    -best: The n '--tune-n-iter' best points according to the surrogate model are selected.
                    -random_from_best: '--tune-n-iter' points are selected randomly from the best.
                    -uniform_from_best: '--tune-n-iter' points are selected with a fixed step size from the best.
+                   -random_uniform_from_best: '--tune-n-iter' points are selected randomly in intervals defined with a fixed step size from the best.
                    Ignored when the '--tune-algo' is not "meta".""")
     
     return p
@@ -201,11 +202,12 @@ def make_ensemble_parser() -> ArgumentParser:
                    Ignored when '--ensemble-algo' is not "meta".""")
     
     # TODO: for now we do not allow to specify the specifics for the strategies
-    p.add_argument("--ensemble-meta-strategy", choices=["best", "random_from_best", "uniform_from_best"], default="random_from_best",
+    p.add_argument("--ensemble-meta-strategy", choices=["best", "random_from_best", "uniform_from_best", "random_uniform_from_best"], default="random_uniform_from_best",
                    help="""Strategy used to select the hps points evaluated by the surrogate model.
                    -best: The n 'ensemble-n-members' best points according to the surrogate model are selected.
                    -random_from_best: 'ensemble-n-members' points are selected randomly from the best.
                    -uniform_from_best: 'ensemble-n-members' points are selected with a fixed step size from the best.
+                   -random_uniform_from_best: '--tune-n-iter' points are selected randomly in intervals defined with a fixed step size from the best.
                    Ignored when the '--ensemble-algo' is not "meta".""")
     
     return p
