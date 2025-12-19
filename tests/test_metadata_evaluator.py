@@ -51,6 +51,17 @@ def test_metadata_evaluator_propose_uniform_from_top():
 
 
 
+def test_metadata_evaluator_propose_random_uniform_from_top_method():
+    metadata_evaluator = create_dummy_metadata_evaluator()
+    points = metadata_evaluator.propose_random_uniform_from_top(n_steps=2, step_size=3, seed=0)
+    rng = np.random.default_rng(0)
+    # we use the ordered lists since the method internally orders from best to worst
+    interval_points = [["first", "second", "third"], ["forth", "fifth", "sixth"]]
+    expected_points = [ip[rng.integers(0, 3)] for ip in interval_points]
+    assert (np.array(expected_points) == np.array(points)).all(), "propose_random_uniform returns the wrong points"
+
+
+
 def test_metadata_evaluator_propose_random_from_top_method():
     metadata_evaluator = create_dummy_metadata_evaluator()
 
@@ -79,6 +90,7 @@ def create_data() -> tuple[pd.DataFrame, pd.Series]:
     X.columns = pd.Series([f"col_{i}" for i in range(X.columns.size)])
     y = pd.Series(y)
     return X, y
+
 
 
 def test_metadata_evaluator_works_in_real_scenario():

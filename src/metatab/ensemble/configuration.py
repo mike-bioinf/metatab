@@ -20,6 +20,7 @@ from metatab.metalearning.utils import (
     BestMetaStrategyParams, 
     RandomFromBestMetaStrategyParams, 
     UniformFromBestMetaStrategyParams,
+    RandomUniformFromBestMetaStrategyParams,
     check_meta_strategy_params
 )
 
@@ -38,7 +39,7 @@ class UserEnsembleConfiguration(BaseModel):
     early_stop_rounds: int = 100
     validation_set_size: float = 0.3
     meta_surrogate_model: None | str | Path = None
-    meta_strategy: MetaStrategy = "random_from_best"
+    meta_strategy: MetaStrategy = "random_uniform_from_best"
     meta_strategy_params: None | MetaStrategyParams = None
     meta_seed: int = 42
     seed: int = 0
@@ -50,13 +51,18 @@ class UserEnsembleConfiguration(BaseModel):
         # in before mode we have only data specified in input without defaults
         # therefore here we use "get" and set the correct default for meta_strategy 
         meta_strategy = data.get("meta_strategy")
-        meta_strategy = "random_from_best" if meta_strategy is None else meta_strategy
+        meta_strategy = "random_uniform_from_best" if meta_strategy is None else meta_strategy
         meta_strategy_params = data.get("meta_strategy_params")
 
         # we target only the deserialization case
         if isinstance(
             meta_strategy_params, 
-            (BestMetaStrategyParams, RandomFromBestMetaStrategyParams, UniformFromBestMetaStrategyParams)
+            (
+                BestMetaStrategyParams, 
+                RandomFromBestMetaStrategyParams, 
+                UniformFromBestMetaStrategyParams,
+                RandomUniformFromBestMetaStrategyParams
+            )
         ):
             return data
 
@@ -67,8 +73,10 @@ class UserEnsembleConfiguration(BaseModel):
             data["meta_strategy_params"] = BestMetaStrategyParams(**meta_strategy_params)
         elif meta_strategy == "random_from_best":
             data["meta_strategy_params"] = RandomFromBestMetaStrategyParams(**meta_strategy_params)
-        else:
+        elif meta_strategy == "uniform_from_best":
             data["meta_strategy_params"] = UniformFromBestMetaStrategyParams(**meta_strategy_params)
+        else:
+            data["meta_strategy_params"] = RandomUniformFromBestMetaStrategyParams(**meta_strategy_params)
 
         return data
     

@@ -141,7 +141,7 @@ class MetadataEvaluator:
         return [top_points[idx] for idx in selected_idx]
 
 
-    def propose_uniform_from_top(self, n_steps: int, step_size: int):
+    def propose_uniform_from_top(self, n_steps: int, step_size: int) -> list[dict[str, Any]]:
         '''
         Get the best `n_steps` points using a fixed `step_size`.
         This propose strategy can be think of ordering the points
@@ -173,6 +173,57 @@ class MetadataEvaluator:
         ordered_idx = np.argsort(self.promisingness_, stable=True)[::-1]
         ordered_points = [self.candidate_points[idx] for idx in ordered_idx]
         return ordered_points[:working_range:step_size]
+
+
+    def propose_random_uniform_from_top(
+        self, 
+        n_steps: int, 
+        step_size: int,
+        seed: int = 0
+    ) -> list[dict[str, Any]]:
+        '''
+        Get the best `n_steps` points using a fixed `step_size` and a random seed.
+        This propose strategy can be think of ordering the points 
+        in the best --> worst direction, and then selecting a single item 
+        randomly in the interval defined by the step_size, for n_steps times. 
+        The utility therefore returns n_steps points.
+
+        Parameters:
+            n_steps (int): 
+                Number of points returned by the utility.
+
+            step_size (int):
+                Size of the step defining the intervals.
+            
+            seed (int, optional):
+                Seed used to randomly select the points inside the intervals.
+
+        Returns:
+            list[dict[str,Any]]: The list of the best points.
+        '''
+        check_is_fitted(self, "is_fitted_")
+        self._check_promisingness_score_existence()
+
+        working_range = n_steps * step_size
+        
+        if working_range > self.n_candidate_points:
+            raise ValueError(
+                "'n_steps * step_size' cannot be greater than the number of candidate points."
+            )
+        
+        # argsort works in increasing order, so we reverse to have best --> worst direction
+        ordered_idx = np.argsort(self.promisingness_, stable=True)[::-1]
+        ordered_points = [self.candidate_points[idx] for idx in ordered_idx]
+        
+        rng = np.random.default_rng(seed)
+        selected_points = []
+
+        for i in range(n_steps):
+            left_idx = i * step_size
+            right_idx = left_idx + step_size
+            selected_points.append(ordered_points[rng.integers(left_idx, right_idx)])
+
+        return selected_points
 
     
     def _check_promisingness_score_existence(self) -> None:

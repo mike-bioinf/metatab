@@ -52,7 +52,7 @@ class EnsembleConfiguration:
     n_members: int
     save_path: str | Path
     params_distributions: dict
-    meta_strategy: MetaStrategy = "random_from_best"
+    meta_strategy: MetaStrategy = "random_uniform_from_best"
     meta_strategy_params: None | MetaStrategyParams = None
     meta_surrogate_model: None | str | Path = None
     meta_seed: int = 42

@@ -78,19 +78,16 @@ class MetaTuneBaseEstimator(ClassifierMixin, BaseEstimator):
             
             meta_strategy (MetaStrategy, optional):
                 Set the strategy used by the metalearning framework to select points.
-                - "best": The best `n_iter` points are selected.
-                - "random_from_best": `n_iter` points are randomly selected from the top.
-                The top is automatically set as `min(n_iter * 3, n_candidate_points)`.
-                This value be customized in `meta_strategy_params`.
-                - "uniform_from_best": `n_iter` points are selected starting from the best 
-                with a fixed step size. The step size is automatically set as 
-                `3 if (n_candidate_points / self.n_iter) > 3 else 1`. 
-                This value can be customized via `meta_strategy_params`.
+                In detail the following `MetadataEvaluator` utilities are used:
+                - "best": `propose_n_best`
+                - "random_from_best": `propose_random_from_top`
+                - "uniform_from_best": `propose_uniform_from_top`
+                - "random_uniform_from_best": `propose_random_uniform_from_top`
+                See the specific method for more details.
                 
             meta_strategy_params (None | MetaStrategyParams, optional):
-                It's possible to customize the number of candidate points to draw
-                as well as some point-selection options.
-                See the specific dataclasses object to more info.
+                Meta strategy specifics in form of dataclass.
+                If None the default specifics are applied.
 
             meta_surrogate_model (None | str | Path, optional):
                 Surrogate model to use for point performance prediction.

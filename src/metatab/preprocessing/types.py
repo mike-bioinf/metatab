@@ -8,3 +8,10 @@ PreprocessingStrategy = Literal[
     "pca",
     "no"
 ]
+
+ResolvedPreprocessingStrategy = Literal[
+    "base",
+    "density_filter",
+    "pca",
+    "no"
+]

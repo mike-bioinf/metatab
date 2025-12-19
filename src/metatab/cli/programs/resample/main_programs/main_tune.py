@@ -28,8 +28,7 @@ from metatab.cli.helper import (
     adjust_io_paths_,
     manage_output_path,
     build_early_stop_configuration,
-    build_tune_configuration,
-    resolve_preprocessing_info
+    build_tune_configuration
 )
 
 
@@ -104,8 +103,7 @@ def main_tune(pars: dict):
 
         # we pass different seeds to maximize resample entropy
         estimator: TunedEstimator = estimator_class(
-            # we need to resolve the preprocessing to extract the related info
-            preprocessing=resolve_preprocessing_info(pars),
+            preprocessing=pars["preprocessing"],
             seed=int(rng_estimator.integers(0, 2**32)),
             n_threads=pars["nthreads"],
             early_stop_configuration=early_stop_conf,

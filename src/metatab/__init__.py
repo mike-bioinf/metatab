@@ -1,3 +1,5 @@
+from metatab.ensemble.family import FamilyEnsembleEstimator
+
 from metatab.estimators import (
     MetaTuneRandomForestClassifier,
     MetaTuneXGBClassifier,
@@ -26,5 +28,6 @@ __all__ = [
     "MetaEnsembleEsXGBClassifier",
     "MetaEnsembleTabPFNClassifier",
     "MetaEnsembleLGBMClassifier",
-    "MetaEnsembleEsLGBMClassifier" 
+    "MetaEnsembleEsLGBMClassifier",
+    "FamilyEnsembleEstimator"
 ]

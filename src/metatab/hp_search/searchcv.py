@@ -19,14 +19,14 @@ from metatab.metalearning.acquisition_funcs import compute_upper_confidence_boun
 from metatab.metalearning.sampler import HyperoptRandomSampler
 from metatab.metalearning.metadata_generator import MetadataGenerator
 from metatab.metalearning.metadata_evaluator import MetadataEvaluator
-from metatab.metalearning.utils import check_meta_strategy, check_meta_strategy_params
+from metatab.metalearning.utils import check_meta_strategy, check_meta_strategy_params, get_estimator_n_candidate_points
 from metatab.metatab_utils.general import add_broadcasted_objects_as_column
 from metatab.hp_search.point_corrector import PointCorrector
 from metatab.hp_search.cv import CrossValidator
 from metatab.hp_search.config import ConfigSearchCV
 
 if TYPE_CHECKING:
-    from metatab.preprocessing.types import PreprocessingStrategy
+    from metatab.preprocessing.types import ResolvedPreprocessingStrategy
     from metatab.estimators.utils.types import Classifier, TunableEstimatorType
     from metatab.metalearning.types import MetaStrategy, MetaStrategyParams
     from metatab.metatab_utils.types import XType, YType
@@ -56,7 +56,7 @@ class SearchCV:
             String estimator type. 
             Info needed in meta-optimization (`meta` algo).
             
-        clf_or_pipe_preprocessing (PreprocessingStrategy):
+        clf_or_pipe_preprocessing (ResolvedPreprocessingStrategy):
             Type of preprocessing used for the clf_or_pipe object.
             Info needed in meta-optimization (`meta` algo).
         
@@ -113,7 +113,8 @@ class SearchCV:
             In detail the following `MetadataEvaluator` utilities are used:
             - "best": `propose_n_best`
             - "random_from_best": `propose_random_from_top`
-            - "uniform_from_best": `propose_best_uniform`
+            - "uniform_from_best": `propose_uniform_from_top`
+            - "random_uniform_from_best": `propose_random_uniform_from_top`
             See the specific method for more details.
 
         meta_strategy_params (None | MetaStrategyParams, optional):
@@ -174,7 +175,7 @@ class SearchCV:
         *,
         clf_or_pipe: Classifier | Pipeline,
         type_estimator: TunableEstimatorType,
-        clf_or_pipe_preprocessing: PreprocessingStrategy,
+        clf_or_pipe_preprocessing: ResolvedPreprocessingStrategy,
         algo: Literal["random", "tpe", "meta"],
         params_distributions: dict,
         n_iter: int,
@@ -188,7 +189,7 @@ class SearchCV:
         validation_set_size: float = 0.3,
         fit_classifier_kwargs: None | dict = None,
         meta_surrogate_model: None | str | Path = None,
-        meta_strategy: MetaStrategy = "random_from_best",
+        meta_strategy: MetaStrategy = "best",
         meta_strategy_params: None | MetaStrategyParams = None,
         meta_seed: int = 42,
         raise_error_during_search: None | bool = None,
@@ -299,10 +300,7 @@ class SearchCV:
         Optimize using the meta-inferred points only.        
         Set the `best_params_` attribute.
         '''
-        # 1500 are the points used in our prior for all estimators (for now)
-        # In general drawning too many points can reduce their divergence and therefore hurt performance
-        # TODO: use "new" points also?
-        n_candidate_points = max(1500, self.n_iter) \
+        n_candidate_points = max(get_estimator_n_candidate_points(self.type_estimator), self.n_iter) \
             if self.meta_strategy_params is None \
             else self.meta_strategy_params.n_candidate_points
         
@@ -355,14 +353,11 @@ class SearchCV:
                 if self.meta_strategy_params is None \
                 else self.meta_strategy_params.top
             
-            # we use the "normal" seed of the instance to allow variability,
-            # when not hardcoded in the supplied params
-            propose_seed = self.seed if self.meta_strategy_params is None else self.meta_strategy_params.seed
-
+            # we use the instance seed to allow variability when not hardcoded in the supplied params
             points = meta_evaluator.propose_random_from_top(
                 n_proposed=self.n_iter,
                 top=top,
-                seed=propose_seed
+                seed=self.seed if self.meta_strategy_params is None else self.meta_strategy_params.seed
             )
         
         elif self.meta_strategy == "uniform_from_best":
@@ -375,6 +370,20 @@ class SearchCV:
             points = meta_evaluator.propose_uniform_from_top(
                 n_steps=self.n_iter,
                 step_size=step_size
+            )
+
+        elif self.meta_strategy == "random_uniform_from_best":
+            # we use a step of 3 by default when possible
+            if self.meta_strategy_params is None:
+                step_size = 3 if (n_candidate_points / self.n_iter) > 3 else 1
+            else:
+                step_size = self.meta_strategy_params.step_size
+
+            # we use the instance seed to allow variability when not hardcoded in the supplied params
+            points = meta_evaluator.propose_random_uniform_from_top(
+                n_steps=self.n_iter,
+                step_size=step_size,
+                seed=self.seed if self.meta_strategy_params is None else self.meta_strategy_params.seed
             )
 
         # we do not evaluate the single point since is the best by definition

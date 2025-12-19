@@ -12,6 +12,7 @@ from metatab.metatab_utils.general import ensure_or_create, asdict_shallow
 from metatab.estimators.utils.fit import fit_with_early_stop_on_validation_set
 from metatab.hp_search.searchcv import SearchCV
 from metatab.ensemble.single import EnsembleEstimator
+from metatab.preprocessing.utils import resolve_preprocessing_info
 
 if TYPE_CHECKING:
     from metatab.preprocessing.types import PreprocessingStrategy
@@ -175,6 +176,8 @@ class AbstractBaseEstimator(ABC):
             eval_set_parameter
         )
 
+        resolved_preprocessing = resolve_preprocessing_info(self.preprocessing)
+
         params = self._update_fixed_params(
             up_seed=True, 
             up_n_threads=False if n_threads_parameter is None else True,
@@ -189,7 +192,7 @@ class AbstractBaseEstimator(ABC):
         params = self._apply_callbacks_on_fixed_params(params, callbacks_on_fixed_params, y)
 
         clf_or_pipe = create_classifier_pipeline(
-            preprocessing=self.preprocessing,
+            preprocessing=resolved_preprocessing,
             density_feature_selector_strategy=density_feature_selector_strategy,
             classifier=classifier_cls,
             classifier_params=params,
@@ -211,7 +214,7 @@ class AbstractBaseEstimator(ABC):
             estimator = EnsembleEstimator(
                 clf_or_pipe=clf_or_pipe,
                 type_estimator=type_estimator,
-                clf_or_pipe_preprocessing=self.preprocessing,
+                clf_or_pipe_preprocessing=resolved_preprocessing,
                 seed=self.seed,
                 fit_classifier_kwargs=fit_classifier_kwargs,
                 early_stop_on_validation_set=is_early_stopped,
@@ -226,7 +229,7 @@ class AbstractBaseEstimator(ABC):
             estimator = SearchCV(
                 clf_or_pipe=clf_or_pipe,
                 type_estimator=type_estimator,
-                clf_or_pipe_preprocessing=self.preprocessing,
+                clf_or_pipe_preprocessing=resolved_preprocessing,
                 random_state_parameter=random_state_parameter,
                 seed=self.seed,
                 metric_to_minimize="logloss",
