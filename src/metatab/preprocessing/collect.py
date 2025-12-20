@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Literal, TYPE_CHECKING
 from sklearn.pipeline import Pipeline
+from metatab.preprocessing.utils import resolve_preprocessing_info
 
 if TYPE_CHECKING:
     from sklearn.decomposition import PCA
@@ -18,14 +19,14 @@ def collect_fit_preprocessing_info(
     wrap_into_list: bool = True
 ) -> dict:
     '''
-    Returns the preprocessing info from a fitted object.
+    Returns the preprocessing info from a fitted classifier or pipeline.
 
     Parameters:
         clf_or_pipe (Classifier | Pipeline): 
-            Fitted object. Can be either a classifier of a pipeline.
+            Fitted classifier or pipeline.
 
         preprocessing (PreprocessingStrategy): 
-            Type of preprocessing used for the fitted object.
+            Type of preprocessing used for clf_or_pipe object.
         
         return_on_classifier (Literal["empty_dict", "error"]):
             If no preprocessing is used (no pipeline object) then:
@@ -49,6 +50,8 @@ def collect_fit_preprocessing_info(
         else:
             raise ValueError("Unsupported value for 'return_on_classifier' parameter.")
     
+    preprocessing = resolve_preprocessing_info(preprocessing)
+
     # from here we deal with a pipeline
     if preprocessing == "pca":
         return _collect_from_pca_preprocessing(clf_or_pipe, wrap_into_list)

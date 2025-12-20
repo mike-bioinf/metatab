@@ -1,5 +1,6 @@
 import pytest
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import ExtraTreesClassifier
 from xgboost import XGBClassifier
 from lightgbm import LGBMClassifier
 from catboost import CatBoostClassifier
@@ -10,7 +11,14 @@ from tabpfn import TabPFNClassifier
 ## This is testing more the external classifier APIs but is for ensure safety
 @pytest.mark.parametrize(
     "classifier_class", 
-    [RandomForestClassifier, XGBClassifier, CatBoostClassifier, LGBMClassifier, TabPFNClassifier]
+    [
+        RandomForestClassifier,
+        ExtraTreesClassifier, 
+        XGBClassifier, 
+        CatBoostClassifier, 
+        LGBMClassifier, 
+        TabPFNClassifier
+    ]
 )
 def test_that_set_params_into_clf_works_for_all_classifiers(classifier_class):
     cls = classifier_class()

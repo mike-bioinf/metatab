@@ -5,12 +5,14 @@ from metatab.metalearning.utils import BestMetaStrategyParams
 
 from metatab.estimators import (
     MetaTuneRandomForestClassifier,
+    MetaTuneExtraTreesClassifier,
     MetaTuneXGBClassifier,
     MetaTuneEsXGBClassifier,
     MetaTuneLGBMClassifier,
     MetaTuneEsLGBMClassifier,
     MetaTuneTabPFNClassifier,
     MetaEnsembleRandomForestClassifier,
+    MetaEnsembleExtraTreesClassifier,
     MetaEnsembleXGBClassifier,
     MetaEnsembleEsXGBClassifier,
     MetaEnsembleTabPFNClassifier,
@@ -21,6 +23,7 @@ from metatab.estimators import (
 
 METATUNECLASSES = [
     MetaTuneRandomForestClassifier,
+    #MetaTuneExtraTreesClassifier,
     MetaTuneXGBClassifier,
     MetaTuneEsXGBClassifier,
     MetaTuneLGBMClassifier,
@@ -31,6 +34,7 @@ METATUNECLASSES = [
 
 METAENSCLASSES = [
     MetaEnsembleRandomForestClassifier,
+    #MetaEnsembleExtraTreesClassifier,
     MetaEnsembleXGBClassifier,
     MetaEnsembleEsXGBClassifier,
     MetaEnsembleLGBMClassifier,

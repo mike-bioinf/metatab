@@ -7,6 +7,7 @@ EARLY_STOPPED_ESTIMATORS = [
 
 NON_EARLY_STOPPED_ESTIMATORS = [
     "random_forest",
+    "extra_trees",
     "xgb",
     "lgbm",
     "catboost",
@@ -16,6 +17,7 @@ NON_EARLY_STOPPED_ESTIMATORS = [
 
 NON_EARLY_STOPPED_CPU_ESTIMATORS = [
     "random_forest",
+    "extra_trees",
     "xgb",
     "lgbm",
     "catboost"
@@ -45,6 +47,7 @@ GBDT_ESTIMATORS = [
 
 TUNABLE_ESTIMATORS = [
     "random_forest",
+    "extra_trees",
     "xgb",
     "es_xgb",
     "lgbm",
@@ -57,6 +60,7 @@ TUNABLE_ESTIMATORS = [
 
 ALL_ESTIMATORS = [
     "random_forest",
+    "extra_trees",
     "xgb",
     "es_xgb",
     "lgbm",

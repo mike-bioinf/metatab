@@ -1,6 +1,7 @@
 from typing import Literal
 from typing import TypeAlias, Union
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import ExtraTreesClassifier
 from xgboost import XGBClassifier
 from catboost import CatBoostClassifier
 from lightgbm import LGBMClassifier
@@ -9,6 +10,7 @@ from tabpfn import TabPFNClassifier
 
 Classifier: TypeAlias = Union[
     RandomForestClassifier,
+    ExtraTreesClassifier,
     XGBClassifier,
     CatBoostClassifier,
     LGBMClassifier,
@@ -25,6 +27,7 @@ GBDTClassifier: TypeAlias = Union[
 
 TunableEstimatorType = Literal[
     "random_forest",
+    "extra_trees",
     "xgb",
     "es_xgb",
     "lgbm",
@@ -54,6 +57,7 @@ GBDTEstimatorType = Literal[
 
 TreeEstimatorType = Literal[
     "random_forest",
+    "extra_trees",
     "xgb",
     "es_xgb",
     "lgbm",
@@ -65,6 +69,7 @@ TreeEstimatorType = Literal[
 
 EstimatorType = Literal[
     "random_forest",
+    "extra_trees",
     "xgb",
     "es_xgb",
     "lgbm",

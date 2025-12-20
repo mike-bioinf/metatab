@@ -45,7 +45,7 @@ def test_that_col_to_str_transformer_works():
     # test that set_output framework works
     assert isinstance(trans_metadata, pd.DataFrame)
     assert (metadata.columns == trans_metadata.columns).all(), "ColToStr transformer chnages column names"
-    # test that cthe transformer convert to str
+    # test that the transformer convert to str
     assert pd.api.types.is_object_dtype(trans_metadata["z_normalized_loss"].dtype)    
     for value in trans_metadata["z_normalized_loss"]:
         assert isinstance(value, str), "ColToStr doesn't cast to str."
@@ -61,7 +61,7 @@ def test_that_inf_to_nan_transformer_works():
 
 
 
-## TODO: add "catboost" when you have metadata
+## TODO: add "catboost" and "extra_trees" when you have metadata
 @pytest.mark.parametrize("estimator", ["random_forest", "xgb", "lgbm", "tabpfn"])
 def test_that_estimator_metadata_encoding_scheme_is_correct(estimator):
     enc_pipe = make_pipeline(*get_encoding_scheme(estimator)).set_output(transform="pandas")

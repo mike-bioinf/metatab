@@ -27,8 +27,7 @@ class MyRandomForestClassifier(DefaultEstimatorMixin, AbstractBaseEstimator):
             X=X,
             y=y,
             classifier_cls=RandomForestClassifier,
-            type_estimator="random_forest",
-            is_tuned=False
+            type_estimator="random_forest"
         )
         return self
        

@@ -9,6 +9,8 @@ class DefaultParams:
     
     RANDOM_FOREST_DEFAULT_PARAMS = {}
 
+    EXTRA_TREES_DEFAULT_PARAMS = {}
+
     XGB_DEFAULT_PARAMS = {
         "verbosity": 0
     }

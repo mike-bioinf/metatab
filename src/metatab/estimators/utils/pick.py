@@ -8,6 +8,12 @@ from metatab.estimators.estimators.rf import (
     MyEnsembledRandomForestClassifier
 )
 
+from metatab.estimators.estimators.extra_trees import (
+    MyExtraTreesClassifier,
+    MyTunedExtraTreesClassifier,
+    MyEnsembledExtraTreesClassifier
+)
+
 from metatab.estimators.estimators.xgb import (
     MyXGBClassifier,
     MyESXGBClassifier,
@@ -58,6 +64,13 @@ def pick_estimator_class(
             return MyTunedRandomForestClassifier
         case ("random_forest", "ensemble"):
             return MyEnsembledRandomForestClassifier
+        
+        case ("extra_trees", "default"):
+            return MyExtraTreesClassifier
+        case ("extra_trees", "tune"):
+            return MyTunedExtraTreesClassifier
+        case ("extra_trees", "ensemble"):
+            return MyEnsembledExtraTreesClassifier
         
         case ("xgb", "default"):
             return MyXGBClassifier

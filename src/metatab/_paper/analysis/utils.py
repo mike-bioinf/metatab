@@ -4,8 +4,8 @@ import pandas as pd
 import warnings
 from ast import literal_eval
 from typing import Any, Callable, Literal
-from estimators.utils.types import EstimatorType
-from estimators.utils.constants import GBDT_ESTIMATORS
+from metatab.estimators.utils.types import EstimatorType
+from metatab.estimators.utils.constants import GBDT_ESTIMATORS
 
 
 

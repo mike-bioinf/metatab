@@ -7,6 +7,7 @@ from metatab.estimators.utils.types import TunableEstimatorType
 # The default spaces are identified based on our paper preanalysis
 DEFAULT_ESTIMATORS_TUNE_SPACES = {
     "random_forest": ("c0", TuningParams.RF_C0),
+    "extra_trees": ("c0", TuningParams.EXTRA_TREES_C0),
     "xgb": ("c0", TuningParams.XGB_C0), 
     "es_xgb": ("c0", TuningParams.XGB_C0), 
     "catboost": ("c0", TuningParams.CATBOOST_C0), 
@@ -21,6 +22,9 @@ def pick_estimator_tune_space(estimator: TunableEstimatorType, space: str) -> di
      match (estimator, space):
         case ("random_forest", "c0"):
             return TuningParams.RF_C0
+         
+        case("extra_trees", "c0"):
+            return TuningParams.EXTRA_TREES_C0
         
         case ("xgb" | "es_xgb", "c0"):
             return TuningParams.XGB_C0

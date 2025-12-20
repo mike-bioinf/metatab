@@ -44,9 +44,9 @@ def parse_args(args):
                    help="Name of the performance metric column to treat as the y target.")
 
     p.add_argument("-e", "--estimator", required=True, 
-                   choices=["random_forest", "xgb", "es_xgb", "catboost", "es_catboost", "lgbm", "es_lgbm", "tabpfn"],
+                   choices=["random_forest", "extra_trees", "xgb", "es_xgb", "catboost", "es_catboost", "lgbm", "es_lgbm", "tabpfn"],
                    help="""The estimator on which the meta-folder has been generated. 
-                   Needed to apply the correct preprocessing to the meta-data.""")
+                   Needed to apply the correct preprocessing to the metadata.""")
     
     p.add_argument("--seed", default=42, type=int, help="Seed used to control randomness of the surrogate model.")
 

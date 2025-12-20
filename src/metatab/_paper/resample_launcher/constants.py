@@ -5,7 +5,8 @@ CPU_ESTIMATORS = [
     "catboost",
     "es_catboost",
     "lgbm",
-    "es_lgbm"
+    "es_lgbm",
+    "extra_trees"
 ]
 
 SINGLE_GPU_ESTIMATORS = [

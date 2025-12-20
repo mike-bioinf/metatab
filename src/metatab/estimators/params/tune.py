@@ -5,9 +5,9 @@ from metatab.hp_search.tabpfn_search_space import TABPFN_TUNE_SPACE
 
 
 
-## TODO: we do not differentiate between same-named parameters for different estimators. This is "manually" guaranteed.
-# List of HPs that assume mixed typed values.
+## TODO: we do not differentiate between same-named parameters for different estimators.
 HPS_MIXED_TYPED = [
+    # for random_forest and extra_trees
     "max_features",
     # this two tabpfn HP are listed here to avoid the FutureWarning raised by pandas concat:
     # """The behavior of DataFrame concatenation with empty or all-NA entries is deprecated. 
@@ -40,6 +40,19 @@ class TuningParams:
         "min_impurity_decrease": hp.choice("min_impurity_decrease", [0, hp.loguniform("mid_positive", np.log(1e-5), np.log(1e-3))])
     }
 
+
+    ### EXTRA TREES -----------------------------------------------------------------------------------
+    EXTRA_TREES_FIXED_PARAMS = {
+        "n_estimators": 1000
+    }
+
+    EXTRA_TREES_C0 = {
+        "max_features": hp.choice("max_features", [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, None, "sqrt", "log2"]),
+        "criterion": hp.choice("criterion", ["gini", "entropy"]),
+        "min_samples_split": hp.choice("min_samples_split", list(range(2, 16))),
+        "min_samples_leaf": hp.choice("min_samples_leaf", [1, 2, 3, 4, 5]),
+        "min_impurity_decrease": hp.choice("min_impurity_decrease", [0, hp.loguniform("mid_positive", np.log(1e-5), np.log(1e-3))])
+    }
 
     ### XGBOOST ---------------------------------------------------------------------------------------
     # We explore different quantization-tree_growing_policy combinations.

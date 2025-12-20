@@ -100,6 +100,34 @@ HPS_ENCODING_SCHEME_RANDOM_FOREST = [
 ]
 
 
+HPS_ENCODING_SCHEME_EXTRA_TREES = [
+    NanToNone("max_features"), 
+    ColToStr("max_features"),
+    InfToNan(),
+    ColumnTransformer(
+        transformers=[
+            (
+                "onehot",
+                # we cast and save this col as str
+                OneHotEncoder(
+                    categories=[["0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9", "None", "sqrt", "log2"]],
+                    sparse_output=False
+                ), 
+                ["max_features"]
+            ),
+            (
+                "binary",
+                OrdinalEncoder(categories=[["gini", "entropy"]]),
+                ["criterion"]
+            ),
+            PREPROCESSING_COLUMN_ENCODING
+        ],
+        ** COLUMN_TRANSFORMER_FIXED_PARAMS
+    ),
+    VarianceThreshold()
+]
+
+
 HPS_ENCODING_SCHEME_TABPFN = [
     NanToNone([
         "inference_config__OUTLIER_REMOVAL_STD", 
@@ -212,6 +240,7 @@ HPS_ENCODING_SCHEME_LGBM = [
 # of their "base" counterpart, since they share the tune spaces
 HPS_ENCODING_SCHEME = {
     "random_forest": HPS_ENCODING_SCHEME_RANDOM_FOREST,
+    "extra_trees": HPS_ENCODING_SCHEME_EXTRA_TREES,
     "xgb": HPS_ENCODING_SCHEME_XGB,
     "es_xgb": HPS_ENCODING_SCHEME_XGB,
     "catboost": HPS_ENCODING_SCHEME_CATBOOST,

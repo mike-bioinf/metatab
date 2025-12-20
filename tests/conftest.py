@@ -23,6 +23,9 @@ from metatab.estimators.estimators import (
     MyRandomForestClassifier,
     MyTunedRandomForestClassifier,
     MyEnsembledRandomForestClassifier,
+    MyExtraTreesClassifier,
+    MyTunedExtraTreesClassifier,
+    MyEnsembledExtraTreesClassifier,
     MyXGBClassifier,
     MyESXGBClassifier,
     MyTunedXGBClassifier, 
@@ -77,6 +80,10 @@ TEST_ENSEMBLE_CONFIGURATION = EnsembleConfiguration(
 
 
 TEST_RANDOM_FOREST_FIXED_PARAMS = {
+    "n_estimators": 3
+}
+
+TEST_EXTRA_TREES_FIXED_PARAMS = {
     "n_estimators": 3
 }
 
@@ -171,6 +178,7 @@ _fit_estimator_on_iris = partial(_fit_estimator, X=X, y=y)
 ### Configurations to test + fixture -----------------------------------------------------------------------
 ESTIMATOR_DEFAULT_CONFIGS = {
     "my_rf_classifier.pkl": (MyRandomForestClassifier, TEST_RANDOM_FOREST_FIXED_PARAMS, None, None, None),
+    "my_extra_trees_classifier.pkl": (MyExtraTreesClassifier, TEST_EXTRA_TREES_FIXED_PARAMS, None, None, None),
     "my_xgb_classifier.pkl": (MyXGBClassifier, TEST_XGB_FIXED_PARAMS, None, None, None),
     "my_es_xgb_classifier.pkl": (MyESXGBClassifier, TEST_ESXGB_FIXED_PARAMS, None, None, None),
     "my_catboost_classifier.pkl": (MyCatBoostClassifier, TEST_CATBOOST_FIXED_PARAMS, None, None, None),
@@ -183,6 +191,7 @@ ESTIMATOR_DEFAULT_CONFIGS = {
 
 ESTIMATOR_TUNE_CONFIGS = {
     "my_tuned_rf_classifier.pkl": (MyTunedRandomForestClassifier, TEST_RANDOM_FOREST_FIXED_PARAMS, TEST_TUNE_CONFIGURATION, None, TuningParams.RF_C0),
+    "my_extra_trees_classifier.pkl": (MyTunedExtraTreesClassifier, TEST_EXTRA_TREES_FIXED_PARAMS, TEST_TUNE_CONFIGURATION, None, TuningParams.EXTRA_TREES_C0),
     "my_tuned_xgb_classifier.pkl": (MyTunedXGBClassifier, TEST_XGB_FIXED_PARAMS, TEST_TUNE_CONFIGURATION, None, TuningParams.XGB_C0),
     "my_tuned_es_xgb_classifier.pkl": (MyTunedESXGBClassifier, TEST_ESXGB_FIXED_PARAMS, TEST_TUNE_CONFIGURATION, None, TuningParams.XGB_C0),
     "my_tuned_catboost_classifier.pkl": (MyTunedCatBoostClassifier, TEST_CATBOOST_FIXED_PARAMS, TEST_TUNE_CONFIGURATION, None, TuningParams.CATBOOST_C0),
@@ -195,6 +204,7 @@ ESTIMATOR_TUNE_CONFIGS = {
 
 ESTIMATOR_ENSEMBLE_CONFIGS = {
     "my_ensembled_rf_classifier.pkl": (MyEnsembledRandomForestClassifier, TEST_RANDOM_FOREST_FIXED_PARAMS, None, TEST_ENSEMBLE_CONFIGURATION, TuningParams.RF_C0),
+    "my_ensembled_extra_trees_classifier.pkl": (MyEnsembledExtraTreesClassifier, TEST_EXTRA_TREES_FIXED_PARAMS, None, TEST_ENSEMBLE_CONFIGURATION, TuningParams.EXTRA_TREES_C0),
     "my_ensembled_xgb_classifier.pkl": (MyEnsembledXGBClassifier, TEST_XGB_FIXED_PARAMS, None, TEST_ENSEMBLE_CONFIGURATION, TuningParams.XGB_C0),
     "my_ensembled_es_xgb_classifier.pkl": (MyEnsembledESXGBClassifier, TEST_ESXGB_FIXED_PARAMS, None, TEST_ENSEMBLE_CONFIGURATION, TuningParams.XGB_C0),
     "my_ensembled_catboost_classifier.pkl": (MyEnsembledCatBoostClassifier, TEST_CATBOOST_FIXED_PARAMS, None, TEST_ENSEMBLE_CONFIGURATION, TuningParams.CATBOOST_C0),

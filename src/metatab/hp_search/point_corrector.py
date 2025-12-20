@@ -18,22 +18,13 @@ def add_root_path_to_tabfpn_ckpt(point: dict) -> dict:
     return point
 
 
-# We define here a set of functions for each estimator that accept as only input the point,
-# and return it corrected. The function must/can apply the changes in place.
+# We define here for each estimator needing corrections, a set of functions that accept 
+# as only input the point and return it corrected. The function must/can apply the changes in place.
 # The keys of the estimator inner dict define the corrections, in the sense that these
 # names are the one accepted and recognized by the 'estimator_corrections' argument 
 # of the 'correct_point' method of the PointCorrector class.
 ESTIMATOR_SUPPORTED_CORRECTIONS: dict[str, dict[str, Callable[[dict], dict]]] = {
-    "tabpfn": {
-        "model_path": add_root_path_to_tabfpn_ckpt
-    },
-    "random_forest": {},
-    "catboost": {},
-    "es_catboost": {},
-    "xgb": {},
-    "es_xgb": {},
-    "lgbm": {},
-    "es_lgbm": {}
+    "tabpfn": {"model_path": add_root_path_to_tabfpn_ckpt}
 }
 
 
@@ -92,7 +83,7 @@ class PointCorrector:
          
         # apply estimator corrections
         if estimator is not None:
-            selected_estimator_corrections = ESTIMATOR_SUPPORTED_CORRECTIONS[estimator]
+            selected_estimator_corrections = ESTIMATOR_SUPPORTED_CORRECTIONS.get(estimator, {})
             
             # select the desired corrections
             if estimator_corrections != "all":

@@ -30,6 +30,14 @@ from metatab.estimators.estimators.rf import (
     MetaEnsembleRandomForestClassifier
 )
 
+from metatab.estimators.estimators.extra_trees import (
+    MyExtraTreesClassifier,
+    MyTunedExtraTreesClassifier,
+    MyEnsembledExtraTreesClassifier,
+    MetaTuneExtraTreesClassifier,
+    MetaEnsembleExtraTreesClassifier
+)
+
 from metatab.estimators.estimators.lgbm import (
     MyLGBMClassifier,
     MyESLGBMClassifier,
@@ -83,6 +91,7 @@ Estimator: TypeAlias = Union[
 
 DefaultEstimator: TypeAlias = Union[
     MyRandomForestClassifier,
+    MyExtraTreesClassifier,
     MyXGBClassifier,
     MyESXGBClassifier,
     MyCatBoostClassifier,
@@ -95,6 +104,7 @@ DefaultEstimator: TypeAlias = Union[
 
 EnsembledEstimator: TypeAlias = Union[
     MyEnsembledRandomForestClassifier,
+    MyEnsembledExtraTreesClassifier,
     MyEnsembledXGBClassifier,
     MyEnsembledESXGBClassifier,
     MyEnsembledCatBoostClassifier,
@@ -107,6 +117,7 @@ EnsembledEstimator: TypeAlias = Union[
 
 TunedEstimator: TypeAlias = Union[
     MyTunedRandomForestClassifier,
+    MyTunedExtraTreesClassifier,
     MyTunedXGBClassifier,
     MyTunedESXGBClassifier,
     MyTunedCatBoostClassifier,
@@ -121,6 +132,9 @@ __all__ = [
     "MyRandomForestClassifier",
     "MyTunedRandomForestClassifier",
     "MyEnsembledRandomForestClassifier",
+    "MyExtraTreesClassifier",
+    "MyTunedExtraTreesClassifier",
+    "MyEnsembledExtraTreesClassifier",
     "MyXGBClassifier",
     "MyESXGBClassifier",
     "MyTunedXGBClassifier", 
