@@ -31,7 +31,7 @@ class TuningParams:
         "n_estimators": 1000
     }
 
-    ## TODO: add criterion when you update the prior (future work)
+    ## TODO:FUTURE: add criterion when you update the prior
     RF_C0 = {
         "max_features": hp.choice("max_features", [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, None, "sqrt", "log2"]),
         "min_samples_split": hp.choice("min_samples_split", list(range(2, 16))),
@@ -74,6 +74,7 @@ class TuningParams:
         "verbosity": 0
     }
 
+    ## TODO:FUTURE: condense the multiple spaces in more diverse ones 
     # depthwise-exact-strong_regularized
     XGB_C0 = {
         "grow_policy": hp.choice("grow_policy", ["depthwise"]),
@@ -182,6 +183,7 @@ class TuningParams:
         "allow_writing_files": False
     }
 
+    ## TODO:FUTURE: condense the multiple spaces in more diverse ones 
     # Cosine-Symmetrictree
     CATBOOST_C0 = {
         "score_function": hp.choice("score_function", ["Cosine"]),

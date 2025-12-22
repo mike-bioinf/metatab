@@ -12,7 +12,7 @@ from metatab.estimators.params import TuningParams
 
 def test_that_metadata_generator_works():
     generator = MetadataGenerator(
-        sampler=HyperoptRandomSampler(),
+        sampler=HyperoptRandomSampler(follow_hyperopt_fmin=False),
         point_corrector=PointCorrector(),
         mfe=CustomMFE(seed=0)
     )

@@ -51,7 +51,7 @@ def test_that_compute_feature_sensitivity_map_works(create_multi_index_dataframe
     surrogate_pipeline = query_surrogate_framework("lgbm")
     
     generator = MetadataGenerator(
-        sampler=HyperoptRandomSampler(),
+        sampler=HyperoptRandomSampler(follow_hyperopt_fmin=False),
         point_corrector=PointCorrector(),
         mfe=CustomMFE()
     )

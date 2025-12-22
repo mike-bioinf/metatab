@@ -479,11 +479,11 @@ class FamilyEnsembleEstimator:
 
     def _get_logger(self) -> logging.Logger:
         logger = logging.getLogger(self.name)
-        logger.handlers.clear()
         logger.setLevel(logging.DEBUG)
-        handler = logging.StreamHandler(sys.stdout)
-        handler.setLevel(self.log)
-        logger.addHandler(handler)
+        if not logger.handlers:
+            handler = logging.StreamHandler(sys.stdout)
+            handler.setLevel(self.log)
+            logger.addHandler(handler)
         logger.propagate = False
         return logger
 
