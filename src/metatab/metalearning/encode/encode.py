@@ -11,7 +11,7 @@ them though the sklearn ordinal or onehot encoders, which require input categori
 
 - We expect some metafeatures to goes to +-inf due to our dataset statistical properties.
 We deal with this by employing the InfToNan transformer, which transform the +/-inf values
-to nan. This is good solution since our surrogate model (RandomForestRegressor) si able
+to nan. This is a good solution since our surrogate model (RandomForestRegressor) si able
 to natively learn and handle nan value, both at training and inference time.
 
 - We expect some metafeatures to contain full nan values. This is because pymfe does not

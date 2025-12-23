@@ -97,17 +97,17 @@ class MetadataEvaluator:
 
     def propose_random_from_top(
         self, 
-        n_proposed: int,
+        n_to_propose: int,
         top: int,
         seed: int = 0
     ) -> list[dict[str, Any]]:
         '''
         Get the best points from the top positions randomly without duplication.
-        This propose strategy let to randomly draw `n_proposed` points from the `top`
+        This propose strategy let to randomly draw `n_to_propose` points from the `top`
         positions of `n_candidate_points` in a random way without duplication.
 
         Parameters:
-            n_proposed (int): 
+            n_to_propose (int): 
                 Number of points returned by the utility.
 
             top (int):
@@ -125,19 +125,19 @@ class MetadataEvaluator:
         if top > self.n_candidate_points:
             raise ValueError(f"'top' cannot be greater than the number of candidate points.")
 
-        if n_proposed > top:
-            raise ValueError(f"'n_proposed' cannot be greater than 'top'.")
+        if n_to_propose > top:
+            raise ValueError(f"'n_to_propose' cannot be greater than 'top'.")
 
         # argsort works in increasing order, so we reverse to have best --> worst direction
         top_idx = np.argsort(self.promisingness_, stable=True)[::-1][:top]
         top_points = [self.candidate_points[idx] for idx in top_idx]
 
         # we can skip random drawing in this scenario
-        if top == n_proposed:
+        if top == n_to_propose:
             return top_points
         
         rng = np.random.default_rng(seed)
-        selected_idx = rng.choice(top, size=n_proposed, replace=False)
+        selected_idx = rng.choice(top, size=n_to_propose, replace=False)
         return [top_points[idx] for idx in selected_idx]
 
 

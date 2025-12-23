@@ -465,7 +465,7 @@ class EnsembleEstimator:
             metafeatures["preprocessing"] = self.clf_or_pipe_preprocessing
             
             if self.meta_candidate_points is None:
-                n_candidate_points = get_estimator_n_candidate_points(self.type_estimator) \
+                n_candidate_points = max(get_estimator_n_candidate_points(self.type_estimator), self.n_members) \
                     if self.meta_strategy_params is None \
                     else self.meta_strategy_params.n_candidate_points
                 
@@ -498,9 +498,8 @@ class EnsembleEstimator:
                 points = meta_evaluator.propose_n_best(n_best=self.n_members)
             
             elif self.meta_strategy == "random_from_best":
-                # we use a ratio of 1 to 3 by default when possible, 
-                # meaning we give "3 choices for point"
-                top = min(self.n_members * 3, n_candidate_points) \
+                # we use a ratio of 1 to 5 by default when possible
+                top = min(self.n_members * 5, n_candidate_points) \
                     if self.meta_strategy_params is None \
                     else self.meta_strategy_params.top
                 
@@ -512,10 +511,10 @@ class EnsembleEstimator:
                 )
             
             elif self.meta_strategy == "uniform_from_best":
-                # we use a step of 3 by default when possible
+                # we use a step of 10 by default when possible
                 if self.meta_strategy_params is None:
-                    max_ratio = int(n_candidate_points / self.n_members)
-                    step_size = 3 if max_ratio > 3 else max_ratio
+                    max_step = int(n_candidate_points / self.n_members)
+                    step_size = 10 if max_step > 10 else max_step
                 else:
                     step_size = self.meta_strategy_params.step_size
                 
@@ -525,10 +524,10 @@ class EnsembleEstimator:
                 )
 
             elif self.meta_strategy == "random_uniform_from_best":
-                # we use a step of 3 by default when possible
+                # we use a step of 10 by default when possible
                 if self.meta_strategy_params is None:
-                    max_ratio = int(n_candidate_points / self.n_members)
-                    step_size = 3 if max_ratio > 3 else max_ratio
+                    max_step = int(n_candidate_points / self.n_members)
+                    step_size = 10 if max_step > 10 else max_step
                 else:
                     step_size = self.meta_strategy_params.step_size
 
