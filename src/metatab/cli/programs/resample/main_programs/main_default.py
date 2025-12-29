@@ -85,6 +85,7 @@ def main_default(pars: dict):
             preprocessing=pars["preprocessing"],
             seed=int(rng_estimator.integers(0, 2**32)),
             n_threads=pars["nthreads"],
+            device=pars["device"],
             early_stop_configuration=early_stop_conf
         )
 

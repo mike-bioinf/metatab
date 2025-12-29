@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 from sklearn.base import ClassifierMixin, BaseEstimator
 from sklearn.utils.validation import check_is_fitted, check_X_y
 from metatab.estimators.utils.general import check_predict_features, check_y_is_integer_encoded
@@ -31,7 +31,8 @@ class MetaEnsembleBaseEstimator(ClassifierMixin, BaseEstimator):
         log: int = 20,
         raise_error_fit_member: bool = False,
         raise_error_void_ensemble: bool = True,
-        n_threads: int = 1
+        n_threads: int = 1,
+        device: Literal["cpu", "cuda", "auto"] = "auto"
     ):
         '''
         The meta ensembled estimators are backed by a meta-learning framework that suggestes,
@@ -133,6 +134,11 @@ class MetaEnsembleBaseEstimator(ClassifierMixin, BaseEstimator):
             n_threads (int, optional):
                 Number of threads used to parallelize the classifiers fitting process.
 
+            device (Literal["cpu", "cuda", "auto"], optional):
+                Device where to fit the model(s). 
+                Note that for some estimators cannot be run on "cuda" raising an error.
+                If "auto" then it selects cuda if available AND the estimator requires GPU else cpu.
+
 
         ## Attributes:
 
@@ -176,6 +182,7 @@ class MetaEnsembleBaseEstimator(ClassifierMixin, BaseEstimator):
         self.raise_error_fit_member=raise_error_fit_member
         self.raise_error_void_ensemble=raise_error_void_ensemble
         self.n_threads=n_threads
+        self.device=device
 
 
     def fit(
@@ -233,6 +240,7 @@ class MetaEnsembleBaseEstimator(ClassifierMixin, BaseEstimator):
             preprocessing=preprocessing,
             seed=self.seed,
             n_threads=self.n_threads,
+            device=self.device,
             early_stop_configuration=early_stop_configuration,
             ensemble_configuration=ens_conf
         )

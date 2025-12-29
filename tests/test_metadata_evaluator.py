@@ -66,7 +66,7 @@ def test_metadata_evaluator_propose_random_from_top_method():
     metadata_evaluator = create_dummy_metadata_evaluator()
 
     points = metadata_evaluator.propose_random_from_top(
-        n_proposed=4,
+        n_to_propose=4,
         top=8, # include all points
         seed=0
     )

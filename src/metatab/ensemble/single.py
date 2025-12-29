@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Literal, TYPE_CHECKING
 from functools import partial
 from sklearn.utils.validation import check_is_fitted
+from metatab.metatab_utils.exceptions import TimiLimitError
 from metatab.estimators.utils.general import collect_sklearn_classification_fit_info_from_data
 from metatab.estimators.utils.fit import fit_with_early_stop_on_validation_set, set_params_into_clf
 from metatab.metalearning.acquisition_funcs import compute_upper_confidence_bound
@@ -258,7 +259,7 @@ class EnsembleEstimator:
         for hp_conf, member_name in zip(hps_confs, member_names):
             try:
                 if self._is_time_limit_violated(start_time):
-                    raise ValueError("Violated time limit")
+                    raise TimiLimitError("Violated time limit")
                 
                 # deepcopy necessary since catboost cannot be refitted
                 clf_or_pipe = deepcopy(self.clf_or_pipe)

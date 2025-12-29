@@ -5,6 +5,7 @@ from pathlib import Path
 from dataclasses import asdict
 from pydantic import BaseModel, ConfigDict, field_serializer, model_validator
 from metatab.metatab_utils.general import enlist
+from metatab.metatab_utils.device import check_device_estimator_combination
 from metatab.preprocessing.types import PreprocessingStrategy
 from metatab.metalearning.types import MetaStrategy, MetaStrategyParams
 from metatab.estimators.utils.types import TunableEstimatorType
@@ -43,16 +44,16 @@ class UserEnsembleConfiguration(BaseModel):
     meta_strategy_params: None | MetaStrategyParams = None
     meta_seed: int = 42
     seed: int = 0
+    device: Literal["cpu", "cuda", "auto"] = "auto"
 
 
     @model_validator(mode="before")
     @classmethod
     def adjust_meta_strategy_params_from_serialized_data(cls, data):
         # in before mode we have only data specified in input without defaults
-        # therefore here we use "get" and set the correct default for meta_strategy 
-        meta_strategy = data.get("meta_strategy")
-        meta_strategy = "random_uniform_from_best" if meta_strategy is None else meta_strategy
-        meta_strategy_params = data.get("meta_strategy_params")
+        # therefore here we use "get" with the default value for meta_strategy 
+        meta_strategy = data.get("meta_strategy", "random_uniform_from_best")
+        meta_strategy_params = data.get("meta_strategy_params", None)
 
         # we target only the deserialization case
         if isinstance(
@@ -85,6 +86,7 @@ class UserEnsembleConfiguration(BaseModel):
     def general_check_after_validation(self) -> "UserEnsembleConfiguration":
         if self.early_stop_on_validation_set: 
             check_early_stop_options(self.estimator, self.early_stop_rounds, self.validation_set_size)
+        check_device_estimator_combination(self.device, self.estimator)
         check_meta_strategy_params(self.meta_strategy, self.meta_strategy_params, safe_none_params=True)
         check_meta_tuning_options(self.estimator, self.preprocessing, self.tune_space)
         return self

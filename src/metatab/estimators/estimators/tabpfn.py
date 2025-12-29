@@ -54,6 +54,7 @@ class MyTabPFNClassifier(DefaultEstimatorMixin, AbstractBaseEstimator):
             type_estimator="tabpfn",
             is_tuned=False,
             is_early_stopped=False,
+            device_parameter="device",
             density_feature_selector_strategy="undersample" # to speed up and be consistent with the tuned estimator
         )
         return self
@@ -80,6 +81,7 @@ class MyTunedTabPFNClassifier(TunedEstimatorMixin, AbstractBaseEstimator):
             type_estimator="tabpfn",
             is_tuned=True,
             is_early_stopped=False,
+            device_parameter="device",
             density_feature_selector_strategy="undersample" # to speed up.
         )
         return self
@@ -106,6 +108,7 @@ class MyEnsembledTabPFNClassifier(EnsembleEstimatorMixin, AbstractBaseEstimator)
             type_estimator="tabpfn",
             is_ensembled=True,
             is_early_stopped=False,
+            device_parameter="device",
             density_feature_selector_strategy="undersample" # to speed up.
         )
         return self

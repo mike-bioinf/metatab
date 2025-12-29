@@ -159,6 +159,7 @@ def _fit_estimator(
         preprocessing="estimator_default",
         seed=0,
         n_threads=4,
+        device="auto",
         early_stop_configuration=EarlyStopConfiguration(),
         tune_configuration=tune_configuration,
         ensemble_configuration=ensemble_configuration

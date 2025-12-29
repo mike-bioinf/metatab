@@ -131,6 +131,7 @@ def main():
             preprocessing=pars["preprocessing"],
             seed=pars["seed"],
             n_threads=pars["nthreads"],
+            device=pars["device"],
             early_stop_configuration=early_stop_conf,
             tune_configuration=tune_conf,
             ensemble_configuration=ens_conf

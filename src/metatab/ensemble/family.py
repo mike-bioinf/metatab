@@ -472,6 +472,7 @@ class FamilyEnsembleEstimator:
             preprocessing=conf.preprocessing, 
             seed=conf.seed,
             n_threads=self.n_jobs,
+            device=conf.device,
             early_stop_configuration=esc,
             ensemble_configuration=ens_conf
         )

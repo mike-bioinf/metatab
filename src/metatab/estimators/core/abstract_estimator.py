@@ -9,6 +9,7 @@ from typing import Literal, TYPE_CHECKING, Callable
 from sklearn.pipeline import Pipeline
 from metatab.preprocessing import create_classifier_pipeline
 from metatab.metatab_utils.general import ensure_or_create, asdict_shallow
+from metatab.metatab_utils.device import check_device_estimator_combination, check_cuda_is_available, resolve_device
 from metatab.estimators.utils.fit import fit_with_early_stop_on_validation_set
 from metatab.hp_search.searchcv import SearchCV
 from metatab.ensemble.single import EnsembleEstimator
@@ -34,7 +35,8 @@ class AbstractBaseEstimator(ABC):
     Parameters:
         preprocessing (PreprocessingStrategy): Preprocessing strategy to use.
         seed (int): Seed for estimator reproducibility.
-        n_threads (int, optional): Number of CPU threads used to fit the estimator. 
+        n_threads (int): Number of CPU threads used to fit the estimator.
+        device (Literal["cpu", "cuda", "auto"]): Where to run the estimator fitting process.
         early_stop_configuration (None | EarlyStopConfiguration, optional): Early stop configuration.
         tune_configuration (None | TuneConfiguration, optional): Tune configuration.
         ensemble_configuration (None | EnsembleConfiguration, optional): Ensemble configuration.
@@ -52,6 +54,7 @@ class AbstractBaseEstimator(ABC):
         preprocessing: PreprocessingStrategy,
         seed: int,
         n_threads: int,
+        device: Literal["cpu", "cuda", "auto"],
         early_stop_configuration: None | EarlyStopConfiguration = None,
         tune_configuration: None | TuneConfiguration = None,
         ensemble_configuration: None | EnsembleConfiguration = None
@@ -59,6 +62,7 @@ class AbstractBaseEstimator(ABC):
         self.preprocessing=preprocessing
         self.seed=seed
         self.n_threads=n_threads
+        self.device=device
         self.early_stop_configuration=early_stop_configuration
         self.tune_configuration=tune_configuration
         self.ensemble_configuration=ensemble_configuration
@@ -94,6 +98,7 @@ class AbstractBaseEstimator(ABC):
         early_stop_rounds_parameter: str | None = "early_stopping_rounds", 
         random_state_parameter: str = "random_state",
         n_threads_parameter: str | None = "n_jobs",
+        device_parameter: str | None = None,
         callbacks_on_fixed_params: list[Callable[[dict, pd.Series, bool], dict]] | None = None,
         density_feature_selector_strategy: Literal["exact", "oversample", "undersample"] = "oversample",
         fit_classifier_kwargs: None | dict = None
@@ -145,7 +150,12 @@ class AbstractBaseEstimator(ABC):
             n_threads_parameter (str | None, optional): 
                 Name of the classifier parameter accepting the number of threads info to use in fit.
                 None is used to signal that the classifier does not accept a n_threads-like 
-                parameter and therefore the `self.n_threads` info is not used.
+                parameter and therefore the `self.n_threads` info is unused.
+
+            device_parameter (str | None, optional):
+                Name of the classifier parameter acceting the device info.
+                None is used to signal that the classifier does not have a device-like parameter.
+                In this case the `self.device` info is unused.
 
             callbacks_on_fixed_params (list[Callable[[dict, pd.Series, bool], dict]] | None, optional):
                 List of functions to apply to the fixed params before fitting.
@@ -168,6 +178,10 @@ class AbstractBaseEstimator(ABC):
             Classifier|Pipeline|SearchCV|EnsembleEstimator: 
             The fitted inner estimator.
         '''
+        resolved_device = resolve_device(self.device, type_estimator)
+        if resolved_device == "cuda": check_cuda_is_available()
+        check_device_estimator_combination(resolved_device, type_estimator)
+
         self._check_tune_ensemble_flags(is_tuned, is_ensembled)
         
         self._check_fit_early_stop_inputs(
@@ -175,8 +189,6 @@ class AbstractBaseEstimator(ABC):
             early_stop_rounds_parameter,
             eval_set_parameter
         )
-
-        resolved_preprocessing = resolve_preprocessing_info(self.preprocessing)
 
         params = self._update_fixed_params(
             up_seed=True, 
@@ -188,8 +200,12 @@ class AbstractBaseEstimator(ABC):
             copy=True
         )
 
+        if device_parameter is not None:
+            params[device_parameter] = resolved_device
+
         callbacks_on_fixed_params = ensure_or_create(callbacks_on_fixed_params, list)
         params = self._apply_callbacks_on_fixed_params(params, callbacks_on_fixed_params, y)
+        resolved_preprocessing = resolve_preprocessing_info(self.preprocessing)
 
         clf_or_pipe = create_classifier_pipeline(
             preprocessing=resolved_preprocessing,
@@ -210,7 +226,7 @@ class AbstractBaseEstimator(ABC):
                 else 0.0
 
         if is_ensembled:
-            # ensembleestimator address both early stop and normal scenarios   
+            # EnsembleEstimator address both early stop and normal scenarios   
             estimator = EnsembleEstimator(
                 clf_or_pipe=clf_or_pipe,
                 type_estimator=type_estimator,
@@ -225,7 +241,7 @@ class AbstractBaseEstimator(ABC):
             return estimator.fit(X, y)
 
         elif is_tuned:
-            # searchcv address both early stop and normal scenarios    
+            # SearchCV address both early stop and normal scenarios    
             estimator = SearchCV(
                 clf_or_pipe=clf_or_pipe,
                 type_estimator=type_estimator,
@@ -286,7 +302,7 @@ class AbstractBaseEstimator(ABC):
         *,
         up_seed: bool = False, 
         up_n_threads: bool = False,
-        up_early_stop_rounds: bool = False, 
+        up_early_stop_rounds: bool = False,
         key_seed: str = "random_state", 
         key_n_threads: str = "n_jobs",
         key_early_stop_rounds: str = "early_stopping_rounds",

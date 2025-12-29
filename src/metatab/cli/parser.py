@@ -14,7 +14,7 @@ def make_base_parser() -> ArgumentParser:
     p.add_argument("-y", "--target-feature", default=None,
                     help="Name of the target feature column. Must be provided when '--input-mode' is equal to 'df'")
     
-    p.add_argument("--nthreads", default=16, type=int, help="Number of CPU threads to use to fit the estimators. Defaults to 16.")
+    p.add_argument("--nthreads", default=16, type=int, help="Number of CPU threads to use to fit the estimator(s). Defaults to 16.")
     
     p.add_argument("--create-outdir", action="store_true", help="Create the output directory if does not exists.")
 
@@ -48,6 +48,10 @@ def make_extra_base_parser() -> ArgumentParser:
                     -density_filter: The number of columns is reduced to 500 (approximately) keeping only the most dense features.
                     -pca: PCA preprocessing retaining the N principal components explaining the 95 percent of the variance.
                     -no: No preprocessing is applied.""")
+    
+    p.add_argument("--device", choices=["cpu", "cuda", "auto"], default="auto",
+                    help="""Select the device on which fit the estimator(s). 
+                    When auto (default) 'cuda' is selected if available AND the estimator requires GPU else 'cpu'.""")
     
     return p
 
@@ -228,6 +232,7 @@ def make_family_ensemble_parser() -> ArgumentParser:
                    cpu-main-based ones, and "gpu" only the gpu-main-based ones.
                    - meta|random: The algorithm used to infer the estimators hps configurations.
                    - n_members: The number of members for every inner estimator ensemble.
+                   In this case the estimators that can be GPU-accelerated are run on GPU if CUDA is available.
                    If a configuration file it must be derived from the "CollectionUserEnsembleConfiguration" 
                    python class or must follow its signature.""")
 

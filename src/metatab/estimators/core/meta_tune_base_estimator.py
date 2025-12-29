@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import numpy as np
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 from sklearn.utils.validation import check_is_fitted, check_X_y
 from sklearn.base import BaseEstimator, ClassifierMixin
 from metatab.estimators.utils.general import check_predict_features, check_y_is_integer_encoded
@@ -28,7 +28,8 @@ class MetaTuneBaseEstimator(ClassifierMixin, BaseEstimator):
         build_df_search: bool = False,
         meta_seed: int = 42,
         seed: int = 0,
-        n_threads: int = 1
+        n_threads: int = 1,
+        device: Literal["cpu", "cuda", "auto"] = "auto"
     ):
         '''
         The meta tuned estimators are backed by a meta-learning framework that suggestes,
@@ -122,6 +123,11 @@ class MetaTuneBaseEstimator(ClassifierMixin, BaseEstimator):
                 Number of threads used to parallelize the classifier fitting process.
                 Note that the search is not parallelized to avoid processes-related errors.
                 In general is better to parallelize only one between models and search.
+    
+            device (Literal["cpu", "cuda", "auto"], optional):
+                Device where to fit the model(s). 
+                Note that for some estimators cannot be run on "cuda" raising an error.
+                If "auto" then it selects cuda if available AND the estimator requires GPU else cpu.
 
 
         ## Attributes:
@@ -157,6 +163,7 @@ class MetaTuneBaseEstimator(ClassifierMixin, BaseEstimator):
         self.meta_seed=meta_seed
         self.seed=seed
         self.n_threads=n_threads
+        self.device=device
 
 
     def fit(
@@ -212,6 +219,7 @@ class MetaTuneBaseEstimator(ClassifierMixin, BaseEstimator):
             preprocessing=preprocessing,
             seed=self.seed,
             n_threads=self.n_threads,
+            device=self.device,
             tune_configuration=tune_configuration,
             early_stop_configuration=early_stop_configuration
         )
