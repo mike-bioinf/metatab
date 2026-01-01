@@ -17,6 +17,7 @@ from metatab.cli.helper import (
     adjust_io_paths_, 
     manage_output_path,
     check_early_stop_parameters,
+    check_device,
     check_target_feature,
     create_logger,
     build_early_stop_configuration,
@@ -58,6 +59,7 @@ def main():
     pars = vars(parse_args(sys.argv[1:]))
 
     check_target_feature(pars)
+    check_device(pars)
 
     if pars["estimator_mode"] != "family_ensemble":
         check_early_stop_parameters(pars)

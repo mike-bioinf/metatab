@@ -11,19 +11,22 @@ from metatab.estimators import (
     MetaTuneLGBMClassifier,
     MetaTuneEsLGBMClassifier,
     MetaTuneTabPFNClassifier,
+    MetaTuneRealMLPClassifier,
     MetaEnsembleRandomForestClassifier,
     MetaEnsembleExtraTreesClassifier,
     MetaEnsembleXGBClassifier,
     MetaEnsembleEsXGBClassifier,
     MetaEnsembleTabPFNClassifier,
     MetaEnsembleLGBMClassifier,
-    MetaEnsembleEsLGBMClassifier
+    MetaEnsembleEsLGBMClassifier,
+    MetaEnsembleRealMLPClassifier,
 )
 
 
 METATUNECLASSES = [
     MetaTuneRandomForestClassifier,
     #MetaTuneExtraTreesClassifier,
+    #MetaTuneRealMLPClassifier,
     MetaTuneXGBClassifier,
     MetaTuneEsXGBClassifier,
     MetaTuneLGBMClassifier,
@@ -35,6 +38,7 @@ METATUNECLASSES = [
 METAENSCLASSES = [
     MetaEnsembleRandomForestClassifier,
     #MetaEnsembleExtraTreesClassifier,
+    #MetaEnsembleRealMLPClassifier,
     MetaEnsembleXGBClassifier,
     MetaEnsembleEsXGBClassifier,
     MetaEnsembleLGBMClassifier,

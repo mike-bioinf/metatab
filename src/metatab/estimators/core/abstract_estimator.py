@@ -96,7 +96,7 @@ class AbstractBaseEstimator(ABC):
         is_early_stopped: bool = False,
         eval_set_parameter: str | None = "eval_set",
         early_stop_rounds_parameter: str | None = "early_stopping_rounds", 
-        random_state_parameter: str = "random_state",
+        random_state_parameter: str | None = "random_state",
         n_threads_parameter: str | None = "n_jobs",
         device_parameter: str | None = None,
         callbacks_on_fixed_params: list[Callable[[dict, pd.Series, bool], dict]] | None = None,
@@ -137,15 +137,15 @@ class AbstractBaseEstimator(ABC):
                 In addition this info is ignored when `is_early_stopped` is False.
 
             eval_set_parameter (str | None, optional):
-                Name of the classifier "eval_set-like" parameter, 
-                i.e. the parameter accepting the validation set(s).
+                Name of the classifier "eval_set-like" parameter, i.e. the parameter accepting the validation set(s).
                 None is used to signal that the classifier does not accept a eval_set-like
                 parameter and therefore the info contained into `self.early_stop_configuration` is not used.
                 In addition this info is ignored when `is_early_stopped` is False.
 
-            random_state_parameter (str, optional):
+            random_state_parameter (str | None, optional):
                 Name of the classifier parameter accepting the random state info.
-                We expect every classifier to have it so cannot be ignored.
+                None is used to signal that the classifier does not accept a random_state-like 
+                parameter and therefore the `self.seed` info is unused.
 
             n_threads_parameter (str | None, optional): 
                 Name of the classifier parameter accepting the number of threads info to use in fit.
@@ -183,25 +183,21 @@ class AbstractBaseEstimator(ABC):
         check_device_estimator_combination(resolved_device, type_estimator)
 
         self._check_tune_ensemble_flags(is_tuned, is_ensembled)
+        self._check_early_stop_inputs(is_early_stopped, eval_set_parameter)
+
+        params = deepcopy(self.fixed_params)
+
+        if random_state_parameter: 
+            params[random_state_parameter] = self.seed
         
-        self._check_fit_early_stop_inputs(
-            is_early_stopped,
-            early_stop_rounds_parameter,
-            eval_set_parameter
-        )
+        if n_threads_parameter: 
+            params[n_threads_parameter] = self.n_threads
 
-        params = self._update_fixed_params(
-            up_seed=True, 
-            up_n_threads=False if n_threads_parameter is None else True,
-            up_early_stop_rounds=is_early_stopped,
-            key_seed=random_state_parameter,
-            key_n_threads=n_threads_parameter,
-            key_early_stop_rounds=early_stop_rounds_parameter,
-            copy=True
-        )
-
-        if device_parameter is not None:
+        if device_parameter:
             params[device_parameter] = resolved_device
+        
+        if is_early_stopped and early_stop_rounds_parameter: 
+            params[early_stop_rounds_parameter] = self.early_stop_configuration.early_stop_rounds
 
         callbacks_on_fixed_params = ensure_or_create(callbacks_on_fixed_params, list)
         params = self._apply_callbacks_on_fixed_params(params, callbacks_on_fixed_params, y)
@@ -281,43 +277,14 @@ class AbstractBaseEstimator(ABC):
 
 
     @staticmethod
-    def _check_fit_early_stop_inputs(
-        is_early_stopped: bool,
-        early_stop_rounds_parameter: str | None = "early_stopping_rounds", 
-        eval_set_parameter: str | None = "eval_set",
-    ):
-        if is_early_stopped:
-            if early_stop_rounds_parameter is None:
-                raise ValueError(
-                    "'early_stop_rounds_paramater' cannot be None when 'is_early_stopped' is True."
-                )
-            if eval_set_parameter is None:
-                raise ValueError(
-                    "'eval_set_parameter' cannot be None when 'is_early_stopped' is True."
-                )
-
-
-    def _update_fixed_params(
-        self,
-        *,
-        up_seed: bool = False, 
-        up_n_threads: bool = False,
-        up_early_stop_rounds: bool = False,
-        key_seed: str = "random_state", 
-        key_n_threads: str = "n_jobs",
-        key_early_stop_rounds: str = "early_stopping_rounds",
-        copy: bool = False
-    ) -> dict:
-        '''
-        Update the fixed params dict or a deepcopy of it with the seed, 
-        n_threads and early_stop_rounds info. Returns the updated dict.
-        '''
-        fixed_params = deepcopy(self.fixed_params) if copy else self.fixed_params
-        if up_seed: fixed_params[key_seed] = self.seed
-        if up_n_threads: fixed_params[key_n_threads] = self.n_threads
-        if up_early_stop_rounds: 
-            fixed_params[key_early_stop_rounds] = self.early_stop_configuration.early_stop_rounds
-        return fixed_params
+    def _check_early_stop_inputs(is_early_stopped: bool, eval_set_parameter: str | None) -> None:
+        # We perform the check on "eval_set_parameter" only excluding the "early_stop_rounds_parameter"
+        # since the second cannot be used even when early stopping (realmlp).
+        # On the contraty the first is always used.
+        if is_early_stopped and eval_set_parameter is None:
+            raise ValueError(
+                "'eval_set_parameter' cannot be None when 'is_early_stopped' is True."
+            )
 
 
     @staticmethod

@@ -9,9 +9,9 @@ from metatab.metatab_utils.device import check_device_estimator_combination
 from metatab.preprocessing.types import PreprocessingStrategy
 from metatab.metalearning.types import MetaStrategy, MetaStrategyParams
 from metatab.estimators.utils.types import TunableEstimatorType
-from metatab.estimators.utils.general import check_meta_tuning_options, check_early_stop_options
+from metatab.estimators.utils.general import check_meta_tuning_options, check_validation_set_options
 
-from metatab.estimators.utils.constants import ( 
+from metatab.estimators.utils.constants import (
     NON_EARLY_STOPPED_ESTIMATORS,
     NON_EARLY_STOPPED_CPU_ESTIMATORS,
     NON_EARLY_STOPPED_GPU_ESTIMATORS
@@ -36,7 +36,6 @@ class UserEnsembleConfiguration(BaseModel):
     preprocessing: PreprocessingStrategy
     tune_space: str
     early_stop_on_validation_set: bool
-    eval_set_parameter: str = "eval_set"
     early_stop_rounds: int = 100
     validation_set_size: float = 0.3
     meta_surrogate_model: None | str | Path = None
@@ -84,8 +83,7 @@ class UserEnsembleConfiguration(BaseModel):
 
     @model_validator(mode="after")
     def general_check_after_validation(self) -> "UserEnsembleConfiguration":
-        if self.early_stop_on_validation_set: 
-            check_early_stop_options(self.estimator, self.early_stop_rounds, self.validation_set_size)
+        check_validation_set_options(self.estimator, self.early_stop_on_validation_set, self.early_stop_rounds, self.validation_set_size)
         check_device_estimator_combination(self.device, self.estimator)
         check_meta_strategy_params(self.meta_strategy, self.meta_strategy_params, safe_none_params=True)
         check_meta_tuning_options(self.estimator, self.preprocessing, self.tune_space)
@@ -177,18 +175,12 @@ class CollectionUserEnsembleConfiguration:
         ensemble_algo: Literal["random", "meta"],
         n_members: int
     ) -> "CollectionUserEnsembleConfiguration":
-        fixed_args = {
-            "preprocessing": "estimator_default",
-            "tune_space": "default",
-            "early_stop_on_validation_set": False,
-        }
-
         if estimators == "all":
-            target_estimators = NON_EARLY_STOPPED_ESTIMATORS
+            target_estimators = NON_EARLY_STOPPED_ESTIMATORS + ["realmlp"]  ## TODO: adjust this 
         elif estimators == "cpu":
             target_estimators = NON_EARLY_STOPPED_CPU_ESTIMATORS
         elif estimators == "gpu":
-            target_estimators = NON_EARLY_STOPPED_GPU_ESTIMATORS
+            target_estimators = NON_EARLY_STOPPED_GPU_ESTIMATORS + ["realmlp"] ## TODO: adjust this
 
         collection = []
         for i, estimator in enumerate(target_estimators):
@@ -198,7 +190,9 @@ class CollectionUserEnsembleConfiguration:
                     algo=ensemble_algo,
                     n_members=n_members,
                     estimator=estimator,
-                    **fixed_args
+                    preprocessing="estimator_default",
+                    tune_space="default",
+                    early_stop_on_validation_set=estimator not in NON_EARLY_STOPPED_ESTIMATORS
                 )
             )
 

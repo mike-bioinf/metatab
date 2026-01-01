@@ -61,7 +61,7 @@ def test_that_inf_to_nan_transformer_works():
 
 
 
-## TODO: add "catboost" and "extra_trees" when you have metadata
+## TODO: add "catboost", "extra_trees", "realmlp" when you have metadata
 @pytest.mark.parametrize("estimator", ["random_forest", "xgb", "lgbm", "tabpfn"])
 def test_that_estimator_metadata_encoding_scheme_is_correct(estimator):
     enc_pipe = make_pipeline(*get_encoding_scheme(estimator)).set_output(transform="pandas")

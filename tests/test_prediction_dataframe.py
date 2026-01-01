@@ -2,6 +2,7 @@ import pytest
 import numpy as np
 import pandas as pd
 from typing import Literal
+from pathlib import Path
 from metatab.metatab_utils.prediction import PredictionDataframe
 
 
@@ -123,3 +124,13 @@ def test_add_rows_build_the_dataframe_if_missing():
     pred_df.add_rows(single_row_to_add, compute_metrics=False)
     assert isinstance(pred_df.df, pd.DataFrame), "add_rows is not able to build the dataframe when it is missing."
     assert pred_df.df.shape[0] == 1, "Problems inthe underlying dataframe when adding rows from nothing."
+
+
+
+def test_prediction_dataframe_parsing_mechanism_works():
+    path = Path(__file__).parent / "data/pred_dataframe.txt"
+    df_pred = PredictionDataframe()
+    df_pred.build_from_file(path, sep="\t")
+    array = df_pred.df["pred_proba"].iloc[0]
+    assert isinstance(array, np.ndarray), "The parse capabilities of pred_dataframe are not working."
+    assert array.ndim == 2, "The parse capabilities of pred_dataframe are not working."

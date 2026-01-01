@@ -21,6 +21,7 @@ from metatab.cli.helper import (
     create_json_configuration_file,
     check_target_feature,
     check_early_stop_parameters,
+    check_device,
     check_holdout_train_size,
     adjust_io_paths_,
     manage_output_path,
@@ -33,6 +34,7 @@ def main_default(pars: dict):
     logger = create_logger(sys.stdout)
 
     check_target_feature(pars)
+    check_device(pars)
     check_early_stop_parameters(pars)
     check_holdout_train_size(pars)
 

@@ -13,11 +13,11 @@ if TYPE_CHECKING:
 def resolve_device(device: Literal["cpu", "cuda", "auto"], estimator: EstimatorType) -> Literal["cpu", "cuda"]:
     '''
     Resolve the device based on the device and estimator inputs.
-    The utility returns the device if not "auto" otherwise "cuda" 
-    if available AND the estimator reuquires it, or "cpu".
+    The utility returns the device when not "auto", otherwise "cuda" 
+    if available AND the estimator requires it, or "cpu".
     '''
     if device == "auto":
-        if estimator in ["tabpfn"]:
+        if estimator in ["tabpfn", "realmlp"]:
             resolved_device = "cuda" if torch.cuda.is_available() else "cpu"
         else:
             resolved_device = "cpu"

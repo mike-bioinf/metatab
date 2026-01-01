@@ -62,7 +62,6 @@ class TuningParams:
     # Therefore we mainly explore fixed quantization-tree_policies. 
     # We do not explore less regularized configuration for "approx" algo since it's slow.
 
-
     XGB_FIXED_PARAMS = {
         "n_estimators": 1000,
         "verbosity": 0
@@ -158,7 +157,6 @@ class TuningParams:
     # since it is non-deterministic (NetwonCosine and NewtonL2 metrics).
     # We keep the defaults when in comes to leaf estimation method and split finding algo.
     # We do not try the boosting type "Ordered" since is too slow.
-
 
     ## we list also the library defaults that we use just to be explicit
     CATBOOST_FIXED_PARAMS = {
@@ -298,14 +296,13 @@ class TuningParams:
 
 
 
-    ### LIGHTGBM -----------------------------------------------------------
+    ### LIGHTGBM ----------------------------------------------------------------------------
     # Lightgmb offer less variability in terms of algo variants in many/all
     # aspects of a GBDT framework. Therefore we use the only variant available 
     # with strong and weak regularization.
     # We do not try other weak learners (dart and rf) to be consistent with 
     # the other gbdts.
     
-     
     # we list also the library defaults that we use just to be explicit
     LGBM_FIXED_PARAMS = {
         "n_estimators": 1000, # higher than default 100
@@ -367,7 +364,7 @@ class TuningParams:
     }
 
 
-    ### TABPFN --------------------------------------------------------
+    ### TABPFN --------------------------------------------------------------------------------
     # Here we use the search space defined in the "official extension" of tuned tabpfn with minor modifications. 
     # "https://github.com/PriorLabs/tabpfn-extensions/blob/main/src/tabpfn_extensions/hpo/search_space.py".
 
@@ -376,3 +373,36 @@ class TuningParams:
     }
 
     TABPFN_C0 = TABPFN_TUNE_SPACE
+
+
+    ### REALMLP ---------------------------------------------------------------------------------
+    # We use the autogluon/tabarena space with minor modifications.
+    # "https://github.com/autogluon/tabarena/blob/main/tabarena/tabarena/models/realmlp/generate.py"
+
+    REALMLP_FIXED_PARAMS = {
+        # we double the default of 256 since we work with small datasets and so each epoch is made of few steps
+        "n_epochs": 512, # increase in time
+        "train_metric_name": "cross_entropy", # the default
+        "val_metric_name": "cross_entropy",
+        # is suggested by author to set label smoothing to False when you are intereste in AUC/log-loss
+        "use_ls": False,
+        "n_ens": 8 # increase in time and memory peak
+    }
+
+    REALMLP_C0 = {
+        "batch_size": hp.choice("batch_size", ["auto", 256]),
+        "hidden_sizes": hp.choice("hidden_sizes", ["rectangular"]),
+        "n_hidden_layers": hp.choice("n_hidden_layers", [2, 3, 4]),
+        "hidden_width": hp.choice("hidden_width", [256, 384, 512]), # increase in time and memory
+        "plr_sigma": hp.loguniform("plr_sigma", np.log(1e-2), np.log(50)),
+        "plr_hidden_1": hp.choice("plr_hidden_1", [8, 16, 32]), # have a minor-moderate impact on time and memory peak
+        "plr_hidden_2": hp.choice("plr_hidden_2", [4, 6, 8, 12]), # have a large impact on time and memory peak
+        "plr_lr_factor": hp.loguniform("plr_lr_factor", np.log(5e-2), np.log(3e-1)),
+        "p_drop": hp.uniform("p_drop", 0.0, 0.5),
+        "scale_lr_factor": hp.loguniform("scale_lr_factor", np.log(2.0), np.log(10.0)),
+        "first_layer_lr_factor": hp.loguniform("first_layer_lr_factor", np.log(0.3), np.log(1.5)),
+        "lr": hp.loguniform("lr", np.log(2e-2), np.log(3e-1)),
+        "wd": hp.loguniform("wd", np.log(1e-3), np.log(5e-2)),
+        # "use_early_stopping": hp.choice("use_early_stopping", [False, True]), # can help in reducing computational time
+        # "early_stopping_additive_patience": hp.choice("early_stopping_additive_patience", [40]) # we double the default of 20 to be less aggressive
+    }

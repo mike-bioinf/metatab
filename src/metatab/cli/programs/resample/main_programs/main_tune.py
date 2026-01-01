@@ -23,6 +23,7 @@ from metatab.cli.helper import (
     create_logger,
     create_json_configuration_file,
     check_target_feature,
+    check_device,
     check_early_stop_parameters,
     check_holdout_train_size,
     adjust_io_paths_,
@@ -37,6 +38,7 @@ def main_tune(pars: dict):
     logger = create_logger(sys.stdout)
 
     check_target_feature(pars)
+    check_device(pars)
     check_early_stop_parameters(pars)
     check_holdout_train_size(pars)
 

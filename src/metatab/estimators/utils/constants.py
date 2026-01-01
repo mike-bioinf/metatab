@@ -1,7 +1,8 @@
 EARLY_STOPPED_ESTIMATORS = [
     "es_xgb",
     "es_catboost",
-    "es_lgbm"
+    "es_lgbm",
+    "realmlp"
 ]
 
 
@@ -54,7 +55,8 @@ TUNABLE_ESTIMATORS = [
     "es_lgbm",
     "catboost",
     "es_catboost",
-    "tabpfn"
+    "tabpfn",
+    "realmlp"
 ]
 
 
@@ -67,5 +69,6 @@ ALL_ESTIMATORS = [
     "es_lgbm",
     "catboost",
     "es_catboost",
-    "tabpfn"
+    "tabpfn",
+    "realmlp"
 ]

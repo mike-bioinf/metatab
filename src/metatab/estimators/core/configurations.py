@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 class TuneConfiguration:
     '''
     Dataclass that manages the tune configuration.
-    Used in input to `AbstractBaseEstimator`.
+    Given in input to `AbstractBaseEstimator`.
     '''
     algo: Literal["random", "tpe", "meta"]
     n_iter: int
@@ -34,7 +34,7 @@ class TuneConfiguration:
 class EarlyStopConfiguration:
     '''
     Dataclass that manages the early stop configuration.
-    Used in input to `AbstractBaseEstimator`.
+    Given in input to `AbstractBaseEstimator`.
     '''
     early_stop_rounds: int = 100
     validation_set_size: float = 0.3
@@ -45,7 +45,7 @@ class EarlyStopConfiguration:
 class EnsembleConfiguration:
     '''
     Dataclass that manages the ensemble configuration.
-    Used in input to `AbstractBaseEstimator`.
+    Given in input to `AbstractBaseEstimator`.
     '''
     name: str
     algo: Literal["random", "meta"]

@@ -1,4 +1,6 @@
-from typing import Literal
+from __future__ import annotations
+
+from typing import Literal, TYPE_CHECKING
 from typing import TypeAlias, Union
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.ensemble import ExtraTreesClassifier
@@ -7,6 +9,9 @@ from catboost import CatBoostClassifier
 from lightgbm import LGBMClassifier
 from tabpfn import TabPFNClassifier
 
+if TYPE_CHECKING:
+    from metatab.estimators.estimators.realmlp import RealMLPClassifierInterface
+
 
 Classifier: TypeAlias = Union[
     RandomForestClassifier,
@@ -14,7 +19,8 @@ Classifier: TypeAlias = Union[
     XGBClassifier,
     CatBoostClassifier,
     LGBMClassifier,
-    TabPFNClassifier
+    TabPFNClassifier,
+    "RealMLPClassifierInterface"
 ]
 
 
@@ -34,14 +40,16 @@ TunableEstimatorType = Literal[
     "es_lgbm",
     "catboost",
     "es_catboost",
-    "tabpfn"
+    "tabpfn",
+    "realmlp"
 ]
 
 
 EsEstimatorType: Literal[
     "es_lgbm",
     "es_xgb",
-    "es_catboost"
+    "es_catboost",
+    "realmlp"
 ]
 
 
@@ -76,5 +84,6 @@ EstimatorType = Literal[
     "es_lgbm",
     "catboost",
     "es_catboost",
-    "tabpfn"
+    "tabpfn",
+    "realmlp"
 ]

@@ -40,7 +40,7 @@ def parse_args(args):
                    help="Name of the perfomance metric column tratead as the y target.")
 
     p.add_argument("-e", "--estimator", required=True, 
-                   choices=["random_forest", "extra_trees", "xgb", "es_xgb", "catboost", "es_catboost", "lgbm", "es_lgbm", "tabpfn"],
+                   choices=["random_forest", "extra_trees", "xgb", "es_xgb", "catboost", "es_catboost", "lgbm", "es_lgbm", "tabpfn", "realmlp"],
                    help="""The estimator on which the meta-folder has been generated. 
                    Needed to apply the correct preprocessing to the metadata.""")
     

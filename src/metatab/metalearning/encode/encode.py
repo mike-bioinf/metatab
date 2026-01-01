@@ -56,7 +56,7 @@ COLUMN_TRANSFORMER_FIXED_PARAMS = {
 }
 
 
-PREPROCESSING_COLUMN_ENCODING = (
+PREPROCESSING_COLUMN_TRANSFORMER = (
     "preprocessing_column", 
     OneHotEncoder(
         categories=[["no", "base", "pca", "density_filter"]], 
@@ -70,10 +70,9 @@ PREPROCESSING_COLUMN_ENCODING = (
 def create_preprocessing_encoding() -> ColumnTransformer:
     '''Create a ColumnTransformer executing the "preprocessing" column encoding only.'''
     return ColumnTransformer(
-        transformers=[PREPROCESSING_COLUMN_ENCODING],
+        transformers=[PREPROCESSING_COLUMN_TRANSFORMER],
         **COLUMN_TRANSFORMER_FIXED_PARAMS
     )
-
 
 
 
@@ -92,7 +91,7 @@ HPS_ENCODING_SCHEME_RANDOM_FOREST = [
                 ), 
                 ["max_features"]
             ),
-            PREPROCESSING_COLUMN_ENCODING
+            PREPROCESSING_COLUMN_TRANSFORMER
         ],
         ** COLUMN_TRANSFORMER_FIXED_PARAMS
     ),
@@ -120,7 +119,7 @@ HPS_ENCODING_SCHEME_EXTRA_TREES = [
                 OrdinalEncoder(categories=[["gini", "entropy"]]),
                 ["criterion"]
             ),
-            PREPROCESSING_COLUMN_ENCODING
+            PREPROCESSING_COLUMN_TRANSFORMER
         ],
         ** COLUMN_TRANSFORMER_FIXED_PARAMS
     ),
@@ -163,7 +162,7 @@ HPS_ENCODING_SCHEME_TABPFN = [
                 OrdinalEncoder(categories=[["0.99", "None"], ["no"]]),
                 ["inference_config__SUBSAMPLE_SAMPLES", "inference_config__POLYNOMIAL_FEATURES"]
             ),
-            PREPROCESSING_COLUMN_ENCODING
+            PREPROCESSING_COLUMN_TRANSFORMER
         ],
         **COLUMN_TRANSFORMER_FIXED_PARAMS
     ),
@@ -188,7 +187,7 @@ HPS_ENCODING_SCHEME_XGB = [
                 ),
                 ["tree_method"]
             ),
-            PREPROCESSING_COLUMN_ENCODING
+            PREPROCESSING_COLUMN_TRANSFORMER
         ],
         **COLUMN_TRANSFORMER_FIXED_PARAMS
     ),
@@ -221,7 +220,7 @@ HPS_ENCODING_SCHEME_CATBOOST = [
                     "boosting_type"
                 ]
             ),
-            PREPROCESSING_COLUMN_ENCODING
+            PREPROCESSING_COLUMN_TRANSFORMER
         ],
         **COLUMN_TRANSFORMER_FIXED_PARAMS
     ),
@@ -236,6 +235,25 @@ HPS_ENCODING_SCHEME_LGBM = [
 ]
 
 
+HPS_ENCODING_SCHEME_REALMLP = [
+    InfToNan(),
+    ColToStr("batch_size"),
+    ColumnTransformer(
+        transformers=[
+            (
+                "ordinal", 
+                OrdinalEncoder(categories=[["rectangular"], ["256", "auto"]]),
+                ["hidden_sizes", "batch_size"]
+            ),
+            PREPROCESSING_COLUMN_TRANSFORMER
+        ],
+        **COLUMN_TRANSFORMER_FIXED_PARAMS
+    ),
+    VarianceThreshold()
+]
+
+
+
 # The "es" estimator version uses the same encoding 
 # of their "base" counterpart, since they share the tune spaces
 HPS_ENCODING_SCHEME = {
@@ -247,7 +265,8 @@ HPS_ENCODING_SCHEME = {
     "es_catboost": HPS_ENCODING_SCHEME_CATBOOST,
     "lgbm": HPS_ENCODING_SCHEME_LGBM,
     "es_lgbm": HPS_ENCODING_SCHEME_LGBM,
-    "tabpfn": HPS_ENCODING_SCHEME_TABPFN
+    "tabpfn": HPS_ENCODING_SCHEME_TABPFN,
+    "realmlp": HPS_ENCODING_SCHEME_REALMLP
 }
 
 

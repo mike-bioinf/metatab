@@ -1,8 +1,8 @@
 class DefaultParams:
     '''
     Class of the default library level configurations.
-    These configurations set only "system-level" parameters.
-    We allow for some execptions when the default values lead to 
+    These configurations set only "system-level" and "early-stop" related parameters.
+    We allow for some exceptions when the default values lead to 
     errors/wrong behaviours, or when no default exists, like for 
     the parameters controlling the early stop procedure for some estimators.
     '''
@@ -64,4 +64,10 @@ class DefaultParams:
         # suppressing categorical transformation 
         # that leads to testing data loss with small sparse data
         "inference_config": {"MIN_UNIQUE_FOR_NUMERICAL_FEATURES": 0}
+    }
+
+    REALMLP_DEFAULT_PARAMS = {
+        "eval_metric_name": "cross_entropy",
+        # is suggested by author to set label smooting to False when you rae intereste in AUC/log-loss
+        "use_ls": False
     }

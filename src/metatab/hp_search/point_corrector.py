@@ -19,7 +19,7 @@ def add_root_path_to_tabfpn_ckpt(point: dict) -> dict:
 
 
 # We define here for each estimator needing corrections, a set of functions that accept 
-# as only input the point and return it corrected. The function must/can apply the changes in place.
+# as only input the point and return it corrected. The function can apply the changes in place.
 # The keys of the estimator inner dict define the corrections, in the sense that these
 # names are the one accepted and recognized by the 'estimator_corrections' argument 
 # of the 'correct_point' method of the PointCorrector class.

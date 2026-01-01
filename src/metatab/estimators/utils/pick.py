@@ -47,6 +47,12 @@ from metatab.estimators.estimators.tabpfn import (
     MyEnsembledTabPFNClassifier
 )
 
+from metatab.estimators.estimators.realmlp import (
+    MyRealMLPClassifier,
+    MyTunedRealMLPClassifier,
+    MyEnsembledRealMLPClassifier
+)
+
 if TYPE_CHECKING:
     from metatab.estimators.estimators import Estimator
     from metatab.estimators.utils.types import EstimatorType
@@ -86,40 +92,47 @@ def pick_estimator_class(
         case ("es_xgb", "ensemble"):
             return MyEnsembledESXGBClassifier
 
-        case("catboost", "default"):
+        case ("catboost", "default"):
             return MyCatBoostClassifier
-        case("catboost", "tune"):
+        case ("catboost", "tune"):
             return MyTunedCatBoostClassifier
-        case("catboost", "ensemble"):
+        case ("catboost", "ensemble"):
             return MyEnsembledCatBoostClassifier
         
         case ("es_catboost", "default"):
             return MyESCatBoostClassifier
-        case("es_catboost", "tune"):
+        case ("es_catboost", "tune"):
             return MyTunedESCatBoostClassifier
-        case("es_catboost", "ensemble"):
+        case ("es_catboost", "ensemble"):
             return MyEnsembledESCatBoostClassifier
 
         case ("lgbm", "default"):
             return MyLGBMClassifier
-        case("lgbm", "tune"):
+        case ("lgbm", "tune"):
             return MyTunedLGBMClassifier
-        case("lgbm", "ensemble"):
+        case ("lgbm", "ensemble"):
             return MyEnsembledLGBMClassifier
         
         case ("es_lgbm", "default"):
             return MyESLGBMClassifier
         case ("es_lgbm", "tune"):
             return MyTunedESLGBMClassifier
-        case("es_lgbm", "ensemble"):
+        case ("es_lgbm", "ensemble"):
             return MyEnsembledESLGBMClassifier
 
         case ("tabpfn", "default"):
             return MyTabPFNClassifier
-        case("tabpfn", "tune"):
+        case ("tabpfn", "tune"):
             return MyTunedTabPFNClassifier
-        case("tabpfn", "ensemble"):
+        case ("tabpfn", "ensemble"):
             return MyEnsembledTabPFNClassifier
-    
+
+        case ("realmlp", "default"):
+            return MyRealMLPClassifier
+        case ("realmlp", "tune"):
+            return MyTunedRealMLPClassifier
+        case ("realmlp", "ensemble"):
+            return MyEnsembledRealMLPClassifier
+
         case _:
             raise ValueError("Unrecognized estimator-mode combination.")

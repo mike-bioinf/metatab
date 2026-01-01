@@ -10,7 +10,7 @@ from metatab.hp_search.searchcv import SearchCV
 from tests.conftest import (
     ESTIMATOR_TUNE_CONFIGS, 
     ESTIMATOR_ALL_CONFIGS,
-    get_alternative_estimator_file_names
+    #get_alternative_estimator_file_names
 )
 
 
@@ -89,11 +89,11 @@ def test_nan_values_in_search_losses(fitted_tuned_model, fit_estimators_on_iris)
     check_nan_in_hpo_losses(fit_estimators_on_iris / fitted_tuned_model)
 
 
-
-@pytest.mark.parametrize("fitted_alternative_tuned_model", get_alternative_estimator_file_names())
-def test_nan_values_in_search_losses_for_alternative_tune_spaces(fitted_alternative_tuned_model, fit_estimators_alternative_tune_configs):
-    '''
-    Test that in the tuning process of the alternative spaces no point evaluation fails.
-    This is a good general indication whether the tune space is set up correctly.
-    '''
-    check_nan_in_hpo_losses(fit_estimators_alternative_tune_configs / fitted_alternative_tuned_model)
+## README: we commented out the fitting process of the alternative tune spaces since repeated multiple times and expensive computationally
+# @pytest.mark.parametrize("fitted_alternative_tuned_model", get_alternative_estimator_file_names())
+# def test_nan_values_in_search_losses_for_alternative_tune_spaces(fitted_alternative_tuned_model, fit_estimators_alternative_tune_configs):
+#     '''
+#     Test that in the tuning process of the alternative spaces no point evaluation fails.
+#     This is a good general indication whether the tune space is set up correctly.
+#     '''
+#     check_nan_in_hpo_losses(fit_estimators_alternative_tune_configs / fitted_alternative_tuned_model)

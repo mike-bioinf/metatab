@@ -9,8 +9,10 @@ CPU_ESTIMATORS = [
     "extra_trees"
 ]
 
+# we use just a single gpu to allow comparisons even when multiple can be used
 SINGLE_GPU_ESTIMATORS = [
-    "tabpfn"
+    "tabpfn",
+    "realmlp"
 ]
 
 MULTIPLE_GPU_ESTIMATORS = []

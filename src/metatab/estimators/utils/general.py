@@ -103,23 +103,28 @@ def check_meta_tuning_options(
         )
 
 
-def check_early_stop_options(
+def check_validation_set_options(
     estimator: EstimatorType,
+    use_validation_sets: bool,
     early_stop_rounds: int,
     validation_set_size: float
 ) -> None:
     '''
-    General check on early stop related parameters. In detail checks:
-    1. The estimator is a eraly stopped estimator.
-    2. early_stop_rounds is positive (greater than 0)
-    2. validation_set_size is a positive float in (0, 1].
+    General check on validation set and early stop related parameters. 
+    In detail checks:
+    0. The estimator needing validation sets are used with the flag on.
+    1. The estimator working without validation sets are used with the flag off.
+    2. early_stop_rounds is a integer in [0, +inf) when needed.
+    3. validation_set_size is a positive float in (0, 1) when needed.
     '''
-    if estimator not in EARLY_STOPPED_ESTIMATORS:
-        raise ValueError(f"'{estimator}' is not early stoppable.")
-    if early_stop_rounds < 0:
-        raise ValueError("'early_stop_rounds' must be a >= 0.")
-    if not 0 < validation_set_size <=1:
-        raise ValueError("'validation_set_size' must be a float in (0, 1].")
+    if not use_validation_sets and estimator in EARLY_STOPPED_ESTIMATORS:
+        raise ValueError(f"'{estimator}' needs a validation set.")
+    if use_validation_sets and estimator not in EARLY_STOPPED_ESTIMATORS:
+        raise ValueError(f"'{estimator}' does not use validation sets.")
+    if estimator in EARLY_STOPPED_ESTIMATORS and estimator != "realmlp" and early_stop_rounds < 0:
+        raise ValueError("'early_stop_rounds' must be an integer >= 0.")
+    if estimator in EARLY_STOPPED_ESTIMATORS and not 0 < validation_set_size < 1:
+        raise ValueError("'validation_set_size' must be a float in (0, 1).")
 
 
 

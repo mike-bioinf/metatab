@@ -5,6 +5,7 @@ from xgboost import XGBClassifier
 from lightgbm import LGBMClassifier
 from catboost import CatBoostClassifier
 from tabpfn import TabPFNClassifier
+from metatab.estimators.estimators.realmlp import RealMLPClassifierInterface
     
 
 
@@ -17,11 +18,12 @@ from tabpfn import TabPFNClassifier
         XGBClassifier, 
         CatBoostClassifier, 
         LGBMClassifier, 
-        TabPFNClassifier
+        TabPFNClassifier,
+        RealMLPClassifierInterface
     ]
 )
 def test_that_set_params_into_clf_works_for_all_classifiers(classifier_class):
     cls = classifier_class()
     # we set the "random_state" parameter since is shared by all clfs
     cls.set_params(random_state=1234)
-    assert cls.get_params()["random_state"] == 1234, "set_params is not properly implemented for the classifier"
+    assert cls.get_params()["random_state"] == 1234, "'set_params' method is not properly implemented for the classifier"

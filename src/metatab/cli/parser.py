@@ -26,19 +26,21 @@ def make_base_parser() -> ArgumentParser:
 def make_extra_base_parser() -> ArgumentParser:
     p = ArgumentParser(add_help=False)
 
-    p.add_argument("-e", "--estimator", required=True, 
-                    choices=["random_forest", "extra_trees","xgb", "es_xgb", "catboost", "es_catboost", "lgbm", "es_lgbm", "tabpfn"], 
-                    help="ML estimator to use")
+    p.add_argument("-e", "--estimator", required=True,
+                    choices=[
+                        "random_forest", "extra_trees","xgb", "es_xgb", "catboost", "es_catboost", "lgbm", "es_lgbm", "tabpfn", "realmlp"
+                    ],
+                    help="ML estimator to use.")
     
     p.add_argument("--early-stop-rounds", type=int, default=100,
                    help="""Number of early stop rounds to use when using the "es" estimators.
-                   Must be a positive integer greater than 0. Defaults to 100.
-                   This option is ignored when a non "es" estimator is used.""")
+                   Must be a positive integer greater than 0. Defaults to 100. 
+                   This option is ignored when a non "es" estimator is used.
+                   Note: ignored by "realmlp" also since it uses a stopping mechanism based on best-last-epoch or adaptive patience.""")
 
     p.add_argument("--validation-set-size", type=float, default=0.3,
-                   help="""Fraction of training data to use as validation for the early stop mechanisms.
-                   Must be a float in (0, 1) (0 < validation-set-size < 1).
-                   This option is ignored when a non "es" estimator is used.""")
+                   help="""Fraction of training data to use as validation for the early stop like mechanisms. Must be a float in (0, 1).
+                   This option is ignored when an estimator different from an "es" estimator or "realmlp" is used.""")
 
     p.add_argument("-p", "--preprocessing", default="estimator_default", 
                     choices=["estimator_default", "base", "density_filter", "pca", "no"],

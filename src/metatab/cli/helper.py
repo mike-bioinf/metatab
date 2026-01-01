@@ -8,6 +8,12 @@ from metatab.estimators.utils.constants import EARLY_STOPPED_ESTIMATORS
 from metatab.metalearning.load import query_surrogate_framework
 from metatab.ensemble.configuration import CollectionUserEnsembleConfiguration
 
+from metatab.metatab_utils.device import (
+    check_cuda_is_available, 
+    check_device_estimator_combination,
+    resolve_device
+)
+
 from metatab.estimators.core.configurations import (
     EarlyStopConfiguration,
     TuneConfiguration,
@@ -38,10 +44,10 @@ def check_target_feature(pars: dict) -> None:
 
 def check_early_stop_parameters(pars: dict) -> None:
     if pars["estimator"] in EARLY_STOPPED_ESTIMATORS:
-        if pars["early_stop_rounds"] < 0:
+        if pars["early_stop_rounds"] < 0 and pars["estimator"] != "realmlp":
             raise ValueError("'early_stop_rounds' must be a >= 0.")
-        if not 0 < pars["validation_set_size"] <= 1:
-            raise ValueError("'validation_set_size' must be a float in (0, 1].")
+        if not 0 < pars["validation_set_size"] < 1:
+            raise ValueError("'validation_set_size' must be a float in (0, 1).")
 
 
 def check_holdout_train_size(pars: dict) -> None:
@@ -52,7 +58,14 @@ def check_holdout_train_size(pars: dict) -> None:
         raise ValueError(
             "'holdout_train_size' must be a float in (0, 1)."
         )
-    
+
+
+def check_device(pars: dict) -> None:
+    '''General check on the device'''
+    resolved_device = resolve_device(pars["device"], pars["estimator"])
+    if resolved_device == "cuda": check_cuda_is_available()
+    check_device_estimator_combination(resolved_device, pars["estimator"])
+
 
 def adjust_io_paths_(pars: dict, input_arg: str, output_arg: str) -> None:
     '''
