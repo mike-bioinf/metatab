@@ -242,8 +242,15 @@ HPS_ENCODING_SCHEME_REALMLP = [
         transformers=[
             (
                 "ordinal", 
-                OrdinalEncoder(categories=[["rectangular"], ["256", "auto"]]),
-                ["hidden_sizes", "batch_size"]
+                OrdinalEncoder(
+                    categories=[
+                        ["rectangular"], 
+                        ["256", "auto"],
+                        # tuple string represenation since the metadata is not hyperopt corrected
+                        ["()", "('median_center', 'robust_scale', 'smooth_clip')"]
+                    ]
+                ),
+                ["hidden_sizes", "batch_size", "tfms"]
             ),
             PREPROCESSING_COLUMN_TRANSFORMER
         ],

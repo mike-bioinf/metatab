@@ -68,6 +68,6 @@ class DefaultParams:
 
     REALMLP_DEFAULT_PARAMS = {
         "eval_metric_name": "cross_entropy",
-        # is suggested by author to set label smooting to False when you rae intereste in AUC/log-loss
+        # is suggested by author to set label smooting to False when you are interested in AUC/log-loss
         "use_ls": False
     }

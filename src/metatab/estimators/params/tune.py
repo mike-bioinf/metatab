@@ -384,7 +384,7 @@ class TuningParams:
         "n_epochs": 512, # increase in time
         "train_metric_name": "cross_entropy", # the default
         "val_metric_name": "cross_entropy",
-        # is suggested by author to set label smoothing to False when you are intereste in AUC/log-loss
+        # is suggested by author to set label smoothing to False when you are interested in AUC/log-loss
         "use_ls": False,
         "n_ens": 8 # increase in time and memory peak
     }
@@ -394,6 +394,7 @@ class TuningParams:
         "hidden_sizes": hp.choice("hidden_sizes", ["rectangular"]),
         "n_hidden_layers": hp.choice("n_hidden_layers", [2, 3, 4]),
         "hidden_width": hp.choice("hidden_width", [256, 384, 512]), # increase in time and memory
+        "tfms": hp.choice("tfms", [[], ["median_center", "robust_scale", "smooth_clip"]]), # none or default preprocessing
         "plr_sigma": hp.loguniform("plr_sigma", np.log(1e-2), np.log(50)),
         "plr_hidden_1": hp.choice("plr_hidden_1", [8, 16, 32]), # have a minor-moderate impact on time and memory peak
         "plr_hidden_2": hp.choice("plr_hidden_2", [4, 6, 8, 12]), # have a large impact on time and memory peak
@@ -404,5 +405,5 @@ class TuningParams:
         "lr": hp.loguniform("lr", np.log(2e-2), np.log(3e-1)),
         "wd": hp.loguniform("wd", np.log(1e-3), np.log(5e-2)),
         # "use_early_stopping": hp.choice("use_early_stopping", [False, True]), # can help in reducing computational time
-        # "early_stopping_additive_patience": hp.choice("early_stopping_additive_patience", [40]) # we double the default of 20 to be less aggressive
+        # "early_stopping_additive_patience": hp.choice("early_stopping_additive_patience", [60]) # we x3 the default of 20 to be less aggressive
     }

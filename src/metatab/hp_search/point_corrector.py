@@ -64,11 +64,11 @@ class PointCorrector:
             
             estimator_corrections (str | list[str] | Literal["all"] | None, optional):
                 Specifies which estimator-specific corrections to apply.
-                They are taken from a pre-defined map.
-                - "all": apply all supported corrections for the given estimator.
-                - str: name of the single correction.
-                - list[str]: list of correction names.
-                - None: no corrections is applied.
+                They are available in a pre-defined map. In detail:
+                -"all": apply all supported corrections for the given estimator.
+                -str: name of the single correction.
+                -list[str]: list of correction names.
+                -None: no corrections is applied.
 
         Returns:
             dict: The corrected copy of the point.
@@ -122,7 +122,8 @@ class PointCorrector:
             the specific parameters explicitly.
         '''
         tuple_to_list_parameters = [
-            "inference_config__PREPROCESS_TRANSFORMS"
+            "inference_config__PREPROCESS_TRANSFORMS",
+            "tfms" # for all pytabkit classifiers
         ]
         
         for param_to_convert in tuple_to_list_parameters:

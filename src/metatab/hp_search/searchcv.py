@@ -543,10 +543,7 @@ class SearchCV:
 
 
     def _set_point_to_model_corrections(self) -> None:
-        '''
-        Defines and sets the arguments that the PointCollector must use to apply 
-        the correction to the points before they are passed to the models for the fitting procedure.
-        '''
+        '''Sets the instructions that the PointCollector must follow for each estimator'''
         if self.type_estimator == "tabpfn":
             self._point_to_model_corrections = {
                 "apply_hypeopt_corrections": True,

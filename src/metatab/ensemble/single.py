@@ -16,6 +16,7 @@ from sklearn.utils.validation import check_is_fitted
 from metatab.metatab_utils.exceptions import TimiLimitError
 from metatab.estimators.utils.general import collect_sklearn_classification_fit_info_from_data
 from metatab.estimators.utils.fit import fit_with_early_stop_on_validation_set, set_params_into_clf
+from metatab.hp_search.point_corrector import PointCorrector
 from metatab.metalearning.acquisition_funcs import compute_upper_confidence_bound
 from metatab.metalearning.utils import check_meta_strategy, check_meta_strategy_params, get_estimator_n_candidate_points
 from metatab.metalearning.sampler import HyperoptRandomSampler
@@ -451,6 +452,7 @@ class EnsembleEstimator:
 
     def _get_hps_configurations(self, X: XType, y: YType) -> list[dict]:
         sampler = HyperoptRandomSampler()
+        point_corrector = PointCorrector()
         mfe = CustomMFE()
         
         if self.algo == "random":
@@ -539,4 +541,12 @@ class EnsembleEstimator:
                     seed=self.seed if self.meta_strategy_params is None else self.meta_strategy_params.seed
                 )
 
-        return points
+        return [
+            point_corrector.correct_point(
+                point, 
+                apply_hypeopt_corrections=True, 
+                estimator=self.type_estimator,
+                estimator_corrections="all"
+            )
+            for point in points
+        ]
