@@ -44,7 +44,7 @@ def check_target_feature(pars: dict) -> None:
 
 def check_early_stop_parameters(pars: dict) -> None:
     if pars["estimator"] in EARLY_STOPPED_ESTIMATORS:
-        if pars["early_stop_rounds"] < 0 and pars["estimator"] != "realmlp":
+        if pars["early_stop_rounds"] < 0 and pars["estimator"] not in ["realmlp", "tabm"]:
             raise ValueError("'early_stop_rounds' must be a >= 0.")
         if not 0 < pars["validation_set_size"] < 1:
             raise ValueError("'validation_set_size' must be a float in (0, 1).")

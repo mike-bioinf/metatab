@@ -23,7 +23,7 @@ def add_broadcasted_objects_as_column(
     copy: bool = True 
 ) -> pd.DataFrame:
     '''
-    Utility to add and broadcast complex objects into dataframe columns.
+    Utility to add and broadcast complex objects stored into a dict as columns of a dataframe.
     The new columns will contain repetition of the same object regardless of its type.
 
     Parameters:

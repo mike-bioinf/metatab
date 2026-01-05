@@ -121,7 +121,7 @@ def check_validation_set_options(
         raise ValueError(f"'{estimator}' needs a validation set.")
     if use_validation_sets and estimator not in EARLY_STOPPED_ESTIMATORS:
         raise ValueError(f"'{estimator}' does not use validation sets.")
-    if estimator in EARLY_STOPPED_ESTIMATORS and estimator != "realmlp" and early_stop_rounds < 0:
+    if estimator in EARLY_STOPPED_ESTIMATORS and estimator not in ["realmlp", "tabm"] and early_stop_rounds < 0:
         raise ValueError("'early_stop_rounds' must be an integer >= 0.")
     if estimator in EARLY_STOPPED_ESTIMATORS and not 0 < validation_set_size < 1:
         raise ValueError("'validation_set_size' must be a float in (0, 1).")

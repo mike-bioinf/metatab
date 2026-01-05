@@ -17,7 +17,7 @@ def resolve_device(device: Literal["cpu", "cuda", "auto"], estimator: EstimatorT
     if available AND the estimator requires it, or "cpu".
     '''
     if device == "auto":
-        if estimator in ["tabpfn", "realmlp"]:
+        if estimator in ["tabpfn", "realmlp", "tabm"]:
             resolved_device = "cuda" if torch.cuda.is_available() else "cpu"
         else:
             resolved_device = "cpu"

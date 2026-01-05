@@ -12,7 +12,8 @@ CPU_ESTIMATORS = [
 # we use just a single gpu to allow comparisons even when multiple can be used
 SINGLE_GPU_ESTIMATORS = [
     "tabpfn",
-    "realmlp"
+    "realmlp",
+    "tabm"
 ]
 
 MULTIPLE_GPU_ESTIMATORS = []

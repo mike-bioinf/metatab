@@ -67,7 +67,25 @@ class DefaultParams:
     }
 
     REALMLP_DEFAULT_PARAMS = {
-        "eval_metric_name": "cross_entropy",
+        "val_metric_name": "cross_entropy",
         # is suggested by author to set label smooting to False when you are interested in AUC/log-loss
         "use_ls": False
+    }
+
+    TABM_DEFAULT_PARAMS = {
+        "val_metric_name": "cross_entropy",
+        "arch_type": "tabm",
+        # we avoid quantile transformation since it should have little effect/benefit for our data
+        "tfms": [],
+        # we increase the patience since epochs with small data are made of few steps
+        "patience": 128,
+        # we set this explictely not relying on auto which depends on whether embeddings are used
+        "n_blocks": 2,
+        # we differ from pytabkit using gradient clipping
+        "gradient_clipping_norm": 1,
+        # in tabm paper it shown that using same or different batches lead to no differences in performance
+        # however using the same batch uses less ram
+        "share_training_batches": True,
+        # mixed precision should speed-up training on GPU
+        "allow_amp": True
     }

@@ -176,11 +176,11 @@ class CollectionUserEnsembleConfiguration:
         n_members: int
     ) -> "CollectionUserEnsembleConfiguration":
         if estimators == "all":
-            target_estimators = NON_EARLY_STOPPED_ESTIMATORS + ["realmlp"]  ## TODO: adjust this 
+            target_estimators = NON_EARLY_STOPPED_ESTIMATORS + ["realmlp", "tabm"]  ## TODO: adjust this 
         elif estimators == "cpu":
             target_estimators = NON_EARLY_STOPPED_CPU_ESTIMATORS
         elif estimators == "gpu":
-            target_estimators = NON_EARLY_STOPPED_GPU_ESTIMATORS + ["realmlp"] ## TODO: adjust this
+            target_estimators = NON_EARLY_STOPPED_GPU_ESTIMATORS + ["realmlp", "tabm"] ## TODO: adjust this
 
         collection = []
         for i, estimator in enumerate(target_estimators):

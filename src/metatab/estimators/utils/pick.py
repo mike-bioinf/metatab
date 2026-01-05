@@ -53,6 +53,13 @@ from metatab.estimators.estimators.realmlp import (
     MyEnsembledRealMLPClassifier
 )
 
+from metatab.estimators.estimators.tabm import (
+    MyTabMClassifier,
+    MyTunedTabMClassifier,
+    MyEnsembledTabMClassifier
+)
+
+
 if TYPE_CHECKING:
     from metatab.estimators.estimators import Estimator
     from metatab.estimators.utils.types import EstimatorType
@@ -133,6 +140,13 @@ def pick_estimator_class(
             return MyTunedRealMLPClassifier
         case ("realmlp", "ensemble"):
             return MyEnsembledRealMLPClassifier
+        
+        case ("tabm", "default"):
+            return MyTabMClassifier
+        case ("tabm", "tune"):
+            return MyTunedTabMClassifier
+        case ("tabm", "ensemble"):
+            return MyEnsembledTabMClassifier
 
         case _:
             raise ValueError("Unrecognized estimator-mode combination.")

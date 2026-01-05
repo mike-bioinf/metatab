@@ -144,7 +144,7 @@ HPS_ENCODING_SCHEME_TABPFN = [
                 "onehot",
                 OneHotEncoder(
                     categories=[
-                        # we have the lists as tuple string representation in the metadata 
+                        # we have the lists as tuple string representation in the metadata due to hyperopt
                         [str(tuple(list_of_dicts)) for list_of_dicts in enumerate_preprocess_transforms()],
                         ["None", "7.0", "9.0", "12.0"],
                         TABPFN_CHECKPOINTS
@@ -203,7 +203,7 @@ HPS_ENCODING_SCHEME_CATBOOST = [
                 "onehot",
                 OneHotEncoder(
                     categories=[["SymmetricTree", "Depthwise", "Lossguide"]],
-                    sparse_output=True,
+                    sparse_output=False,
                 ),
                 ["grow_policy"]
             ),
@@ -237,7 +237,7 @@ HPS_ENCODING_SCHEME_LGBM = [
 
 HPS_ENCODING_SCHEME_REALMLP = [
     InfToNan(),
-    ColToStr("batch_size"),
+    ColToStr(["batch_size", "tfms"]),
     ColumnTransformer(
         transformers=[
             (
@@ -260,6 +260,39 @@ HPS_ENCODING_SCHEME_REALMLP = [
 ]
 
 
+HPS_ENCODING_SCHEME_TABM = [
+    InfToNan(),
+    ColToStr(["batch_size", "tfms"]),
+    ColumnTransformer(
+        transformers=[
+            (
+                "ordinal",
+                OrdinalEncoder(
+                    categories=[
+                        ["tabm", "tabm-mini"],
+                        ["256", "auto"],
+                        ["pwl"]
+                    ]
+                ),
+                ["arch_type", "batch_size", "num_emb_type"]
+            ),
+            (
+                "onehot",
+                OneHotEncoder(
+                    # tuple string represenation since the metadata is not hyperopt corrected
+                    categories=[["()", "('quantile_tabr',)", "('median_center', 'robust_scale', 'smooth_clip')"]],
+                    sparse_output=False
+                ),
+                ["tfms"]
+            ),
+            PREPROCESSING_COLUMN_TRANSFORMER
+        ],
+        **COLUMN_TRANSFORMER_FIXED_PARAMS
+    ),
+    VarianceThreshold()
+]
+
+
 
 # The "es" estimator version uses the same encoding 
 # of their "base" counterpart, since they share the tune spaces
@@ -273,7 +306,8 @@ HPS_ENCODING_SCHEME = {
     "lgbm": HPS_ENCODING_SCHEME_LGBM,
     "es_lgbm": HPS_ENCODING_SCHEME_LGBM,
     "tabpfn": HPS_ENCODING_SCHEME_TABPFN,
-    "realmlp": HPS_ENCODING_SCHEME_REALMLP
+    "realmlp": HPS_ENCODING_SCHEME_REALMLP,
+    "tabm": HPS_ENCODING_SCHEME_TABM
 }
 
 

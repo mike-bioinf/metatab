@@ -15,7 +15,8 @@ DEFAULT_ESTIMATORS_TUNE_SPACES = {
     "lgbm": ("c0", TuningParams.LGMB_C0), 
     "es_lgbm": ("c0", TuningParams.LGMB_C0),
     "tabpfn": ("c0", TuningParams.TABPFN_C0),
-    "realmlp": ("c0", TuningParams.REALMLP_C0)
+    "realmlp": ("c0", TuningParams.REALMLP_C0),
+    "tabm": ("c0", TuningParams.TABM_C0)
 }
 
 
@@ -63,6 +64,9 @@ def pick_estimator_tune_space(estimator: TunableEstimatorType, space: str) -> di
          
         case ("realmlp", "c0"):
             return TuningParams.REALMLP_C0
+         
+        case ("tabm", "c0"):
+            return TuningParams.TABM_C0
         
         case (_, "default"):
             return DEFAULT_ESTIMATORS_TUNE_SPACES[estimator][1]

@@ -2,7 +2,8 @@ EARLY_STOPPED_ESTIMATORS = [
     "es_xgb",
     "es_catboost",
     "es_lgbm",
-    "realmlp"
+    "realmlp",
+    "tabm"
 ]
 
 

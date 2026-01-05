@@ -67,6 +67,14 @@ from metatab.estimators.estimators.realmlp import (
     MetaEnsembleRealMLPClassifier
 )
 
+from metatab.estimators.estimators.tabm import (
+    MyTabMClassifier,
+    MyTunedTabMClassifier,
+    MyEnsembledTabMClassifier,
+    MetaTuneTabMClassifier,
+    MetaEnsembleTabMClassifier
+)
+
 
 Estimator: TypeAlias = Union[
     MyRandomForestClassifier,
@@ -95,7 +103,10 @@ Estimator: TypeAlias = Union[
     MyEnsembledTabPFNClassifier,
     MyRealMLPClassifier,
     MyTunedRealMLPClassifier,
-    MyEnsembledRealMLPClassifier
+    MyEnsembledRealMLPClassifier,
+    MyTabMClassifier,
+    MyTunedTabMClassifier,
+    MyEnsembledTabMClassifier,
 ]
 
 
@@ -109,7 +120,8 @@ DefaultEstimator: TypeAlias = Union[
     MyLGBMClassifier,
     MyESLGBMClassifier,
     MyTabPFNClassifier,
-    MyRealMLPClassifier
+    MyRealMLPClassifier,
+    MyTabMClassifier
 ]
 
 
@@ -123,7 +135,8 @@ EnsembledEstimator: TypeAlias = Union[
     MyEnsembledLGBMClassifier,
     MyEnsembledESLGBMClassifier,
     MyEnsembledTabPFNClassifier,
-    MyEnsembledRealMLPClassifier
+    MyEnsembledRealMLPClassifier,
+    MyEnsembledTabMClassifier
 ]
 
 
@@ -137,7 +150,8 @@ TunedEstimator: TypeAlias = Union[
     MyTunedLGBMClassifier,
     MyTunedESLGBMClassifier,
     MyTunedTabPFNClassifier,
-    MyTunedRealMLPClassifier
+    MyTunedRealMLPClassifier,
+    MyTunedTabMClassifier
 ]
 
 
@@ -172,6 +186,9 @@ __all__ = [
     "MyRealMLPClassifier",
     "MyTunedRealMLPClassifier",
     "MyEnsembledRealMLPClassifier",
+    "MyTabMClassifier",
+    "MyTunedTabMClassifier",
+    "MyEnsembledTabMClassifier",
     "Estimator",
     "DefaultEstimator",
     "TunedEstimator",

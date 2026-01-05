@@ -49,7 +49,10 @@ from metatab.estimators.estimators import (
     MyEnsembledTabPFNClassifier,
     MyRealMLPClassifier,
     MyTunedRealMLPClassifier,
-    MyEnsembledRealMLPClassifier
+    MyEnsembledRealMLPClassifier,
+    MyTabMClassifier,
+    MyTunedTabMClassifier,
+    MyEnsembledTabMClassifier
 )
 
 if TYPE_CHECKING:
@@ -137,6 +140,10 @@ TEST_REALMLP_FIXED_PARAMS = {
     "n_ens": 1
 }
 
+TEST_TABM_FIXED_PARAMS = {
+    "n_blocks": 1,
+    "patience": 1
+}
 
 
 ### Function to fit the estimators on the iris dataset --------------------------------------------------------------
@@ -196,6 +203,7 @@ ESTIMATOR_DEFAULT_CONFIGS = {
     "my_es_lgbm_classifier.pkl": (MyESLGBMClassifier, TEST_ESLGBM_FIXED_PARAMS, None, None, None),
     "my_tabpfn_classifier.pkl": (MyTabPFNClassifier, TEST_TABPFN_FIXED_PARAMS, None, None, None),
     "my_realmpl_classifier.pkl": (MyRealMLPClassifier, TEST_REALMLP_FIXED_PARAMS, None, None, None),
+    "my_tabm_classifier.pkl": (MyTabMClassifier, TEST_TABM_FIXED_PARAMS, None, None, None),
 }
 
 
@@ -209,7 +217,8 @@ ESTIMATOR_TUNE_CONFIGS = {
     "my_tuned_lgbm_classifier.pkl": (MyTunedLGBMClassifier, TEST_LGBM_FIXED_PARAMS, TEST_TUNE_CONFIGURATION, None, TuningParams.LGMB_C0),
     "my_tuned_es_lgbm_classifier.pkl": (MyTunedESLGBMClassifier, TEST_ESLGBM_FIXED_PARAMS, TEST_TUNE_CONFIGURATION, None, TuningParams.LGMB_C0),
     "my_tuned_tabpfn_classifier.pkl": (MyTunedTabPFNClassifier, TEST_TABPFN_FIXED_PARAMS, TEST_TUNE_CONFIGURATION, None, TuningParams.TABPFN_C0),
-    "mu_tuned_realmlp_classifier.pkl": (MyTunedRealMLPClassifier, TEST_REALMLP_FIXED_PARAMS, TEST_TUNE_CONFIGURATION, None, TuningParams.REALMLP_C0),
+    "my_tuned_realmlp_classifier.pkl": (MyTunedRealMLPClassifier, TEST_REALMLP_FIXED_PARAMS, TEST_TUNE_CONFIGURATION, None, TuningParams.REALMLP_C0),
+    "my_tuned_tabm_classifier.pkl": (MyTunedTabMClassifier, TEST_TABM_FIXED_PARAMS, TEST_TUNE_CONFIGURATION, None, TuningParams.TABM_C0)
 }
 
 
@@ -223,7 +232,8 @@ ESTIMATOR_ENSEMBLE_CONFIGS = {
     "my_ensembled_lgbm_classifier.pkl": (MyEnsembledLGBMClassifier, TEST_LGBM_FIXED_PARAMS, None, TEST_ENSEMBLE_CONFIGURATION, TuningParams.LGMB_C0),
     "my_ensembled_es_lgbm_classifier.pkl": (MyEnsembledESLGBMClassifier, TEST_ESLGBM_FIXED_PARAMS, None, TEST_ENSEMBLE_CONFIGURATION, TuningParams.LGMB_C0),
     "my_ensembled_tabpfn_classifier.pkl": (MyEnsembledTabPFNClassifier, TEST_TABPFN_FIXED_PARAMS, None, TEST_ENSEMBLE_CONFIGURATION, TuningParams.TABPFN_C0),
-    "my_ensembled_realmlp_classifier.pkl": (MyEnsembledRealMLPClassifier, TEST_REALMLP_FIXED_PARAMS, None, TEST_ENSEMBLE_CONFIGURATION, TuningParams.REALMLP_C0)
+    "my_ensembled_realmlp_classifier.pkl": (MyEnsembledRealMLPClassifier, TEST_REALMLP_FIXED_PARAMS, None, TEST_ENSEMBLE_CONFIGURATION, TuningParams.REALMLP_C0),
+    "my_ensembled_tabm_classifier.pkl": (MyEnsembledTabMClassifier, TEST_TABM_FIXED_PARAMS, None, TEST_ENSEMBLE_CONFIGURATION, TuningParams.TABM_C0)
 }
 
 

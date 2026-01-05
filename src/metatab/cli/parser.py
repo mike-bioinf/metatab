@@ -28,7 +28,8 @@ def make_extra_base_parser() -> ArgumentParser:
 
     p.add_argument("-e", "--estimator", required=True,
                     choices=[
-                        "random_forest", "extra_trees","xgb", "es_xgb", "catboost", "es_catboost", "lgbm", "es_lgbm", "tabpfn", "realmlp"
+                        "random_forest", "extra_trees","xgb", "es_xgb", "catboost", "es_catboost", "lgbm", "es_lgbm", "tabpfn", "realmlp",
+                        "tabm"
                     ],
                     help="ML estimator to use.")
     

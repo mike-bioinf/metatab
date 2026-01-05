@@ -8,12 +8,13 @@ from sklearn.pipeline import make_pipeline
 from metatab.estimators.utils.types import TunableEstimatorType
 from metatab.metalearning.encode.encode import get_encoding_scheme
 from metatab.metalearning.encode.transformers import NanToNone, ColToStr, InfToNan
+from metatab.preprocessing.types import PreprocessingStrategy
 
 
 
 def load_metadata(
     estimator: TunableEstimatorType,
-    preprocessing: Literal["base", "density_filter", "pca"] = "base"
+    preprocessing: PreprocessingStrategy = "base"
 ) -> pd.DataFrame:
     df = pd.read_csv(Path(__file__).parent / "data/metadata" / f"{estimator}.txt", sep="\t")
     df["preprocessing"] = preprocessing
@@ -61,7 +62,7 @@ def test_that_inf_to_nan_transformer_works():
 
 
 
-## TODO: add "catboost", "extra_trees", "realmlp" when you have metadata
+## TODO: add "catboost", "extra_trees", "realmlp", "tabm" when you have metadata
 @pytest.mark.parametrize("estimator", ["random_forest", "xgb", "lgbm", "tabpfn"])
 def test_that_estimator_metadata_encoding_scheme_is_correct(estimator):
     enc_pipe = make_pipeline(*get_encoding_scheme(estimator)).set_output(transform="pandas")

@@ -5,7 +5,7 @@ from metatab.hp_search.tabpfn_search_space import TABPFN_TUNE_SPACE
 
 
 
-## TODO: we do not differentiate between same-named parameters for different estimators.
+## FIXME: we cannot differentiate between same-named parameters for different estimators.
 HPS_MIXED_TYPED = [
     # for random_forest and extra_trees
     "max_features",
@@ -382,7 +382,6 @@ class TuningParams:
     REALMLP_FIXED_PARAMS = {
         # we double the default of 256 since we work with small datasets and so each epoch is made of few steps
         "n_epochs": 512, # increase in time
-        "train_metric_name": "cross_entropy", # the default
         "val_metric_name": "cross_entropy",
         # is suggested by author to set label smoothing to False when you are interested in AUC/log-loss
         "use_ls": False,
@@ -406,4 +405,36 @@ class TuningParams:
         "wd": hp.loguniform("wd", np.log(1e-3), np.log(5e-2)),
         # "use_early_stopping": hp.choice("use_early_stopping", [False, True]), # can help in reducing computational time
         # "early_stopping_additive_patience": hp.choice("early_stopping_additive_patience", [60]) # we x3 the default of 20 to be less aggressive
+    }
+
+
+    #### TABM --------------------------------------------------------------------------------------------------------------------
+    
+    # We use the autogluon/tabarena space with minor modifications.
+    # "https://github.com/autogluon/tabarena/blob/main/tabarena/tabarena/models/tabm/generate.py"
+
+    TABM_FIXED_PARAMS = {
+        "val_metric_name": "cross_entropy",
+        # we increase the patience since epochs with small data are made of few steps
+        "patience": 128,
+        "gradient_clipping_norm": 1,
+        # in tabm paper it shown that using same or different batches lead to no differences in performance
+        # however using the same batch uses less ram
+        "share_training_batches": True,
+        # mixed precision should speed-up training on GPU
+        "allow_amp": True
+    }
+
+    TABM_C0 = {
+        "arch_type": hp.choice("arch_type", ["tabm", "tabm-mini"]),
+        "num_emb_type": hp.choice("num_emb_type", ["pwl"]),
+        "num_emb_n_bins": hp.choice("num_emb_n_bins", list(range(8, 129, 2))),
+        "d_embedding": hp.choice("d_embedding", [8, 12, 16, 20, 24]), # high increase in time and memory peak
+        "batch_size": hp.choice("batch_size", ["auto", 256]),
+        "lr": hp.loguniform("lr", np.log(1e-4), np.log(3e-3)),
+        "weight_decay": hp.choice("weight_decay", [0.0, hp.loguniform("pos_weight_decay", np.log(1e-4), np.log(1e-1))]),
+        "d_block": hp.choice("d_block", list(range(128, 769, 32))), # high increase in time and memory peak
+        "n_blocks": hp.choice("n_blocks", [2, 3, 4, 5]), # high increase in time
+        "dropout": hp.choice("dropout", [0.0, hp.uniform("pos_dropout", 0.0, 0.5)]),
+        "tfms": hp.choice("tfms", [[], ["quantile_tabr"], ["median_center", "robust_scale", "smooth_clip"]]), # none, tabm default and realmlp default preprocessing
     }

@@ -496,7 +496,7 @@ class SearchCV:
                     # - block value coercion.
                     # - block warning for concatenating full na columns.
                     df_cv_info = add_broadcasted_objects_as_column(
-                        df=df_cv_info, 
+                        df=df_cv_info,
                         dictionary=params, # we add the original not corrected point
                         convert_bool_to_str=False,
                         convert_none_to_str=False,

@@ -9,6 +9,7 @@ from metatab.estimators import (
     MetaTuneEsLGBMClassifier,
     MetaTuneTabPFNClassifier,
     MetaTuneRealMLPClassifier,
+    MetaTuneTabMClassifier,
     MetaEnsembleRandomForestClassifier,
     MetaEnsembleExtraTreesClassifier,
     MetaEnsembleXGBClassifier,
@@ -16,7 +17,8 @@ from metatab.estimators import (
     MetaEnsembleLGBMClassifier,
     MetaEnsembleEsLGBMClassifier,
     MetaEnsembleTabPFNClassifier,
-    MetaEnsembleRealMLPClassifier
+    MetaEnsembleRealMLPClassifier,
+    MetaEnsembleTabMClassifier
 )
 
 
@@ -29,6 +31,7 @@ __all__ = [
     "MetaTuneEsLGBMClassifier",
     "MetaTuneTabPFNClassifier",
     "MetaTuneRealMLPClassifier",
+    "MetaTuneTabMClassifier",
     "MetaEnsembleRandomForestClassifier",
     "MetaEnsembleExtraTreesClassifier",
     "MetaEnsembleXGBClassifier",
@@ -37,5 +40,6 @@ __all__ = [
     "MetaEnsembleEsLGBMClassifier",
     "MetaEnsembleTabPFNClassifier",
     "MetaEnsembleRealMLPClassifier",
-    "FamilyEnsembleEstimator"
+    "FamilyEnsembleEstimator",
+    "MetaEnsembleTabMClassifier"
 ]

@@ -10,7 +10,8 @@ from lightgbm import LGBMClassifier
 from tabpfn import TabPFNClassifier
 
 if TYPE_CHECKING:
-    from metatab.estimators.estimators.realmlp import RealMLPClassifierInterface
+    from metatab.estimators.estimators.realmlp import RealMLPClassifier
+    from metatab.estimators.estimators.tabm import TabMClassifier
 
 
 Classifier: TypeAlias = Union[
@@ -20,7 +21,8 @@ Classifier: TypeAlias = Union[
     CatBoostClassifier,
     LGBMClassifier,
     TabPFNClassifier,
-    "RealMLPClassifierInterface"
+    "RealMLPClassifier",
+    "TabMClassifier"
 ]
 
 
@@ -41,7 +43,8 @@ TunableEstimatorType = Literal[
     "catboost",
     "es_catboost",
     "tabpfn",
-    "realmlp"
+    "realmlp",
+    "tabm"
 ]
 
 
@@ -49,7 +52,8 @@ EsEstimatorType: Literal[
     "es_lgbm",
     "es_xgb",
     "es_catboost",
-    "realmlp"
+    "realmlp",
+    "tabm"
 ]
 
 
@@ -85,5 +89,6 @@ EstimatorType = Literal[
     "catboost",
     "es_catboost",
     "tabpfn",
-    "realmlp"
+    "realmlp",
+    "tabm"
 ]
