@@ -18,7 +18,7 @@ class MyExtraTreesClassifier(DefaultEstimatorMixin, AbstractBaseEstimator):
     Implementation of the default library ExtraTreesClassifier.
 
     Attributes:
-        estimator_ (ExtraTreesClassifier|Pipeline): Fitted classifier or pipeline object.
+        estimator_ (Pipeline): Fitted pipeline object.
     '''
     fixed_params = DefaultParams.EXTRA_TREES_DEFAULT_PARAMS
 

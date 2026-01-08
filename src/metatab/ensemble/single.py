@@ -27,7 +27,7 @@ from metatab.metatab_utils.general import ensure_or_create
 
 if TYPE_CHECKING:
     from sklearn.pipeline import Pipeline
-    from metatab.estimators.utils.types import Classifier, TunableEstimatorType
+    from metatab.estimators.utils.types import TunableEstimatorType
     from metatab.preprocessing.types import ResolvedPreprocessingStrategy
     from metatab.metalearning.types import MetaStrategy, MetaStrategyParams
     from metatab.metatab_utils.types import XType, YType
@@ -61,15 +61,15 @@ class EnsembleEstimator:
             named after the members (name ensemble + number member).
             Note that the folder is created if not existent.
 
-        clf_or_pipe (Classifier | Pipeline):
-            Classifier or Pipeline object with a classifier as head to ensemble.
+        pipe (Pipeline):
+            Pipeline object headed with a classifier.
         
         type_estimator (TunableEstimatorType):
             String estimator type. 
             Info needed in meta-optimization (`meta` algo).
             
-        clf_or_pipe_preprocessing (ResolvedPreprocessingStrategy):
-            Type of preprocessing used for the clf_or_pipe object.
+        preprocessing (ResolvedPreprocessingStrategy):
+            Type of preprocessing used for the pipe object.
             Info needed in meta-optimization (`meta` algo).
 
         params_distributions (dict): 
@@ -179,9 +179,9 @@ class EnsembleEstimator:
         algo: Literal["random", "meta"],
         n_members: int,
         save_path: str | Path,
-        clf_or_pipe: Classifier | Pipeline,
+        pipe: Pipeline,
         type_estimator: TunableEstimatorType,
-        clf_or_pipe_preprocessing: ResolvedPreprocessingStrategy,
+        preprocessing: ResolvedPreprocessingStrategy,
         params_distributions: dict,
         early_stop_on_validation_set: bool, 
         eval_set_parameter: str = "eval_set",
@@ -203,9 +203,9 @@ class EnsembleEstimator:
         self.algo=algo
         self.n_members=n_members
         self.save_path=save_path
-        self.clf_or_pipe=clf_or_pipe
+        self.pipe=pipe
         self.type_estimator=type_estimator
-        self.clf_or_pipe_preprocessing=clf_or_pipe_preprocessing
+        self.preprocessing=preprocessing
         self.params_distributions=params_distributions
         self.early_stop_on_validation_set=early_stop_on_validation_set
         self.eval_set_parameter=eval_set_parameter
@@ -263,12 +263,12 @@ class EnsembleEstimator:
                     raise TimiLimitError("Violated time limit")
                 
                 # deepcopy necessary since catboost cannot be refitted
-                clf_or_pipe = deepcopy(self.clf_or_pipe)
-                set_params_into_clf(clf_or_pipe, hp_conf)
+                pipe = deepcopy(self.pipe)
+                set_params_into_clf(pipe, hp_conf)
             
                 if self.early_stop_on_validation_set:
-                    clf_or_pipe, fit_time = fit_with_early_stop_on_validation_set(
-                        clf_or_pipe=clf_or_pipe,
+                    pipe, fit_time = fit_with_early_stop_on_validation_set(
+                        pipe=pipe,
                         X=X,
                         y=y,
                         seed=rng_early_stop.integers(low=0, high=2**30),
@@ -279,14 +279,14 @@ class EnsembleEstimator:
                     )
                 else:
                     t = time.time()
-                    clf_or_pipe.fit(X, y, **fit_classifier_kwargs)
+                    pipe.fit(X, y, **fit_classifier_kwargs)
                     fit_time = time.time() - t
 
                 logger.debug(f"'{member_name}' member has been fitted in {round(fit_time / 60, 2)} minutes.")                
                 
-                # save classifier
+                # save model
                 with open(self._save_path / f"{member_name}.pkl", "wb") as f:
-                    pickle.dump(clf_or_pipe, f)
+                    pickle.dump(pipe, f)
 
                 logger.debug(f"'{member_name}' member saved on disk.")
                 
@@ -327,6 +327,9 @@ class EnsembleEstimator:
         
         self.df_members_ = pd.DataFrame(self._recap_members)
         
+        # this assumes that the y is already integer encoded
+        # if this was not the case then different classifiers learns 
+        # different mapping label-class
         for k, v in collect_sklearn_classification_fit_info_from_data(X, y).items():
             setattr(self, k, v)
         
@@ -373,7 +376,7 @@ class EnsembleEstimator:
         predictions = []
         for member in self.successful_members_:
             path_successful_member = self._save_path / f"{member}.pkl"
-            member_model: Classifier | Pipeline = self._try_load_model(path_successful_member)
+            member_model: Pipeline = self._try_load_model(path_successful_member)
             predictions.append(member_model.predict_proba(X))
         return predictions
 
@@ -424,7 +427,7 @@ class EnsembleEstimator:
 
 
     @staticmethod
-    def _try_load_model(path: str | Path) -> Classifier | Pipeline:
+    def _try_load_model(path: str | Path) -> Pipeline:
         try:
             with open(path, "rb") as f:
                 model = pickle.load(f)
@@ -465,7 +468,7 @@ class EnsembleEstimator:
             else:
                 metafeatures = self.meta_features
 
-            metafeatures["preprocessing"] = self.clf_or_pipe_preprocessing
+            metafeatures["preprocessing"] = self.preprocessing
             
             if self.meta_candidate_points is None:
                 n_candidate_points = max(get_estimator_n_candidate_points(self.type_estimator), self.n_members) \

@@ -18,7 +18,7 @@ class MyRandomForestClassifier(DefaultEstimatorMixin, AbstractBaseEstimator):
     Implementation of the default library RandomForestClassifier.
 
     Attributes:
-        estimator_ (RandomForestClassifier|Pipeline): Fitted classifier or pipeline object.
+        estimator_ (Pipeline): Fitted pipeline object.
     '''
     fixed_params = DefaultParams.RANDOM_FOREST_DEFAULT_PARAMS
 

@@ -1,0 +1,89 @@
+"""
+This module contains a battery of test executed on the third-party classifiers used in this package.
+These are finalized to check a series of expectations on which we rely in our package.
+"""
+
+import warnings
+import pytest
+import numpy as np
+from sklearn.datasets import load_iris
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import ExtraTreesClassifier
+from xgboost import XGBClassifier
+from lightgbm import LGBMClassifier
+# from catboost import CatBoostClassifier
+from tabpfn import TabPFNClassifier
+from pytabkit import RealMLP_TD_Classifier, TabM_D_Classifier
+from metatab.estimators.estimators.realmlp import RealMLPClassifier
+from metatab.estimators.estimators.tabm import TabMClassifier
+from metatab.estimators.estimators.catboost import CatBoostClassifierInterface
+
+
+classifier_classes = [
+    RandomForestClassifier,
+    ExtraTreesClassifier, 
+    XGBClassifier, 
+    LGBMClassifier, 
+    TabPFNClassifier,
+    RealMLP_TD_Classifier, 
+    TabM_D_Classifier
+]
+
+classifier_interfaces = [
+    RealMLPClassifier,
+    TabMClassifier,
+    CatBoostClassifierInterface
+]
+
+
+@pytest.fixture(scope="module")
+def get_iris_sets() -> tuple:
+    X, y = load_iris(return_X_y=True, as_frame=True)
+    return train_test_split(X, y, train_size=0.3, random_state=0, stratify=y)
+
+
+@pytest.mark.parametrize("classifier_class", classifier_classes + classifier_interfaces)
+def test_set_params(classifier_class):
+    '''Test that all classifiers have a working set_params method'''
+    clf = classifier_class()
+    # we set the "random_state" parameter since is shared by all classifiers
+    clf.set_params(random_state=1234)
+    assert clf.get_params()["random_state"] == 1234, "'set_params' method is not properly implemented for the classifier"
+
+
+@pytest.mark.parametrize("classifier_class", classifier_classes + classifier_interfaces)
+def test_that_classifiers_learns_sklearn_attributes_as_expected(classifier_class, get_iris_sets):
+    '''
+    Test that all classifiers learns the expected sklearn attributes.
+    In addition we check that the target integer-encoded labels are "learned" in a sorted increasing order.
+    This is essential to assure "compability" between the different classifier predictions.
+    '''
+    X_train, X_val, y_train, y_val = get_iris_sets
+    expected_classes = np.sort(y_train.unique())
+    
+    init_args = {}
+    if classifier_class is CatBoostClassifierInterface:
+        init_args = dict(allow_writing_files=False)
+    
+    clf = classifier_class(**init_args)
+
+    extra_fit_args = {}
+    if isinstance(clf, (TabMClassifier, RealMLPClassifier)):
+        extra_fit_args = dict(eval_set=[(X_val, y_val)])
+    
+    with warnings.catch_warnings():
+        warnings.filterwarnings(
+            "ignore",
+            message="'force_all_finite' was renamed to 'ensure_all_finite' in 1.6.*",
+            category=FutureWarning
+        )
+        clf.fit(X_train, y_train, **extra_fit_args)
+    
+    assert getattr(clf, "classes_", None) is not None, "The classifier does not learn the 'classes_' attribute."
+    assert (clf.classes_ == expected_classes).all(), "The classifier does not learn integer-encoded labels in a increasing sorted order."
+
+    # for these we use our interface since they are lacking in learning some of these attributes
+    if not isinstance(clf, (RealMLP_TD_Classifier, TabM_D_Classifier, CatBoostClassifierInterface)):
+        assert hasattr(clf, "n_features_in_"), "The classifier does not learn the 'n_features_in_' attribute."
+        assert hasattr(clf, "feature_names_in_"), "The classifier does not learn the 'feature_names_in_' attribute."

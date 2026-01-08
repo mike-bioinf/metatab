@@ -6,7 +6,7 @@ from metatab.estimators.utils.fit import fit_with_early_stop_on_validation_set
 
 
 
-def test_that_pipeline_is_fitted_after_completion():
+def test_that_pipeline_is_fitted_after_decomposition():
     X, y = make_classification()
     
     pipe = make_pipeline(
@@ -21,7 +21,7 @@ def test_that_pipeline_is_fitted_after_completion():
     )
 
     _ = fit_with_early_stop_on_validation_set(
-        clf_or_pipe=pipe,
+        pipe=pipe,
         X=X,
         y=y,
         seed=0,
@@ -31,4 +31,4 @@ def test_that_pipeline_is_fitted_after_completion():
         return_fit_time=False
     )
     
-    assert pipe[-1].fitted_, "The pipeline is not fitted in place"
+    assert pipe[-1].fitted_, "The pipeline classifier is not fitted."

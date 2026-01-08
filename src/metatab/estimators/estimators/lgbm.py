@@ -60,7 +60,7 @@ class MyLGBMClassifier(LGBMPredictMixin, DefaultEstimatorMixin, AbstractBaseEsti
     Implementation of default library LGBMClassifier.
 
     Attributes:
-        estimator_ (LGBMClassifier|Pipeline): Fitted classifier or pipeline object.
+        estimator_ (Pipeline): Fitted pipeline object.
     '''
     fixed_params=DefaultParams.LGBM_DEFAULT_PARAMS
 
@@ -83,7 +83,7 @@ class MyESLGBMClassifier(LGBMPredictMixin, DefaultEstimatorMixin, AbstractBaseEs
     Implementation of the default library LGBMClassifier with early stop. 
     
     Attributes:
-        estimator_ (LGBMClassifier|Pipeline): Fitted classifier or pipeline object.
+        estimator_ (Pipeline): Fitted pipeline object.
     '''
     fixed_params=DefaultParams.ES_LGBM_DEFAULT_PARAMS
 

@@ -1,3 +1,4 @@
+import pandas as pd
 from functools import partial
 from catboost import CatBoostClassifier
 from metatab.estimators.params import TuningParams, DefaultParams
@@ -17,12 +18,26 @@ from metatab.estimators.utils.gbdt import (
 
 
 
+class CatBoostClassifierInterface(CatBoostClassifier):
+    '''
+    Interface of "CatboostClassifier" that allows to learn the `feature_names_in_` attribute. 
+    The original classifier infact uses `feature_names_`, which is learned even when we fit
+    the classifier on numpy arrays.
+    '''
+    def fit(self, X: XType, y: YType, **kwargs) -> "CatBoostClassifierInterface":
+        super().fit(X, y, **kwargs)
+        if isinstance(X, pd.DataFrame) and all([isinstance(col, str) for col in X.columns]):
+            self.feature_names_in_ = self.feature_names_
+        return self
+
+
+
 class MyCatBoostClassifier(DefaultEstimatorMixin, AbstractBaseEstimator):
     '''
     Implementation of library default CatBoostClassifier without early stop.
 
     Attributes:
-        estimator_ (CatBoostClassifier|Pipeline): Fitted classifier or pipeline object.
+        estimator_ (Pipeline): Fitted pipeline object.
     '''
     fixed_params=DefaultParams.CATBOOST_DEFAULT_PARAMS
 
@@ -30,7 +45,7 @@ class MyCatBoostClassifier(DefaultEstimatorMixin, AbstractBaseEstimator):
         self.estimator_ = super().fit_estimator(
             X=X,
             y=y,
-            classifier_cls=CatBoostClassifier,
+            classifier_cls=CatBoostClassifierInterface,
             type_estimator="catboost",
             n_threads_parameter="thread_count",
             callbacks_on_fixed_params=[
@@ -46,7 +61,7 @@ class MyESCatBoostClassifier(DefaultEstimatorMixin, AbstractBaseEstimator):
     Implementation of the library default CatBoostClassifier with early stop.
 
     Attributes:
-        estimator_ (CatBoostClassifier|Pipeline): Fitted classifier or pipeline object.
+        estimator_ (Pipeline): Fitted pipeline object.
     '''
     fixed_params=DefaultParams.ES_CATBOOST_DEFAULT_PARAMS
 
@@ -54,7 +69,7 @@ class MyESCatBoostClassifier(DefaultEstimatorMixin, AbstractBaseEstimator):
         self.estimator_ = super().fit_estimator(
             X=X,
             y=y,
-            classifier_cls=CatBoostClassifier,
+            classifier_cls=CatBoostClassifierInterface,
             type_estimator="es_catboost",
             is_early_stopped=True,
             n_threads_parameter="thread_count",
@@ -80,7 +95,7 @@ class MyTunedCatBoostClassifier(TunedEstimatorMixin, AbstractBaseEstimator):
         self.estimator_ = super().fit_estimator(
             X=X,
             y=y,
-            classifier_cls=CatBoostClassifier,
+            classifier_cls=CatBoostClassifierInterface,
             type_estimator="catboost",
             is_tuned=True,
             n_threads_parameter="thread_count",
@@ -105,7 +120,7 @@ class MyTunedESCatBoostClassifier(TunedEstimatorMixin, AbstractBaseEstimator):
         self.estimator_ = super().fit_estimator(
             X=X,
             y=y,
-            classifier_cls=CatBoostClassifier,
+            classifier_cls=CatBoostClassifierInterface,
             type_estimator="es_catboost",
             is_tuned=True,
             is_early_stopped=True,
@@ -132,7 +147,7 @@ class MyEnsembledCatBoostClassifier(EnsembleEstimatorMixin, AbstractBaseEstimato
         self.estimator_ = super().fit_estimator(
             X=X,
             y=y,
-            classifier_cls=CatBoostClassifier,
+            classifier_cls=CatBoostClassifierInterface,
             type_estimator="catboost",
             is_ensembled=True,
             n_threads_parameter="thread_count",
@@ -157,7 +172,7 @@ class MyEnsembledESCatBoostClassifier(EnsembleEstimatorMixin, AbstractBaseEstima
         self.estimator_ = super().fit_estimator(
             X=X,
             y=y,
-            classifier_cls=CatBoostClassifier,
+            classifier_cls=CatBoostClassifierInterface,
             type_estimator="es_catboost",
             is_ensembled=True,
             is_early_stopped=True,

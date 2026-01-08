@@ -5,11 +5,11 @@ from typing import TypeAlias, Union
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.ensemble import ExtraTreesClassifier
 from xgboost import XGBClassifier
-from catboost import CatBoostClassifier
 from lightgbm import LGBMClassifier
 from tabpfn import TabPFNClassifier
 
 if TYPE_CHECKING:
+    from metatab.estimators.estimators.catboost import CatBoostClassifierInterface
     from metatab.estimators.estimators.realmlp import RealMLPClassifier
     from metatab.estimators.estimators.tabm import TabMClassifier
 
@@ -18,7 +18,7 @@ Classifier: TypeAlias = Union[
     RandomForestClassifier,
     ExtraTreesClassifier,
     XGBClassifier,
-    CatBoostClassifier,
+    "CatBoostClassifierInterface",
     LGBMClassifier,
     TabPFNClassifier,
     "RealMLPClassifier",
@@ -28,7 +28,7 @@ Classifier: TypeAlias = Union[
 
 GBDTClassifier: TypeAlias = Union[
     XGBClassifier,
-    CatBoostClassifier,
+    "CatBoostClassifierInterface",
     LGBMClassifier
 ]
 

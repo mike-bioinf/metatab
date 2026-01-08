@@ -10,6 +10,7 @@ from sklearn.pipeline import Pipeline
 from metatab.preprocessing import create_classifier_pipeline
 from metatab.metatab_utils.general import ensure_or_create, asdict_shallow
 from metatab.metatab_utils.device import check_device_estimator_combination, check_cuda_is_available, resolve_device
+from metatab.estimators.utils.general import add_prefix_to_params_when_absent
 from metatab.estimators.utils.fit import fit_with_early_stop_on_validation_set
 from metatab.hp_search.searchcv import SearchCV
 from metatab.ensemble.single import EnsembleEstimator
@@ -102,13 +103,13 @@ class AbstractBaseEstimator(ABC):
         callbacks_on_fixed_params: list[Callable[[dict, pd.Series, bool], dict]] | None = None,
         density_feature_selector_strategy: Literal["exact", "oversample", "undersample"] = "oversample",
         fit_classifier_kwargs: None | dict = None
-    ) -> Classifier | Pipeline | SearchCV | EnsembleEstimator:
+    ) ->  Pipeline | SearchCV | EnsembleEstimator:
         '''
         Utility that abstracts the `fit` logic of concrete estimators.
         This function centralizes the repeated steps involved in preparing 
         and fitting the internal estimator involving:
         - Completing the `fixed_params` attribute of concrete estimators.
-        - Creating the inner classifier or pipeline.
+        - Creating the inner pipeline.
         - Fitting the inner estimator using the appropriate strategy.
         
 
@@ -169,13 +170,13 @@ class AbstractBaseEstimator(ABC):
             
             fit_classifier_kwargs (None | dict, optional):
                 A dict unpackaged in the classifier fit calls.
-                Must follow the "classifier" format (no pipeline format).
+                It can follow either the classifier or pipeline "format".
                 Useful to pass fit-level implementation-specific args.
                 If None an empty dict is used.
 
                 
         Returns:
-            Classifier|Pipeline|SearchCV|EnsembleEstimator: 
+            Pipeline|SearchCV|EnsembleEstimator: 
             The fitted inner estimator.
         '''
         resolved_device = resolve_device(self.device, type_estimator)
@@ -203,7 +204,7 @@ class AbstractBaseEstimator(ABC):
         params = self._apply_callbacks_on_fixed_params(params, callbacks_on_fixed_params, y)
         resolved_preprocessing = resolve_preprocessing_info(self.preprocessing)
 
-        clf_or_pipe = create_classifier_pipeline(
+        pipe = create_classifier_pipeline(
             preprocessing=resolved_preprocessing,
             density_feature_selector_strategy=density_feature_selector_strategy,
             classifier=classifier_cls,
@@ -211,9 +212,9 @@ class AbstractBaseEstimator(ABC):
             type_estimator=type_estimator
         )
 
-        fit_classifier_kwargs = self._adjust_fit_kwargs_keys_to_clf_or_pipe(
-            fit_classifier_kwargs=ensure_or_create(fit_classifier_kwargs, dict),
-            clf_or_pipe=clf_or_pipe
+        fit_classifier_kwargs = add_prefix_to_params_when_absent(
+            params_dict=ensure_or_create(fit_classifier_kwargs, dict),
+            string=f"{pipe.steps[-1][0]}__"
         )
         
         if is_ensembled or is_tuned:
@@ -224,9 +225,9 @@ class AbstractBaseEstimator(ABC):
         if is_ensembled:
             # EnsembleEstimator address both early stop and normal scenarios   
             estimator = EnsembleEstimator(
-                clf_or_pipe=clf_or_pipe,
+                pipe=pipe,
                 type_estimator=type_estimator,
-                clf_or_pipe_preprocessing=resolved_preprocessing,
+                preprocessing=resolved_preprocessing,
                 seed=self.seed,
                 fit_classifier_kwargs=fit_classifier_kwargs,
                 early_stop_on_validation_set=is_early_stopped,
@@ -239,9 +240,9 @@ class AbstractBaseEstimator(ABC):
         elif is_tuned:
             # SearchCV address both early stop and normal scenarios    
             estimator = SearchCV(
-                clf_or_pipe=clf_or_pipe,
+                pipe=pipe,
                 type_estimator=type_estimator,
-                clf_or_pipe_preprocessing=resolved_preprocessing,
+                preprocessing=resolved_preprocessing,
                 random_state_parameter=random_state_parameter,
                 seed=self.seed,
                 metric_to_minimize="logloss",
@@ -255,7 +256,7 @@ class AbstractBaseEstimator(ABC):
 
         elif is_early_stopped:
             return fit_with_early_stop_on_validation_set(
-                clf_or_pipe=clf_or_pipe,
+                pipe=pipe,
                 X=X,
                 y=y,
                 seed=self.seed,
@@ -265,7 +266,7 @@ class AbstractBaseEstimator(ABC):
             )
 
         else:
-            return clf_or_pipe.fit(X, y, **fit_classifier_kwargs)
+            return pipe.fit(X, y, **fit_classifier_kwargs)
 
 
     @staticmethod
@@ -285,22 +286,6 @@ class AbstractBaseEstimator(ABC):
             raise ValueError(
                 "'eval_set_parameter' cannot be None when 'is_early_stopped' is True."
             )
-
-
-    @staticmethod
-    def _adjust_fit_kwargs_keys_to_clf_or_pipe(
-        fit_classifier_kwargs: dict,
-        clf_or_pipe: Classifier | Pipeline
-    ) -> dict:
-        '''
-        Adjust the fit kwargs keys according to "clf_or_pipe" argument.
-        Returns always a new dict.
-        '''
-        if isinstance(clf_or_pipe, Pipeline):
-            name_classifier = clf_or_pipe.steps[-1][0]
-            return {f"{name_classifier}__{k}":v for k, v in fit_classifier_kwargs.items()}
-        else:
-            return deepcopy(fit_classifier_kwargs)    
 
 
     @staticmethod

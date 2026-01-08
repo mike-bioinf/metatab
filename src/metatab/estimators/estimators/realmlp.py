@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import warnings
+import pandas as pd
 from typing import TYPE_CHECKING, Literal
 from sklearn.utils.validation import check_is_fitted
 from pytabkit import RealMLP_TD_Classifier
@@ -42,18 +43,17 @@ def suppress_realmlp_warnings(func):
 # README: 
 # The interface does not follow the sklearn design using **params in init.
 # For this reason we miss some sklearn features and compabilities.
-# These should not be used/useful to us (the useful ones are explicitely implemented). 
-# Either case if some problems raise up we should define explicitely all "RealMLP_TD_Classifier" init parameters.
+# These should not be used/useful to us (the useful ones are explicitely implemented).
 class RealMLPClassifier:
     '''
     Wrapper of "RealMLP_TD_Classifier" that allows for:
     1. "auto" batch size option.
     2. Suppression of undesired sklearn warnings.
     3. fit method with eval_set-like interface.
+    4. learns "feature_names_in_" attribute
 
     Parameters:
-        Accept all RealMLP_TD_Classifier parameters except 
-        batch_size which must be provided using this class interface. 
+        Accept all RealMLP_TD_Classifier parameters.
     '''
     def __init__(self, batch_size: int | Literal["auto"] = 256, **params):
         self.batch_size=batch_size
@@ -81,7 +81,7 @@ class RealMLPClassifier:
                 the `eval_set` parameter.
         '''
         import logging
-        from metatab.estimators.utils.general import collect_sklearn_classification_fit_info_from_data
+        from metatab.estimators.utils.general import collect_sklearn_classification_fit_info
 
         self.batch_size_ = self.batch_size \
             if isinstance(self.batch_size, int) \
@@ -98,8 +98,12 @@ class RealMLPClassifier:
         log.setLevel(logging.ERROR)
         self.classifier.fit(X, y, X_val=X_val, y_val=y_val, **kwargs)
         
-        for k, v in collect_sklearn_classification_fit_info_from_data(X, y).items():
+        for k, v in collect_sklearn_classification_fit_info(self.classifier).items():
             setattr(self, k, v)
+
+        # learn feature_names_in_ which is not learned by pytabkit classifiers
+        if isinstance(X, pd.DataFrame) and all([isinstance(col, str) for col in X.columns]):
+            self.feature_names_in_ = X.columns
         
         return self
     
@@ -144,7 +148,7 @@ class MyRealMLPClassifier(DefaultEstimatorMixin, AbstractBaseEstimator):
     Implementation of the library default RealMLPClassifier.
 
     Attributes:
-        estimator_ (RealMLPClassifier|Pipeline): Fitted classifier or pipeline object.
+        estimator_ (Pipeline): Fitted pipeline object.
     '''
     fixed_params = DefaultParams.REALMLP_DEFAULT_PARAMS
  

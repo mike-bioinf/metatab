@@ -34,21 +34,25 @@ def get_fresh_random_state(random_state: None | int | RandomState) -> RandomStat
 
 
 
-def add_string_to_params(params_dict: dict[str, Any], string: str) -> dict:
+def add_prefix_to_params_when_absent(params_dict: dict[str, Any], string: str) -> dict:
     '''
-    Utility to add at the beginning of dict keys a string.
+    Utility to add at the beginning of dict keys a string IF NOT already present.
     This is helpful when using sklearn pipelines.
-    Notes that the function assumes that the keys are str.
+    Note that the function assumes that the dict keys are str.
     Returns a new dict.
     '''
-    return {f"{string}{k}":v for k, v in params_dict.items()}
+    return {
+        f"{string}{k}": v 
+        for k, v in params_dict.items()
+        if not k.startswith(string)
+    }
 
 
 
-def remove_string_from_params(params_dict: dict[str, Any], string: str) -> dict:
+def remove_prefix_from_params(params_dict: dict[str, Any], string: str) -> dict:
     '''
     Utility to remove the string from the beginning of params dict keys.
-    Notes that the function assumes that the keys are of str type.
+    Note that the function assumes that the keys are of str type.
     Returns a new dict.
     '''
     new_params_dict = {}
@@ -137,7 +141,7 @@ def collect_sklearn_classification_fit_info(
     info `classes_`, `n_features_in_` and `feature_names_in_` 
     from a generic object. Here we assume that the attributes
     exists exept for `feature_names_in_`, which is optional.
-    Th behaviour to assume when `feature_names_in_` is missing 
+    The behaviour to assume when `feature_names_in_` is missing 
     is encoded through the `missing_features_names_in` parameter.
     '''
     res = {
@@ -171,10 +175,8 @@ def collect_sklearn_classification_fit_info_from_data(X: XType, y: YType) -> dic
     '''
     y = y.to_numpy() if isinstance(y, pd.Series) else y
     res = {"classes_": np.unique(y), "n_features_in_": X.shape[1]}
-
     if isinstance(X, pd.DataFrame) and all([isinstance(col, str) for col in X.columns]):
         res["feature_names_in_"] = X.columns
-    
     return res
 
 

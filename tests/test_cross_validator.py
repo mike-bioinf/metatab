@@ -1,20 +1,21 @@
 import numpy as np
 import pandas as pd
+from sklearn.datasets import load_iris
+from sklearn.pipeline import make_pipeline
 from hyperopt.pyll.stochastic import sample
-from metatab.hp_search.cv import CrossValidator
 from lightgbm import LGBMClassifier
 from metatab.estimators.params import TuningParams
 from metatab.estimators.estimators.lgbm import ignore_lgbm_feature_name_warning
-from sklearn.datasets import load_iris
+from metatab.hp_search.cv import CrossValidator
 
 
 
 def create_cross_validator() -> CrossValidator:
     lgbm_fixed_params = TuningParams.LGBM_FIXED_PARAMS
-    clf = LGBMClassifier(**lgbm_fixed_params)
+    pipe = make_pipeline(LGBMClassifier(**lgbm_fixed_params))
 
     cross_validator = CrossValidator(
-        clf_or_pipe=clf,
+        pipe=pipe,
         clf_random_state_parameter="random_state",
         early_stop_on_validation_set=False,
         eval_set_parameter=None,

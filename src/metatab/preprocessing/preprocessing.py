@@ -21,11 +21,12 @@ def create_classifier_pipeline(
     classifier: Classifier | None = None,
     classifier_params: dict | None = None,
     type_estimator: EstimatorType | None = None
-) -> Classifier | Pipeline:
+) -> Pipeline:
     '''
-    Creates the classifier pipeline for each preprocessing strategy.
+    Creates the pipeline for each preprocessing strategy.
     This function supports flexible configurations: it can return a pipeline with 
-    preprocessing + classifier, preprocessing only, or just the classifier.
+    preprocessing + classifier, or preprocessing and classifier only.
+    The functions always returns a pipeline even when composed by a single estimator.
 
     Parameters:
         preprocessing (PreprocessingStrategy): 
@@ -51,8 +52,7 @@ def create_classifier_pipeline(
             String estimator type required when `preprocessing` is "estimator_default". 
 
     Returns:
-        Classifier|Pipeline:
-        The pipeline or classifier object.
+        Pipeline: The pipeline object.
     '''
     if preprocessing == "no" and classifier is None:
         raise ValueError(
@@ -61,7 +61,7 @@ def create_classifier_pipeline(
     
     if classifier is not None and classifier_params is None:
         raise ValueError(
-            "'classifier_params' mus be specified when 'classifier' is specified."
+            "'classifier_params' must be specified when 'classifier' is specified."
         )
     
     if classifier_params is not None and classifier is None:
@@ -77,7 +77,7 @@ def create_classifier_pipeline(
         preprocessing = get_estimator_default_preprocessing(type_estimator)
 
     if preprocessing == "no":
-        return classifier(**classifier_params)
+        return make_pipeline(classifier(**classifier_params))
     elif preprocessing == "base":
         return _create_base_pipeline(classifier, classifier_params)
     elif preprocessing == "pca":
@@ -98,7 +98,7 @@ def _create_base_pipeline(
 ) -> Pipeline:
     return make_pipeline(
         *_add_classifier_head_to_steps(
-            (VarianceThreshold(),), 
+            [VarianceThreshold()], 
             classifier, 
             classifier_params
         )
@@ -111,11 +111,11 @@ def _create_pca_pipeline(
 ) -> Pipeline:
     return make_pipeline(
         *_add_classifier_head_to_steps(
-            (
+            [
                 VarianceThreshold(), 
                 StandardScaler(), 
                 PCA(svd_solver="full", n_components=0.95)
-            ),
+            ],
             classifier,
             classifier_params
         )
@@ -129,14 +129,14 @@ def _create_density_filter_pipeline(
 ) -> Pipeline:
     return make_pipeline(
         *_add_classifier_head_to_steps(
-            (
+            [
                 VarianceThreshold(), 
                 DensityFeatureSelector(
                     n_target_cols=500, 
                     strategy=density_feature_selector_strategy,
                     on_empty="select_all"
                 )
-            ),
+            ],
             classifier,
             classifier_params
         )
@@ -144,14 +144,13 @@ def _create_density_filter_pipeline(
 
 
 def _add_classifier_head_to_steps(
-    steps: tuple,
+    steps: list,
     classifier: Classifier | None, 
     classifier_params: dict | None
-) -> tuple:
+) -> list:
     '''
     Add the classifier to steps if not None otherwise return the original steps.
     '''
     if classifier is not None:
-        steps = list(steps)
         steps.append(classifier(**classifier_params))
-    return tuple(steps)
+    return steps

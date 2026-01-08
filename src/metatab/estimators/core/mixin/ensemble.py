@@ -17,7 +17,7 @@ class EnsembleEstimatorMixin:
     Mixin for the ensemble estimators.
 
     Requirements:
-    - Concrete class must define `estimator_` attribute (Classifier or Pipeline instance).
+    - Concrete class must define `estimator_` attribute (EnsembleEstimator instance).
     - Concrete class MUST inherit from both EnsembleEstimatorMixin AND AbstractBaseEstimator.
     '''
     if TYPE_CHECKING:
@@ -72,7 +72,8 @@ class EnsembleEstimatorMixin:
         check_is_fitted(self, "estimator_")
         # this check is useful also in this case
         self.estimator_._check_on_predict_calls()
+        model = self.estimator_._save_path / f"{self.estimator_.successful_members_[0]}.pkl"
         return collect_fit_preprocessing_info(
-            clf_or_pipe=self.estimator_._save_path / self.estimator_.successful_members_[0], 
-            preprocessing=self.preprocessing
+            self.estimator_._try_load_model(model), 
+            self.preprocessing
         )

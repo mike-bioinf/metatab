@@ -7,7 +7,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 from tabpfn import TabPFNClassifier
-from metatab.estimators.utils.general import remove_string_from_params
+from metatab.estimators.utils.general import remove_prefix_from_params
 
 if TYPE_CHECKING:
     from metatab.estimators.utils.types import Classifier
@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 
 def fit_with_early_stop_on_validation_set(
     *,
-    clf_or_pipe: Classifier | Pipeline,
+    pipe: Pipeline,
     X: XType,
     y: YType,
     seed: int,
@@ -25,22 +25,22 @@ def fit_with_early_stop_on_validation_set(
     eval_set_parameter: str,
     fit_classifier_kwargs: dict,
     return_fit_time: bool = False
- ) -> Classifier | Pipeline | tuple[Classifier|Pipeline, float]:
+ ) -> Pipeline | tuple[Pipeline, float]:
     '''
-    Utility to fit an estimator using early stop on a validation set.
+    Utility to fit an estimator with early stop on a validation set.
     The estimator must implement the early stop capability at its 
     fit interface, following a GBDT-like API ("eval_set-like" parameter).
 
     Parameters:
-        clf_or_pipe (Classifier | Pipeline):
-            The classifier or pipeline to fit. 
-            If a pipeline it must ends with a classifier.
+        pipe (Pipeline): 
+            The pipeline to fit. Is assumed to end with a classifier.
         
         X (XType): Training feature space.
         
         y (YType): Training labels.
         
-        seed (int): Seed for reproducibility used ONLY in the train/val splitting.
+        seed (int): 
+            Seed for reproducibility used ONLY in the train/val splitting.
         
         validation_set_size (float): 
             Ratio of training data to use as validation.
@@ -51,16 +51,15 @@ def fit_with_early_stop_on_validation_set(
 
         fit_classifier_kwargs (dict):
             A dict unpackaged in the classifier fit calls.
-            The dict keys can be either in classifier or pipeline "formats" 
-            indipendently of the `clf_or_pipe` object.
+            The dict keys can be either in classifier or pipeline "formats".
 
         return_fit_time (bool, optional):
-            Whether to return the fit time along the fitted clf_or_pipe.
-            If True returns a tuple [clf_or_pipe, fit_time], otherwise clf_or_pipe directly.
+            Whether to return the fit time along with the fitted pipe.
+            If True returns a tuple [pipe, fit_time], otherwise pipe directly.
 
     Returns:
-        Classifier|Pipeline|tuple: 
-        The fitted estimator alone or in a tuple with the fit time.
+        Pipeline|tuple: 
+        The fitted pipeline alone or in a tuple with the fit time.
     '''
     X_train, X_val, y_train, y_val = train_test_split(
         X, 
@@ -69,23 +68,22 @@ def fit_with_early_stop_on_validation_set(
         random_state=seed,
         stratify=y
     )
-    
-    # since we pop the classifier from the pipeline we must remove 
-    # the classifier name from the fit_kwargs keys in every scenario
-    fit_classifier_kwargs = remove_string_from_params(
+
+    # we fit the underlying classifier directly in every scenario  
+    fit_classifier_kwargs = remove_prefix_from_params(
         params_dict=fit_classifier_kwargs, 
-        string=f"{clf_or_pipe.steps[-1][0]}__"
+        string=f"{pipe.steps[-1][0]}__"
     )
 
     # we always consider the preprocessing in the fit time
     start_fit_time = time.time()
 
-    if isinstance(clf_or_pipe, Pipeline):
-        # we split the classifier from the preprocessing pipeline 
+    if len(pipe) > 1:
+        # we split the classifier from the preprocessing 
         # to avoid to repeat the preprocessing 2 times.
         # we fit in place the two components separately.
-        clf: Classifier = clf_or_pipe[-1]
-        preprocessing_pipeline: Pipeline = clf_or_pipe[:-1]
+        clf: Classifier = pipe[-1]
+        preprocessing_pipeline: Pipeline = pipe[:-1]
         X_train_transformed = preprocessing_pipeline.fit_transform(X_train)
         X_val_transformed = preprocessing_pipeline.transform(X_val)
 
@@ -96,7 +94,8 @@ def fit_with_early_stop_on_validation_set(
         )
 
     else:
-        clf_or_pipe.fit(
+        # we fit directly the classifier
+        pipe[-1].fit(
             X_train, y_train,
             **{eval_set_parameter: [(X_val, y_val)]},
             **fit_classifier_kwargs
@@ -105,27 +104,27 @@ def fit_with_early_stop_on_validation_set(
     fit_time = time.time() - start_fit_time
 
     if return_fit_time:
-        return [clf_or_pipe, fit_time]
+        return [pipe, fit_time]
     else:
-        return clf_or_pipe
+        return pipe
     
 
 
 def set_params_into_clf(
-    clf_or_pipe: Classifier | Pipeline, 
+    pipe: Pipeline, 
     params: dict[str, Any],
     set_tabpfn_inference_config: bool = True
 ) -> None:
     '''
-    Set the parameters into the classifier in place. 
-    The method works with all type of classifiers and even when they head pipeline objects.
-    Note that the method expects 'classifier formatted' parameters.
+    Set the classifier (pipeline head) parameters in place. 
+    The method works with all classifiers, and with pipeline or classifier formatted params.
     The method overwrites the pre-existent parameters values for the ones specified in params.
     For tabpfn classifiers is possible to micro manage the setting of the `inference_config__` 
     marked parameters.
     '''
-    clf = clf_or_pipe[-1] if isinstance(clf_or_pipe, Pipeline) else clf_or_pipe
-    
+    clf: Classifier = pipe[-1]
+    remove_prefix_from_params(params, string=f"{pipe.steps[-1][0]}__")
+
     if isinstance(clf, TabPFNClassifier):
         if "inference_config" in params.keys():
             raise KeyError(

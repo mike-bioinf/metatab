@@ -80,7 +80,7 @@ def main():
     early_stop_configuration = build_early_stop_configuration(pars)
     tune_configuration = build_tune_configuration(pars)
 
-    # set instruction for building and saving the search data
+    # set instruction for building the search data
     ConfigSearchCV.refit_with_best_hps = False
     ConfigSearchCV.build_df_search = True
     

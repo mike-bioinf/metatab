@@ -43,21 +43,20 @@ class SearchCV:
     - Allows a meta-learning informed search via surrogate models using the "meta" algo.
     - Allows early stop on a validation set at fit time. This functionality is possible 
     only when the classifier implements an "eval_set-like" interface.
-    - Allows to optionally refit the classifier/pipeline with the best hyperparameters.
+    - Allows to optionally refit the classifier with the best hyperparameters.
     - The search is not parallelizable even when the "random" algo is used. 
     
 
     Parameters:
-        clf_or_pipe (Classifier | Pipeline):
-            Classifier or Pipeline object with a classifier as head, 
-            which hps have to be optimized.
+        pipe (Pipeline):
+            Pipeline object headed by a classifier which hps have to be optimized.
         
         type_estimator (TunableEstimatorType):
-            String estimator type. 
+            String estimator type of the classifier head. 
             Info needed in meta-optimization (`meta` algo).
             
-        clf_or_pipe_preprocessing (ResolvedPreprocessingStrategy):
-            Type of preprocessing used for the clf_or_pipe object.
+        preprocessing (ResolvedPreprocessingStrategy):
+            Type of preprocessing used for the pipe object.
             Info needed in meta-optimization (`meta` algo).
         
         algo (Literal["random", "tpe", "meta"]): Searching algorithm to use.
@@ -98,7 +97,7 @@ class SearchCV:
         fit_classifier_kwargs (None | dict, optional):
             A dict unpackaged in the classifier fit call.
             If None (default) an empty dict is created.
-            The dict keys must be already adapted to the pipeline if any.
+            The dict keys must be in the pipeline format.
         
         meta_surrogate_model (None | str | Path, optional):
             Surrogate model to use in the meta-optimization scenario.
@@ -140,7 +139,7 @@ class SearchCV:
             Forced to False if `n_iter` equal 1. 
 
         refit_with_best_hps (None | bool, optional):
-            Whether to refit the clf_or_pipe with the best hps from the search.
+            Whether to refit the classifier with the best hps from the search.
             If None, the parameter is set via the global `ConfigSearchCV` configuration class.
     
 
@@ -149,8 +148,8 @@ class SearchCV:
         best_params_ (dict):
             Best HPs configuration obtained from the tuning procedure.
         
-        best_estimator_ (Classifier | Pipeline):
-            Refitted classifier/pipeline with the best hps configuration coming from the search.
+        best_estimator_ (Pipeline):
+            Refitted pipeline with the best hps configuration coming from the search.
             Available only when "refit_with_best_hps" is True.
 
         df_search_ (pd.DataFrame):
@@ -173,9 +172,9 @@ class SearchCV:
     def __init__(
         self,
         *,
-        clf_or_pipe: Classifier | Pipeline,
+        pipe: Pipeline,
         type_estimator: TunableEstimatorType,
-        clf_or_pipe_preprocessing: ResolvedPreprocessingStrategy,
+        preprocessing: ResolvedPreprocessingStrategy,
         algo: Literal["random", "tpe", "meta"],
         params_distributions: dict,
         n_iter: int,
@@ -196,9 +195,9 @@ class SearchCV:
         build_df_search: None | bool = None,
         refit_with_best_hps: None | bool = None
     ):
-        self.clf_or_pipe=clf_or_pipe
+        self.pipe=pipe
         self.type_estimator=type_estimator
-        self.clf_or_pipe_preprocessing=clf_or_pipe_preprocessing
+        self.preprocessing=preprocessing
         self.algo=algo
         self.params_distributions=params_distributions
         self.random_state_parameter=random_state_parameter
@@ -217,7 +216,7 @@ class SearchCV:
         self.meta_seed=meta_seed
         
         self.cross_validator=CrossValidator(
-            clf_or_pipe=clf_or_pipe,
+            pipe=pipe,
             clf_random_state_parameter=random_state_parameter,
             early_stop_on_validation_set=early_stop_on_validation_set,
             eval_set_parameter=eval_set_parameter,
@@ -272,12 +271,12 @@ class SearchCV:
         # we refit on the original X and y to not influence sklearn expection
         # about the fit datatype which is checked at predict time 
         if self.refit_with_best_hps:
-            best_estimator = deepcopy(self.clf_or_pipe)
+            best_estimator = deepcopy(self.pipe)
             set_params_into_clf(best_estimator, self.best_params_)   
             
             if self.early_stop_on_validation_set:
                 self.best_estimator_, self.refit_time_ = fit_with_early_stop_on_validation_set(
-                    clf_or_pipe=best_estimator,
+                    pipe=best_estimator,
                     X=X,
                     y=y,
                     seed=self.seed,
@@ -320,7 +319,7 @@ class SearchCV:
         metadata, candidate_points = meta_generator.generate(
             n_points=n_candidate_points,
             # add the preprocessing to the meta-data
-            mfe_extract_kwargs = {"add_features": {"preprocessing": self.clf_or_pipe_preprocessing}}
+            mfe_extract_kwargs = {"add_features": {"preprocessing": self.preprocessing}}
         )
 
         # use the input model or use the default

@@ -16,16 +16,15 @@ if TYPE_CHECKING:
 
 class CrossValidator:
     '''
-    Handles the execution of the cross-validation procedures
-    of classifier or pipeline objects.
+    Handles the execution of the cross-validation procedure.
     
     Parameters:
-        clf_or_pipe (Classifier | Pipeline):
-            Classifier or Pipeline object with a classifier as head, 
+        pipe (Pipeline):
+            Pipeline object with a classifier as head,
             which hps have to be optimized.
 
         clf_random_state_parameter (str):
-            Name of the estimator random state parameter.
+            Name of the classifier random state parameter.
 
         early_stop_on_validation_set (bool):
             Whether to early stop on validation set(s).
@@ -41,7 +40,7 @@ class CrossValidator:
 
         fit_classifier_kwargs (dict):
             A dict unpackaged in the classifier fit calls.
-            The dict keys must be already adapted to the pipeline if any.
+            The dict keys must be in the pipeline format.
 
         metric (Literal["logloss"]):
             The performance metric to compute.
@@ -57,7 +56,7 @@ class CrossValidator:
     '''
     def __init__(
         self,
-        clf_or_pipe: Classifier | Pipeline,
+        pipe: Pipeline,
         clf_random_state_parameter: str,
         early_stop_on_validation_set: bool,
         eval_set_parameter: str | None,
@@ -68,7 +67,7 @@ class CrossValidator:
         n_repeats: int, 
         seed: int
     ):
-        self.clf_or_pipe=clf_or_pipe
+        self.pipe=pipe
         self.clf_random_state_parameter=clf_random_state_parameter
         self.early_stop_on_validation_set=early_stop_on_validation_set
         self.eval_set_parameter=eval_set_parameter
@@ -117,24 +116,24 @@ class CrossValidator:
             repeat = iter_idx // self.n_folds
             fold = iter_idx - (self.n_folds * repeat)
 
-            # we create a copy of the clf/pipe at each cv round
+            # we create a copy of the pipe at each cv round
             # to avoid specific classifier implementation problems
             # related to fitting multiple times the same instance.
             # (for example for catboost is not possible to set the parameters on a fitted instance)
-            clf_or_pipe = deepcopy(self.clf_or_pipe)
-            set_params_into_clf(clf_or_pipe, params)
+            pipe = deepcopy(self.pipe)
+            set_params_into_clf(pipe, params)
 
             # we overwrite the classifier seed in order to maximize model entropy inside cv, 
             # while assuring uniformity between different cv runs.
             round_cv_seed = {self.clf_random_state_parameter: int(rng.integers(0, 2**32))}
-            set_params_into_clf(clf_or_pipe, round_cv_seed, set_tabpfn_inference_config=False)
+            set_params_into_clf(pipe, round_cv_seed, set_tabpfn_inference_config=False)
             
             X_train, y_train = X[train_idx, :], y[train_idx]
             X_test, y_test = X[test_idx, :], y[test_idx]
 
             if self.early_stop_on_validation_set:
-                clf_or_pipe = fit_with_early_stop_on_validation_set(
-                    clf_or_pipe=clf_or_pipe,
+                pipe = fit_with_early_stop_on_validation_set(
+                    pipe=pipe,
                     X=X_train,
                     y=y_train,
                     seed=self.seed,
@@ -143,9 +142,9 @@ class CrossValidator:
                     fit_classifier_kwargs=self.fit_classifier_kwargs
                 )
             else:
-                clf_or_pipe.fit(X_train, y_train, **self.fit_classifier_kwargs)
+                pipe.fit(X_train, y_train, **self.fit_classifier_kwargs)
 
-            pred_proba = clf_or_pipe.predict_proba(X_test)
+            pred_proba = pipe.predict_proba(X_test)
             loss = self._compute_loss_score(pred_proba, y_test)
             cv_losses.append(loss)
             if collect_info: cv_results.append({"repeat": repeat, "fold": fold, "loss": loss})

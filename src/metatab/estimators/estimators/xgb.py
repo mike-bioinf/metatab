@@ -25,7 +25,7 @@ class MyXGBClassifier(DefaultEstimatorMixin, AbstractBaseEstimator):
     Implementation of the default XGBClassifier without tuning and early stop.
 
     Attributes:
-        estimator_ (XGBClassifier|Pipeline): Fitted classifier or pipeline object.
+        estimator_ (Pipeline): Fitted pipeline object.
     '''
     fixed_params = DefaultParams.XGB_DEFAULT_PARAMS
 
@@ -48,7 +48,7 @@ class MyESXGBClassifier(DefaultEstimatorMixin, AbstractBaseEstimator):
     Implementation of the default library XGBClassifier with early stop and without tuning.
 
     Attributes:
-        estimator_ (XGBClassifier|Pipeline): Fitted classifier or pipeline object.
+        estimator_ (Pipeline): Fitted pipeline object.
     '''
     fixed_params=DefaultParams.ES_XGB_DEFAULT_PARAMS
     

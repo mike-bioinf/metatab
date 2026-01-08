@@ -41,7 +41,7 @@ class MyTabPFNClassifier(DefaultEstimatorMixin, AbstractBaseEstimator):
     Implementation of the library default TabPFNClassifier.
 
     Attributes:
-        estimator_ (TabPFNClassifier|Pipeline): Fitted classifier or pipeline object.
+        estimator_ (Pipeline): Fitted pipeline object.
     '''
     fixed_params = DefaultParams.TABPFN_DEFAULT_PARAMS
  

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import warnings
+import pandas as pd
 from typing import TYPE_CHECKING, Literal
 from sklearn.utils.validation import check_is_fitted
 from pytabkit import TabM_D_Classifier
@@ -44,17 +45,16 @@ def suppress_tabm_warnings(func):
 # The interface does not follow the sklearn design using **params in init.
 # For this reason we miss some sklearn features and compabilities.
 # These should not be used/useful to us (the useful ones are explicitely implemented). 
-# Either case if some problems raise up we should define explicitely all "TabM_D_Classifier" init parameters.
 class TabMClassifier:
     '''
     Wrapper of pytabkit "TabM_D_Classifier" that allows for:
     1. "auto" batch size option.
     2. Suppression of undesired warnings.
     3. fit method with eval_set-like interface.
+    4. learns "feature_names_in_" attribute.
 
     Parameters:
-        Accept all TabM_D_Classifier parameters except 
-        batch_size which must be provided using this class interface. 
+        Accept all TabM_D_Classifier parameters.
     '''
     def __init__(self, batch_size: int | Literal["auto"] = 256, **params):
         self.batch_size=batch_size
@@ -81,7 +81,7 @@ class TabMClassifier:
                 The arguments that pass/specify the validation sets must not be used in favor of
                 the `eval_set` parameter.
         '''
-        from metatab.estimators.utils.general import collect_sklearn_classification_fit_info_from_data
+        from metatab.estimators.utils.general import collect_sklearn_classification_fit_info
 
         self.batch_size_ = self.batch_size \
             if isinstance(self.batch_size, int) \
@@ -92,8 +92,12 @@ class TabMClassifier:
         self.classifier = TabM_D_Classifier(batch_size=self.batch_size_, **self.params)
         self.classifier.fit(X, y, X_val=X_val, y_val=y_val, **kwargs)
         
-        for k, v in collect_sklearn_classification_fit_info_from_data(X, y).items():
+        for k, v in collect_sklearn_classification_fit_info(self.classifier).items():
             setattr(self, k, v)
+
+        # learn feature_names_in_ which is not learned by pytabkit classifiers
+        if isinstance(X, pd.DataFrame) and all([isinstance(col, str) for col in X.columns]):
+            self.feature_names_in_ = X.columns
         
         return self
     
@@ -138,7 +142,7 @@ class MyTabMClassifier(DefaultEstimatorMixin, AbstractBaseEstimator):
     Implementation of the library (pytabkit) default TabMClassifier.
 
     Attributes:
-        estimator_ (TabMClassifier|Pipeline): Fitted classifier or pipeline object.
+        estimator_ (Pipeline): Fitted pipeline object.
     '''
     fixed_params = DefaultParams.TABM_DEFAULT_PARAMS
  

@@ -9,7 +9,6 @@ if TYPE_CHECKING:
     import numpy as np
     from sklearn.pipeline import Pipeline
     from metatab.metatab_utils.types import XType
-    from metatab.estimators.utils.types import Classifier
 
 
 
@@ -18,11 +17,11 @@ class DefaultEstimatorMixin:
     Mixin class for the default estimator.
 
     Requirements:
-    - Concrete class must define `estimator_` attribute (Classifier or Pipeline instance).
+    - Concrete class must define the `estimator_` attribute (Pipeline instance).
     - Concrete class MUST inherit from both TunedEstimatorMixin AND AbstractBaseEstimator.
     '''
     if TYPE_CHECKING:
-        estimator_ : Classifier | Pipeline
+        estimator_ : Pipeline
 
 
     def predict(self, X: XType) -> np.ndarray:

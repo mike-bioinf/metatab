@@ -1,35 +1,33 @@
 from __future__ import annotations
 
 from typing import Literal, TYPE_CHECKING
-from sklearn.pipeline import Pipeline
 from metatab.preprocessing.utils import resolve_preprocessing_info
 
 if TYPE_CHECKING:
+    from sklearn.pipeline import Pipeline
     from sklearn.decomposition import PCA
-    from metatab.estimators.utils.types import Classifier
     from metatab.preprocessing import DensityFeatureSelector  
     from metatab.preprocessing.types import PreprocessingStrategy
 
 
 
 def collect_fit_preprocessing_info(
-    clf_or_pipe: Classifier | Pipeline,
+    pipe: Pipeline,
     preprocessing: PreprocessingStrategy,
-    return_on_classifier: Literal["empty_dict", "error"] = "empty_dict",
+    return_on_no_preprocessing: Literal["empty_dict", "error"] = "empty_dict",
     wrap_into_list: bool = True
 ) -> dict:
     '''
-    Returns the preprocessing info from a fitted classifier or pipeline.
+    Returns the preprocessing info from a fitted pipeline.
 
     Parameters:
-        clf_or_pipe (Classifier | Pipeline): 
-            Fitted classifier or pipeline.
+        pipe (Pipeline): Fitted pipeline.
 
         preprocessing (PreprocessingStrategy): 
-            Type of preprocessing used for clf_or_pipe object.
+            Type of preprocessing used for the pipe object.
         
-        return_on_classifier (Literal["empty_dict", "error"]):
-            If no preprocessing is used (no pipeline object) then:
+        return_on_no_preprocessing (Literal["empty_dict", "error"]):
+            If no preprocessing is done, i.e the pipeline in input is shallow, then:
             - if "empty_dict", an empty dict is returned
             - if "error", an error is raised
         
@@ -42,29 +40,29 @@ def collect_fit_preprocessing_info(
     Returns:
         dict: The dictionary with the fit preprocessing info.
     '''
-    if not isinstance(clf_or_pipe, Pipeline):
-        if return_on_classifier == "empty_dict":
+    if len(pipe) == 1:
+        if return_on_no_preprocessing == "empty_dict":
             return {}
-        elif return_on_classifier == "error":
-            raise ValueError("Classifier in input. No preprocessing is done.")
+        elif return_on_no_preprocessing == "error":
+            raise ValueError("Shallow pipeline in input. No preprocessing is done.")
         else:
             raise ValueError("Unsupported value for 'return_on_classifier' parameter.")
     
     preprocessing = resolve_preprocessing_info(preprocessing)
 
-    # from here we deal with a pipeline
+    # from here we deal with a deep pipeline
     if preprocessing == "pca":
-        return _collect_from_pca_preprocessing(clf_or_pipe, wrap_into_list)
+        return _collect_from_pca_preprocessing(pipe, wrap_into_list)
     elif preprocessing == "density_filter":
-        return _collect_from_density_preprocessing(clf_or_pipe)
+        return _collect_from_density_preprocessing(pipe)
     elif preprocessing in ["base", "no"]:
         return {}
     else:
         raise ValueError("Unrecognized preprocessing.")
 
 
-def _collect_from_pca_preprocessing(pipeline: Pipeline, wrap_into_list: bool) -> dict:
-    pca: PCA = pipeline.named_steps["pca"]
+def _collect_from_pca_preprocessing(pipe: Pipeline, wrap_into_list: bool) -> dict:
+    pca: PCA = pipe.named_steps["pca"]
     return {
         "n_pca_components": pca.n_components_,
         "explained_variance_ratio": [pca.explained_variance_ratio_] if wrap_into_list else pca.explained_variance_ratio_,
@@ -72,8 +70,8 @@ def _collect_from_pca_preprocessing(pipeline: Pipeline, wrap_into_list: bool) ->
     }
 
 
-def _collect_from_density_preprocessing(pipeline: Pipeline) -> dict:
-    density_selector: DensityFeatureSelector = pipeline.named_steps["densityfeatureselector"]
+def _collect_from_density_preprocessing(pipe: Pipeline) -> dict:
+    density_selector: DensityFeatureSelector = pipe.named_steps["densityfeatureselector"]
     return {
         "density_selection_strategy": density_selector.strategy_,
         "n_target_features": density_selector.n_target_features_,

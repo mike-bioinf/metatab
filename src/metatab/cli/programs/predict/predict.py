@@ -69,10 +69,13 @@ def main():
     # uniform feature space if requested
     if pars["x_uniform"]:
         fit_features = estimator.get_feature_names_in_()
+        assert fit_features is not None, "The fitted estimator has no fit features names info stored."
+
         if not np.isin(X_test.columns.to_numpy(), fit_features).any():
             raise ValueError(
                 "Test feature space has no feature in common with the training space."
             )
+        
         X_test = X_test.reindex(columns=fit_features, fill_value=0.0)
         logger.debug("Test feature space uniformed to training space.")
     
