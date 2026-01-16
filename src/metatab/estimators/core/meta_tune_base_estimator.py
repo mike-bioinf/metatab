@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import numpy as np
+import pandas as pd
 from typing import TYPE_CHECKING, Literal
+from sklearn.preprocessing import LabelEncoder
 from sklearn.utils.validation import check_is_fitted, check_X_y
 from sklearn.base import BaseEstimator, ClassifierMixin
-from metatab.estimators.utils.general import check_predict_features, check_y_is_integer_encoded
+from metatab.estimators.utils.general import check_predict_features
 from metatab.estimators.core.configurations import TuneConfiguration, EarlyStopConfiguration
+from metatab.estimators.utils.general import learn_sklearn_features_attributes
 
 if TYPE_CHECKING:
     from sklearn.pipeline import Pipeline
@@ -132,7 +135,7 @@ class MetaTuneBaseEstimator(ClassifierMixin, BaseEstimator):
 
         ## Attributes:
 
-            classes_ (int): The classes labels.
+            classes_ (np.ndarray): The array of class labels learnt at fit time.
 
             n_features_in_ (int): Number of features seen during fit.
             
@@ -198,8 +201,11 @@ class MetaTuneBaseEstimator(ClassifierMixin, BaseEstimator):
         Returns:
             self
         '''
-        check_y_is_integer_encoded(y)
         check_X_y(X, y, dtype=None, ensure_all_finite=False)
+
+        le = LabelEncoder()
+        y = le.fit_transform(y)
+        y = pd.Series(y) if isinstance(X, pd.DataFrame) else y  # for Xy "type" uniformity
 
         tune_configuration = TuneConfiguration(
             algo="meta",
@@ -226,8 +232,10 @@ class MetaTuneBaseEstimator(ClassifierMixin, BaseEstimator):
 
         self.estimator_ = estimator.fit(X, y)
 
-        for k, v in self.estimator_.collect_sklearn_fit_info().items():
+        for k, v in learn_sklearn_features_attributes(X).items():
             setattr(self, k, v)
+
+        self.classes_ = le.classes_
         
         if self.build_df_search:
             self.df_search_ = self.estimator_.estimator_.df_search_

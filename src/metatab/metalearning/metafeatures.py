@@ -225,7 +225,7 @@ class CustomMFE:
             )
         
         self._X = X if isinstance(X, np.ndarray) else X.to_numpy()
-        self._y = y if isinstance(X, np.ndarray) else y.to_numpy()
+        self._y = y if isinstance(y, np.ndarray) else y.to_numpy()
         
         if self.mfe:
             _ = self.mfe.fit(

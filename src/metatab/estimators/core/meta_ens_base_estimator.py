@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import pandas as pd
 from typing import TYPE_CHECKING, Literal
 from sklearn.base import ClassifierMixin, BaseEstimator
+from sklearn.preprocessing import LabelEncoder
 from sklearn.utils.validation import check_is_fitted, check_X_y
-from metatab.estimators.utils.general import check_predict_features, check_y_is_integer_encoded
+from metatab.estimators.utils.general import learn_sklearn_features_attributes
+from metatab.estimators.utils.general import check_predict_features
 from metatab.estimators.core.configurations import EarlyStopConfiguration, EnsembleConfiguration
 
 if TYPE_CHECKING:
@@ -156,7 +159,7 @@ class MetaEnsembleBaseEstimator(ClassifierMixin, BaseEstimator):
             
             df_members_ (pd.DataFrame): DataFrame with info about the members fit process.
             
-            classes_ (np.ndarray): Array of unique classes seen at fit level.
+            classes_ (np.ndarray): The array of class labels learnt at fit time.
             
             n_features_in_ (int): Number of features seen at fit level.
             
@@ -217,8 +220,11 @@ class MetaEnsembleBaseEstimator(ClassifierMixin, BaseEstimator):
         Returns:
             self
         '''
-        check_y_is_integer_encoded(y)
         check_X_y(X, y, dtype=None, ensure_all_finite=False)
+
+        le = LabelEncoder()
+        y = le.fit_transform(y)
+        y = pd.Series(y) if isinstance(X, pd.DataFrame) else y  # for Xy "type" uniformity
 
         ens_conf = EnsembleConfiguration(
             name=self.name,
@@ -246,13 +252,14 @@ class MetaEnsembleBaseEstimator(ClassifierMixin, BaseEstimator):
         )
 
         self.estimator_ = estimator.fit(X, y)
-        sklearn_info = self.estimator_.collect_sklearn_fit_info()
+        
+        self.classes_ = le.classes_
+        sklearn_info = learn_sklearn_features_attributes(X)
         ensemble_info = self.estimator_.collect_ensemble_fit_info()
         fit_info = {**sklearn_info, **ensemble_info}
-
         for k, v in fit_info.items():
             setattr(self, k, v)
-
+        
         return self
     
 

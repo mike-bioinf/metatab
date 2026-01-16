@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 from typing import TYPE_CHECKING
 from pathlib import Path
+from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import RepeatedStratifiedKFold
 from sklearn.utils.validation import check_is_fitted, check_X_y
 from metatab.metatab_utils.general import subset_xy, subset_2d
@@ -18,8 +19,7 @@ from metatab.estimators.utils.pick import pick_estimator_class
 
 from metatab.estimators.utils.general import (
     check_predict_features,
-    check_y_is_integer_encoded,
-    collect_sklearn_classification_fit_info_from_data
+    learn_sklearn_features_attributes
 )
 
 from metatab.ensemble.utils import BagCV
@@ -119,7 +119,7 @@ class FamilyEnsembleEstimator:
         df_members_ (pd.DataFrame): 
             DataFrame with info about all members fit process.
 
-        classes_ (np.ndarray): Array of unique classes seen at fit level.
+        classes_ (np.ndarray): The array of class labels learnt at fit time.
         
         n_features_in_ (int): Number of features seen at fit level.
        
@@ -164,8 +164,12 @@ class FamilyEnsembleEstimator:
             self
         '''
         self._check_initialization_inputs()
-        check_y_is_integer_encoded(y)
         check_X_y(X, y, dtype=None, ensure_all_finite=False)
+        
+        # encode y
+        le = LabelEncoder()
+        y = le.fit_transform(y)
+        y = pd.Series(y) if isinstance(X, pd.DataFrame) else y  # for Xy "type" uniformity
 
         confs = [self.configuration]\
             if isinstance(self.configuration, UserEnsembleConfiguration)\
@@ -201,7 +205,6 @@ class FamilyEnsembleEstimator:
             rng = np.random.default_rng(self.seed)
             n_features = X.shape[1]
             n_subset_features = int(n_features * self.feature_space_ratio)
-
             col_idx = [
                 rng.choice(n_features, size=n_subset_features, replace=False)
                 for _ in range(n_confs)
@@ -247,10 +250,10 @@ class FamilyEnsembleEstimator:
             self.ensembles_.append(ens_classifier.fit(X_clf, y_clf))
 
         self._collect_inner_ensembles_info()
-        self.is_cleaned_ = False
-        
-        for k, v in collect_sklearn_classification_fit_info_from_data(X, y).items():
+        self.is_cleaned_ = False        
+        for k, v in learn_sklearn_features_attributes(X).items():
             setattr(self, k, v)
+        self.classes_ = le.classes_
 
         logger.info(f"Completed family ensemble building process in {round(self.fit_time_ / 60, 2)} minutes.")
         
@@ -355,16 +358,6 @@ class FamilyEnsembleEstimator:
         self.is_cleaned_ = True
     
 
-    def get_feature_names_in_(self) -> np.ndarray | None:
-        '''
-        Get the 'feature_names_in_' attribute or None 
-        when the instance has been fitted on numpy arrays. 
-        Raise an error when the instance is not fitted.
-        '''
-        check_is_fitted(self, "ensembles_")
-        return getattr(self, "feature_names_in_", None)
-    
-
     def save(self, filepath: str | Path, check_is_fitted: bool = False) -> None:
         '''
         Serialize the instance using pickle.
@@ -406,12 +399,12 @@ class FamilyEnsembleEstimator:
         df_members_list = []
 
         fit_time_total = 0
-        is_void_flags = []
+        void_flags = []
 
         for ens in self.ensembles_:
             estimator = ens.estimator_
             name = estimator.name
-            is_void_flags.append(estimator.is_void_)
+            void_flags.append(estimator.is_void_)
             fit_time_total += estimator.fit_time_
             successful_members[name] = estimator.successful_members_
             failed_members[name] = estimator.failed_members_
@@ -419,7 +412,7 @@ class FamilyEnsembleEstimator:
             failed_hps_confs[name] = estimator.failed_hps_confs_
             df_members_list.append(estimator.df_members_.assign(ensemble=name))
 
-        self.is_void_ = all(is_void_flags)
+        self.is_void_ = all(void_flags)
         self.fit_time_ = fit_time_total
         self.successful_members_ = successful_members
         self.failed_members_ = failed_members

@@ -5,10 +5,13 @@ The program seralizes the fitted model in a binary file via pickle.
 
 import sys
 import argparse
+import numpy as np
+import pandas as pd
+from sklearn.preprocessing import LabelEncoder
 from metatab.metatab_utils.data_loader import DataLoader
 from metatab.estimators.estimators import Estimator
 from metatab.estimators.utils.pick import pick_estimator_class
-from metatab.estimators.utils.general import check_y_is_integer_encoded, check_meta_tuning_options
+from metatab.estimators.utils.general import check_meta_tuning_options, learn_sklearn_features_attributes
 from metatab.metalearning.load import query_surrogate_framework
 from metatab.ensemble.family import FamilyEnsembleEstimator
 from metatab.ensemble.utils import BagCV
@@ -91,12 +94,16 @@ def main():
         skip=["X_test", "y_test"]
     )
 
-    X_train, y_train = dl.X_train, dl.y_train
-    check_y_is_integer_encoded(y_train)
+    X, y = dl.X_train, dl.y_train
     logger.debug("Data loaded in memory!")
+    
     # here we consider all 3 load methods to retrieve the dataset_name
     fit_dataset_name = dl.train_dataset_name if dl.train_dataset_name else dl.generic_dataset_name
-
+    
+    # encode y
+    le = LabelEncoder()
+    y_enc = pd.Series(le.fit_transform(y)) # to have Xy "type" uniformity
+   
 
     if pars["estimator_mode"] == "family_ensemble":
         configuration = get_ensemble_configuration(pars["ensemble_configuration"])
@@ -140,13 +147,16 @@ def main():
         )
 
 
-    estimator.fit(X_train, y_train)
+    estimator.fit(X, y_enc)
     logger.debug("Estimator fitted on training data.")
     
-    # we set y_train and fit_dataset_name since are requested by the predict program 
-    estimator._y_train_ = y_train
+    # we set attributes requested by the predict program
+    estimator._le_ = le
+    estimator._classes_ = le.classes_
+    estimator._classes_counts_ = np.unique(y_enc.to_numpy(), return_counts=True)[1]
     estimator._fit_dataset_name_ = fit_dataset_name
-    
+    estimator._fit_features_ = X.columns
+
     out_filepath = pars["output_dir"] / "estimator.pkl"
     estimator.save(out_filepath, check_is_fitted=True)
     logger.debug(f"Estimator serialized in '{out_filepath}'.")
