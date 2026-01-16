@@ -8,7 +8,6 @@ import numpy as np
 from metatab.metatab_utils.data_loader import DataLoader
 from metatab.metatab_utils.prediction import PredictionDataframe
 from metatab.estimators.estimators import Estimator
-from metatab.estimators.utils.general import check_y_is_integer_encoded
 from metatab.ensemble.family import FamilyEnsembleEstimator
 
 from metatab.cli.helper import (
@@ -53,40 +52,40 @@ def main():
         skip=["X_train", "y_train"]
     )
 
-    X_test, y_test = dl.X_test, dl.y_test
-    check_y_is_integer_encoded(y_test)
+    X, y = dl.X_test, dl.y_test
     logger.debug("Data loaded in memory!")
 
     # here we consider all 3 load methods to retrieve the predict dataset name
     predict_dataset_name = dl.test_dataset_name if dl.test_dataset_name else dl.generic_dataset_name
     fit_dataset_name = estimator._fit_dataset_name_
-    
+
+    # encode y
+    y_enc = estimator._le_.transform(y)
+
     if isinstance(estimator, FamilyEnsembleEstimator):
         fit_preprocessing_dict = {}
     else:
         fit_preprocessing_dict = estimator.collect_fit_preprocessing_info()
-
-    # uniform feature space if requested
+    
+    # uniform feature space when requested
     if pars["x_uniform"]:
-        fit_features = estimator.get_feature_names_in_()
-        assert fit_features is not None, "The fitted estimator has no fit features names info stored."
-
-        if not np.isin(X_test.columns.to_numpy(), fit_features).any():
+        fit_features = estimator._fit_features_
+        if not np.isin(X.columns.to_numpy(), fit_features).any():
             raise ValueError(
                 "Test feature space has no feature in common with the training space."
             )
-        
-        X_test = X_test.reindex(columns=fit_features, fill_value=0.0)
+        X = X.reindex(columns=fit_features, fill_value=0.0)
         logger.debug("Test feature space uniformed to training space.")
     
-    pred_proba = estimator.predict_proba(X_test)
+    pred_proba = estimator.predict_proba(X)
     pdf = PredictionDataframe()
 
     pdf.build_from_data(
         dataset=fit_dataset_name,
-        y_train=estimator._y_train_,
-        y_test=y_test,
+        y_test=y_enc,
         pred_proba=pred_proba,
+        classes=estimator._classes_,
+        classes_counts=estimator._classes_counts_,
         save_path=None,
         predict_dataset=predict_dataset_name,
         preprocessing=estimator.preprocessing,

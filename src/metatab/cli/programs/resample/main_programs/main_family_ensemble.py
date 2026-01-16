@@ -3,9 +3,9 @@ import numpy as np
 import pandas as pd
 from time import time
 from collections import defaultdict
+from sklearn.preprocessing import LabelEncoder
 from metatab.metatab_utils.data_loader import DataLoader
 from metatab.metatab_utils.prediction import PredictionDataframe
-from metatab.estimators.utils.general import check_y_is_integer_encoded
 from metatab.ensemble.family import FamilyEnsembleEstimator
 from metatab.ensemble.utils import BagCV
 
@@ -54,10 +54,12 @@ def main_family_ensemble(pars: dict):
     )
 
     X, y = dl.X, dl.y
-    check_y_is_integer_encoded(y)
     name_dataset = dl.generic_dataset_name
     logger.debug(f"\nBuilding family-ensemble on {name_dataset}!")
-    splitter = pick_splitter(pars)
+    
+    # encode y
+    le = LabelEncoder()
+    y = pd.Series(le.fit_transform(y))
 
     # initialize outputs
     output_dir = pars["output_dir"]
@@ -69,6 +71,7 @@ def main_family_ensemble(pars: dict):
     list_dfs_ensemble_info = []
     filepath_df_ensemble_info = output_dir / "family_ensemble.txt"
 
+    splitter = pick_splitter(pars)
     rng_ensemble = np.random.default_rng(pars["seed_estimator"])
     configuration = get_ensemble_configuration(pars["ensemble_configuration"])
     # this is to avoid the first download inside the fit call inflating times
@@ -122,7 +125,8 @@ def main_family_ensemble(pars: dict):
             "splitting_mode": pars["splitting_mode"],
             "repetition": repetition,
             "fold": fold,
-            "y_train": y_train,
+            "classes": le.classes_,
+            "classes_counts": np.unique(y_train.to_numpy(), return_counts=True)[1],
             "y_test": y_test,
             "pred_proba": pred_proba,
             "fit_time": fit_time,

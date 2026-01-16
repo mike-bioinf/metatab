@@ -38,7 +38,10 @@ def to_list_of_numpy_arrays(
 
 
 def are_same_length(*iterables) -> bool:
-    '''Utility to verify if all iterables in the sequence have the same length. Return a bool.'''
+    '''
+    Utility to verify if all iterables in the sequence have the same length. 
+    Returns a bool.
+    '''
     if not iterables:
         return ValueError("No argument passed in input.")
     first_length = len(iterables[0])

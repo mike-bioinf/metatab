@@ -3,11 +3,12 @@ import numpy as np
 import pandas as pd
 from time import time
 from collections import defaultdict
+from sklearn.preprocessing import LabelEncoder
 from metatab.metatab_utils.data_loader import DataLoader
 from metatab.metatab_utils.prediction import PredictionDataframe
 from metatab.estimators.utils.pick import pick_estimator_class
 from metatab.estimators.estimators import EnsembledEstimator
-from metatab.estimators.utils.general import check_meta_tuning_options, check_y_is_integer_encoded
+from metatab.estimators.utils.general import check_meta_tuning_options
 from metatab.metalearning.load import query_surrogate_framework
 
 from metatab.cli.programs.resample.helper import (
@@ -69,13 +70,16 @@ def main_ensemble(pars: dict):
     )
 
     X, y = dl.X, dl.y
-    check_y_is_integer_encoded(y)
     name_dataset = dl.generic_dataset_name
-
+    
     logger.debug(
         f"\nLaunching {pars["ensemble_algo"]} ensembled {pars["estimator"]}" + 
         f" with {pars["ensemble_space"]} space on {name_dataset}!"
     )
+
+    # y encoding
+    le = LabelEncoder()
+    y = pd.Series(le.fit_transform(y))
 
     splitter = pick_splitter(pars)
     estimator_class = pick_estimator_class(pars["estimator"], pars["estimator_mode"])
@@ -145,7 +149,8 @@ def main_ensemble(pars: dict):
             "repetition": repetition,
             "fold": fold,
             **fit_preprocessing_dict,
-            "y_train": y_train,
+            "classes": le.classes_,
+            "classes_counts": np.unique(y_train.to_numpy(), return_counts=True)[1],
             "y_test": y_test,
             "pred_proba": pred_proba,
             "fit_time": fit_time,

@@ -5,7 +5,7 @@ from typing import Any
 
 
 
-def save_ndarray_to_str(value: Any):
+def safe_ndarray_to_str(value: Any):
     '''ndarray_to_str function with conditional check on input type.'''
     return ndarray_to_str(value) if isinstance(value, np.ndarray) else value
 
@@ -22,11 +22,11 @@ def ndarray_to_str(a: np.ndarray) -> str:
     return base64.b64encode(buffer.read()).decode('utf-8')
 
 
-def save_str_to_ndarray(value: Any):
+def safe_str_to_ndarray(value: Any):
     '''
     str_to_ndarray function with conditional check on str.
     We check that the value is str before transforming it
-    since in our columns we can have pd.NA and floats other 
+    since in our columns we can have pd.NA and floats other than
     str representations of numpy arrays, but not "native" strings.
     '''
     return str_to_ndarray(value) if isinstance(value, str) else value

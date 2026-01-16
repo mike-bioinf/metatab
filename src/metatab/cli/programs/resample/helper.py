@@ -1,10 +1,8 @@
 from __future__ import annotations
 
-import json
 import warnings
 import numpy as np
 import pandas as pd
-from pathlib import Path
 from typing import TYPE_CHECKING
 from pandas._libs.missing import NAType
 from sklearn.model_selection import RepeatedStratifiedKFold, StratifiedShuffleSplit

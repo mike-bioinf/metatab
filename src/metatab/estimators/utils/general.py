@@ -78,6 +78,7 @@ def update_dict(
     return dictionary
 
 
+
 def check_meta_tuning_options(
     estimator: EstimatorType, 
     preprocessing: PreprocessingStrategy, 
@@ -107,6 +108,7 @@ def check_meta_tuning_options(
         )
 
 
+
 def check_validation_set_options(
     estimator: EstimatorType,
     use_validation_sets: bool,
@@ -133,7 +135,7 @@ def check_validation_set_options(
 
 
 def collect_sklearn_classification_fit_info(
-    obj: Any, 
+    obj: Any,
     missing_feature_names_in: Literal["error", "none", "skip"] = "skip"
 ) -> dict:
     '''
@@ -167,19 +169,18 @@ def collect_sklearn_classification_fit_info(
 
 
 
-def collect_sklearn_classification_fit_info_from_data(X: XType, y: YType) -> dict:
+def learn_sklearn_features_attributes(X: XType) -> dict:
     '''
-    Collect the tipical sklearn classification info from the fit data.
-    In detail we derive the `classes_`, `n_features_in_` and when
-    possible the `feature_names_in_` info using these string as keys. 
+    Learn the tipical sklearn classification info from the X fit data.
+    In detail we derive `n_features_in_` and when possible the `feature_names_in_` 
+    info using these string as keys. 
     '''
-    y = y.to_numpy() if isinstance(y, pd.Series) else y
-    res = {"classes_": np.unique(y), "n_features_in_": X.shape[1]}
+    res = {"n_features_in_": X.shape[1]}
     if isinstance(X, pd.DataFrame) and all([isinstance(col, str) for col in X.columns]):
         res["feature_names_in_"] = X.columns
     return res
 
-
+    
 
 def check_predict_features(obj: Any, X: XType) -> None:
     '''

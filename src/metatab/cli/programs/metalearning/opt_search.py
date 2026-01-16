@@ -7,12 +7,13 @@ from __future__ import annotations
 
 import sys
 import argparse
+import pandas as pd
 from time import time
 from typing import TYPE_CHECKING
+from sklearn.preprocessing import LabelEncoder
 from metatab.metatab_utils.data_loader import DataLoader
 from metatab.hp_search.config import ConfigSearchCV
 from metatab.estimators.utils.pick import pick_estimator_class
-from metatab.estimators.utils.general import check_y_is_integer_encoded
 
 from metatab.cli.parser import (
     make_base_parser, 
@@ -94,10 +95,12 @@ def main():
     )
 
     X, y, name_dataset = dl.X, dl.y, dl.generic_dataset_name
-    check_y_is_integer_encoded(y)
-
     log_program_setting(logger, pars, name_dataset)
     logger.debug("Data loaded in memory!")
+
+    # encode y
+    le = LabelEncoder()
+    y = pd.Series(le.fit_transform(y))
     
     estimator_class = pick_estimator_class(pars["estimator"], "tune")
 

@@ -3,7 +3,6 @@ from __future__ import annotations
 import numpy as np
 from typing import TYPE_CHECKING
 from sklearn.utils.validation import check_is_fitted
-from metatab.estimators.utils.general import collect_sklearn_classification_fit_info
 from metatab.preprocessing.collect import collect_fit_preprocessing_info
 
 if TYPE_CHECKING:
@@ -47,23 +46,6 @@ class TunedEstimatorMixin:
             self.estimator_.best_estimator_,
             self.preprocessing,
         )
-
-    
-    def get_feature_names_in_(self) -> np.ndarray | None:
-        check_is_fitted(self, "estimator_")
-        self._check_estimator_is_refitted()
-        return getattr(self.estimator_.best_estimator_, "feature_names_in_", None)
-    
-
-    def collect_sklearn_fit_info(self) -> dict:
-        '''
-        Returns the `classes_`, `n_features_in_` and when existent 
-        the `feature_names_in_` info in a dict with the keys names
-        equal to the attributes names.
-        '''
-        check_is_fitted(self, "estimator_")
-        self._check_estimator_is_refitted()
-        return collect_sklearn_classification_fit_info(self.estimator_.best_estimator_)
 
 
     def predict(self, X: XType) -> np.ndarray:

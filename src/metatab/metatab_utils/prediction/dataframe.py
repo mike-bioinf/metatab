@@ -11,14 +11,6 @@ from copy import deepcopy
 from warnings import warn
 from metatab.metatab_utils.prediction.metrics import compute_metrics
 
-from metatab.metatab_utils.prediction.constants import (
-    PERFORMANCE_METRICS,
-    MUST_COLUMNS_TO_PARSE,
-    OPTIONAL_COLUMNS_TO_PARSE,
-    MANDATORY_COLUMNS,
-    EXTRACTED_COLUMNS
-)
-
 from metatab.metatab_utils.prediction.utils import (
     wrap_into_list, 
     to_list_of_numpy_arrays, 
@@ -26,10 +18,9 @@ from metatab.metatab_utils.prediction.utils import (
 )
 
 from metatab.metatab_utils.prediction.parser import (
-    save_ndarray_to_str,
-    save_str_to_ndarray
+    safe_ndarray_to_str,
+    safe_str_to_ndarray
 )
-
 
 
 
@@ -37,26 +28,29 @@ class PredictionDataframe():
     '''
     Class to manage the I/O of classification inference data.
 
-    The prediction dataframe has specific columns collecting specific info:
-    "dataset", "classification_setting", "classes", "classes_counts", "test_labels", 
-    "pred_labels" and "pred_proba".
+    The prediction dataframe has specific mandatory columns:
+    "dataset", "classification_setting", "classes", "classes_counts", 
+    "test_labels", "pred_labels" and "pred_proba".
 
     pd.NA/np.nan/None values are allowed only in "pred_labels" and "pred_proba" columns.
-
-    As general design one can access and modify the underlying pandas DataFrame, 
-    with the exception of these columns.
     '''
     def __init__(self):
         self.df: pd.DataFrame = None
-        self.must_columns = MANDATORY_COLUMNS
-        self.must_columns_to_parse = MUST_COLUMNS_TO_PARSE
-        self.optional_columns_to_parse = OPTIONAL_COLUMNS_TO_PARSE
-        self.metrics_columns = PERFORMANCE_METRICS
-        self.all_columns_to_parse = (
-            MUST_COLUMNS_TO_PARSE + 
-            OPTIONAL_COLUMNS_TO_PARSE +
-            PERFORMANCE_METRICS
-        )
+        self.mandatory_columns = [
+            "dataset", "classification_setting", "classes", "classes_counts", 
+            "test_labels", "pred_labels", "pred_proba"
+        ]
+        self.metrics_columns = [
+            "recall", "precision", "f1", "accuracy", "ap", "auc"
+        ]
+        self.columns_to_parse = [
+            "classes", "classes_counts", "test_labels", "pred_labels", "pred_proba",
+            "recall", "precision", "f1", "accuracy", "ap", "auc",
+            # TODO: for now we hardcode the possible additional columns that must be parsed 
+            # change in better and more flexible design
+            "explained_variance_ratio" 
+        ]
+        self.extracted_columns = ["classification_setting", "pred_labels"]
         self.has_recovered = None
 
 
@@ -70,28 +64,43 @@ class PredictionDataframe():
 
     def build_from_data(
         self,
-        dataset: str | list[str] | pd.Series,
-        y_train: np.ndarray | pd.Series | list[pd.Series | np.ndarray],
+        dataset: str | list[str],
         y_test: np.ndarray | pd.Series | list[pd.Series | np.ndarray],
         pred_proba: np.ndarray | list[np.ndarray],
+        classes: np.ndarray | list[np.ndarray],
+        classes_counts: np.ndarray | list[np.ndarray],
         save_path: str | Path | None = None,
         **add_columns
     ) -> "PredictionDataframe":
         '''
         Build the PredictionDataFrame from data. 
         It presents a recover strategy that enables to save 
-        the input data as a dict serialized in a pickle file,
+        the input data as a dict serialized to a pickle file,
         if an exception is raised during the process (see 'save_path' param).
 
         Parameters:
-            dataset (str | list[str] | pd.Series): Dataset name/s.
-            y_train (np.ndarray | pd.Series | list[pd.Series | np.ndarray]): Training labels.
-            y_test (np.ndarray | pd.Series | list[pd.Series | np.ndarray]): Test labels.
-            pred_proba (np.ndarray | list[np.ndarray]): Predicted probabilities.
+            dataset (str | list[str]): 
+                Dataset name/s.
+            
+            y_test (np.ndarray | pd.Series | list[pd.Series | np.ndarray]): 
+                Test labels.
+            
+            pred_proba (np.ndarray | list[np.ndarray]): 
+                Predicted probabilities.
+            
+            classes (np.ndarray | list[np.ndarray]):
+                Array of class labels like the ones learned by ML models.
+                The order must reflect the prediction order.
+
+            classes_counts (np.ndarray | list[np.ndarray]):
+                Array of train labels counts.
+                Must follow the order of 'classes'.
+
             save_path (str | Path | None): 
                 Path to the folder where the pickle file is saved.
                 The file name is automatically created using the "partial_data__" prefix + time stamp.
                 If None, the default, the recover strategy is not used.
+            
             **add_columns: 
                 Additional columns to add to the dataframe.
                 The keys are used as column names and the values as column values.
@@ -101,35 +110,32 @@ class PredictionDataframe():
         '''
         partial_data = {
             "dataset": dataset,
-            "y_train": y_train,
             "y_test": y_test,
             "pred_proba": pred_proba,
+            "classes": classes,
+            "classes_counts": classes_counts,
             "add_columns": add_columns
         }
 
         try:
+            reserved_columns = self.mandatory_columns + self.metrics_columns
             for key in add_columns.keys():
-                if key in self.must_columns:
+                if key in reserved_columns:
                     raise KeyError(
-                        f"Is not possible to add columns with one of the following names: {self.must_columns}"
+                        f"Is not possible to add columns with one of the following names: {reserved_columns}"
                     )
             
-            dataset, pred_proba, y_train, y_test = self._adapt_data(
-                dataset, 
-                pred_proba, 
-                y_train, 
+            dataset, pred_proba, classes, classes_counts, y_test = self._adapt_data(
+                dataset,
+                pred_proba,
+                classes,
+                classes_counts,
                 y_test,
                 copy=True
             )
 
-            self._check_adapted_data(dataset, pred_proba, y_train, y_test)
-
-            (
-                classes, 
-                classes_counts, 
-                classification_setting, 
-                pred_labels
-            ) = self._extract_info_from_data(pred_proba, y_train)
+            self._check_adapted_data(dataset, pred_proba, classes, classes_counts, y_test)
+            classification_setting, pred_labels = self._extract_info_from_data(pred_proba, classes)
 
             df = {
                 "dataset": dataset,
@@ -155,7 +161,6 @@ class PredictionDataframe():
             raise
             
 
-
     def add_rows(
         self, 
         rows: dict | list[dict], 
@@ -171,18 +176,25 @@ class PredictionDataframe():
             rows (dict | list[dict]):
                 Dictionaries to add as new rows. 
                 They must have some mandatory keys.
+            
             compute_metrics (bool, optional):
                 Whether to compute the performance metrics on the new rows.
+            
             multiclass (Literal["ovr", "average"] | None, optional):
-                See "compute_metrics" method doc. Ignored when "compute_metrics" is False.
+                See "compute_metrics" method doc. 
+                Ignored when "compute_metrics" is False.
+            
             average_strategy (Literal["micro", "macro", "weighted"] | None, optional):
-                See "compute_metrics" method doc. Ignored when "compute_metrics" is False.
+                See "compute_metrics" method doc. 
+                Ignored when "compute_metrics" is False.
 
         Returns:
             PredictionDataframe: self.
         '''        
         if compute_metrics and (multiclass is None or average_strategy is None):
-            raise ValueError("To compute metrics both 'multiclass' and 'average_strategy' must be specified.")
+            raise ValueError(
+                "To compute metrics both 'multiclass' and 'average_strategy' must be specified."
+            )
 
         rows = wrap_into_list(rows)
 
@@ -192,17 +204,14 @@ class PredictionDataframe():
                 raise TypeError("Found non-dict objects in rows.")
             
             # check mandatory keys
-            for must_column in ["dataset", "y_test", "y_train", "pred_proba"]:
+            for must_column in ["dataset", "y_test", "classes", "classes_counts", "pred_proba"]:
                 if must_column not in row.keys():
                     raise KeyError(
                         f"The following mandatory key is missing at least in one row-dict: {must_column}"
                     )
             
             # check conflicting keys
-            conflicting_keys = EXTRACTED_COLUMNS + self.metrics_columns \
-                if compute_metrics \
-                else EXTRACTED_COLUMNS
-            
+            conflicting_keys = self.extracted_columns + self.metrics_columns 
             for conflicting_key in conflicting_keys:
                 if conflicting_key in row.keys():
                     raise KeyError(
@@ -218,22 +227,17 @@ class PredictionDataframe():
                 for k, v in row.items():
                     single_dict[k].append(v)
 
-        dataset, pred_proba, y_train, y_test = self._adapt_data(
+        dataset, pred_proba, classes, classes_counts, y_test = self._adapt_data(
             single_dict["dataset"],
             single_dict["pred_proba"],
-            single_dict["y_train"],
+            single_dict["classes"],
+            single_dict["classes_counts"],
             single_dict["y_test"],
             copy=True
         )
 
-        self._check_adapted_data(dataset, pred_proba, y_train, y_test)
-        
-        (
-            classes, 
-            classes_counts, 
-            classification_setting, 
-            pred_labels
-        ) = self._extract_info_from_data(pred_proba, y_train)
+        self._check_adapted_data(dataset, pred_proba, classes, classes_counts, y_test)
+        classification_setting, pred_labels = self._extract_info_from_data(pred_proba, classes)
 
         single_dict["dataset"] = dataset
         single_dict["classification_setting"] = classification_setting
@@ -243,8 +247,6 @@ class PredictionDataframe():
         single_dict["pred_proba"] = pred_proba
         single_dict["pred_labels"] = pred_labels
         
-        # y_train is not part of the output
-        del single_dict["y_train"]
         # y_test must be nominated as test_labels for uniformity with build methods
         del single_dict["y_test"]
 
@@ -257,66 +259,62 @@ class PredictionDataframe():
         return self
 
 
-
     @staticmethod
     def _adapt_data(
-        dataset: str | list[str] | pd.Series,
+        dataset: str | list[str],
         pred_proba: np.ndarray | list[np.ndarray],
-        y_train: np.ndarray | pd.Series | list[np.ndarray | pd.Series],
+        classes: np.ndarray | list[np.ndarray],
+        classes_counts: np.ndarray | list[np.ndarray],
         y_test: np.ndarray | pd.Series | list[np.ndarray | pd.Series],
         copy: bool = False
-    ) -> list[list, list[np.ndarray], list[np.ndarray], list[np.ndarray]]:
+    ) -> list[list]:
         '''
         Adapt and return the data in the input order.
-        The adaptation is done on a deepcopy when `copy` is True.
+        The adaptation is done on deepcopies when `copy` is True.
         '''
-        dataset, pred_proba, y_train, y_test = wrap_into_list(
+        dataset, pred_proba, classes, classes_counts, y_test = wrap_into_list(
             dataset, 
-            pred_proba,
-            y_train, 
+            pred_proba, 
+            classes,
+            classes_counts,
             y_test
         )
-        
-        y_train = deepcopy(y_train) if copy else y_train
-        y_test = deepcopy(y_test) if copy else y_test
-
-        y_train = to_list_of_numpy_arrays(y_train)
-        y_test = to_list_of_numpy_arrays(y_test)
-        
-        return dataset, pred_proba, y_train, y_test
-
+        y_test = to_list_of_numpy_arrays(y_test, copy)
+        classes = deepcopy(classes) if copy else classes
+        classes_counts = deepcopy(classes_counts) if copy else classes_counts
+        return dataset, pred_proba, classes, classes_counts, y_test
 
 
     def _check_adapted_data(
         self,
-        dataset: list[str|pd.Series],
-        pred_proba: Iterable[np.ndarray], 
-        y_train: Iterable[np.ndarray], 
-        y_test: Iterable[np.ndarray]
+        dataset: list[str],
+        pred_proba: list[np.ndarray],
+        classes,
+        classes_counts,
+        y_test: list[np.ndarray]
     ) -> None:
         '''Check on the adapted data used in the 'build_from_data' and 'add_rows' methods.'''
-        if not are_same_length(dataset, pred_proba, y_train, y_test):
+        if not are_same_length(dataset, pred_proba, classes, classes_counts, y_test):
             raise ValueError((
                 "The input iterables have not the same length." 
                 " Note that 'scalar' inputs are internally converted to iterables."
             ))
         self._check_array_dims(pred_proba, 2, "pred_proba", allow_na=True)
-        self._check_array_dims(y_train, 1, "y_train")
         self._check_array_dims(y_test, 1, "y_test")
+        self._check_array_dims(classes, 1, "classes")
+        self._check_array_dims(classes_counts, 1, "classes_counts")
         self._check_ytest_predproba_shapes(y_test, pred_proba)
-
 
 
     @staticmethod
     def _extract_info_from_data(
         pred_proba: list[np.ndarray],
-        y_train: list[np.ndarray]
+        classes: list[np.ndarray]
     ) -> list[list]:
-        list_unique_tuples = [np.unique(array, return_counts=True) for array in y_train]
-        classes = [t[0] for t in list_unique_tuples]
-        classes_counts = [t[1] for t in list_unique_tuples]
+        '''
+        Extract the classification setting and predicted labels info.
+        '''
         classification_setting = ["binary" if array.size == 2 else "multiclass" for array in classes]
-        
         # allowing NA/nan/None in predictions
         pred_labels = [
             a 
@@ -324,9 +322,7 @@ class PredictionDataframe():
             else np.argmax(a, axis=1) 
             for a in pred_proba
         ]
-
-        return classes, classes_counts, classification_setting, pred_labels
-
+        return classification_setting, pred_labels
 
 
     @staticmethod
@@ -343,27 +339,6 @@ class PredictionDataframe():
         return dump_file
 
 
-
-    @staticmethod
-    def _compute_metrics(
-        df: pd.DataFrame, 
-        multiclass: Literal["ovr", "average"], 
-        average_strategy: Literal["micro", "macro", "weighted"]
-    ) -> pd.DataFrame:
-        '''
-        Internal version of 'compute_metrics' that act on a generic dataframe.
-        Returns the extended dataframe.
-        '''
-        df_metrics = df.apply(
-            compute_metrics, 
-            axis=1, 
-            multiclass=multiclass, 
-            average_strategy=average_strategy
-        )
-        return pd.concat([df, df_metrics], axis=1)
-    
-
-
     def compute_metrics(
         self, 
         multiclass: Literal["ovr", "average"],
@@ -377,8 +352,8 @@ class PredictionDataframe():
         in a "one vs rest" approach (ovr) or averaged using different strategies.
         
         In "ovr" multiclass scenario multiple values are computed and stored in numpy arrays.
-        The values order of the resulting array follows the encoded numerical order of classes, 
-        assuming the class at that position as the positive one. 
+        The values order of the resulting array follows the classes order, 
+        assuming the class at each position as the positive one. 
         So the first metric refer to the case in which the positive class is 0, then 1, 2, ... .
 
         In "average" multiclass scenario single averaged values are computed and returned.
@@ -399,10 +374,32 @@ class PredictionDataframe():
             raise ValueError("The 'df' attribute is None.") 
         self.df = self._compute_metrics(self.df, multiclass, average_strategy)
         return self
-         
 
 
-    def to_csv(self, filepath: str | Path, **kwargs) -> None:
+    @staticmethod
+    def _compute_metrics(
+        df: pd.DataFrame, 
+        multiclass: Literal["ovr", "average"], 
+        average_strategy: Literal["micro", "macro", "weighted"]
+    ) -> pd.DataFrame:
+        '''
+        Internal version of 'compute_metrics' that act on a generic dataframe.
+        Returns the extended dataframe.
+        '''
+        df_metrics = df.apply(
+            compute_metrics, 
+            axis=1, 
+            multiclass=multiclass, 
+            average_strategy=average_strategy
+        )
+        return pd.concat([df, df_metrics], axis=1)
+
+
+    def to_csv(
+        self, 
+        filepath: str | Path, 
+        **kwargs
+    ) -> None:
         '''
         Save the underlying DataFrame into a text file.
         Parameters:
@@ -417,23 +414,22 @@ class PredictionDataframe():
                 "The PredictionDataframe does not contain data. The 'df' attribute is None."
             )
         
-        df_copy = deepcopy(self.df)
+        df_copy = self.df.copy()
 
-        for col in self.all_columns_to_parse:
+        for col in self.columns_to_parse:
             if col in df_copy.columns:
-                df_copy[col] = df_copy[col].apply(save_ndarray_to_str)
+                df_copy[col] = df_copy[col].apply(safe_ndarray_to_str)
 
         df_copy.to_csv(filepath, **kwargs)
 
 
-
     def build_from_file(
-        self, 
-        file: str | Path, 
+        self,
+        file: str | Path,
         **read_params
     ) -> "PredictionDataframe":
         '''
-        Read the prediction DataFrame from a file using pandas read_csv function.
+        Read the prediction DataFrame from a file using pandas `read_csv` function.
         Parameters:
             file (str | Path): filepath.
             **read_params: Additonal kwargs to pass to the pandas "read_csv" function.
@@ -441,11 +437,10 @@ class PredictionDataframe():
             Self.
         '''
         df = pd.read_csv(file, **read_params)
-        self._check_must_columns_presence(df)
-        self._warn_na_in_must_columns(df)
+        self._check_mandatory_columns_presence(df)
+        self._warn_na_in_mandatory_columns(df)
         self.df = self._parse_str_to_numpy_arrays(df)
         return self
-
 
 
     def build_from_folder(
@@ -476,26 +471,25 @@ class PredictionDataframe():
         if not folder.is_dir():
             raise FileNotFoundError(f"'{folder}' is not a folder.")
 
-        bound_search_method = folder.rglob if recursive else folder.glob
+        search_method = folder.rglob if recursive else folder.glob
+        
         dfs = []
-
-        for df_file in bound_search_method(glob_pattern):
+        for df_file in search_method(glob_pattern):
             dfs.append(pd.read_csv(df_file, **read_params))
 
         df = pd.concat(dfs, axis=0, ignore_index=True)
-        self._check_must_columns_presence(df)
-        self._warn_na_in_must_columns(df)
+        self._check_mandatory_columns_presence(df)
+        self._warn_na_in_mandatory_columns(df)
         df = self._parse_str_to_numpy_arrays(df)
         self.df = df
         return self
 
 
-
     def _parse_str_to_numpy_arrays(self, df: pd.DataFrame) -> pd.DataFrame:
         '''Parse the string representation of numpy arrays back to numpy arrays'''
-        for col in self.all_columns_to_parse:
+        for col in self.columns_to_parse:
             if col in df.columns:
-                df[col] = df[col].apply(save_str_to_ndarray)
+                df[col] = df[col].apply(safe_str_to_ndarray)
         return df
 
         
@@ -537,17 +531,17 @@ class PredictionDataframe():
                 raise ValueError(f"Not all arrays in {name_iterable} are {number_dims}D.")
 
 
-    def _check_must_columns_presence(self, df: pd.DataFrame) -> None:
+    def _check_mandatory_columns_presence(self, df: pd.DataFrame) -> None:
         '''Perform sanity check on the prediction dataframe.'''
-        for col in self.must_columns:
+        for col in self.mandatory_columns:
             if col not in df.columns:
                 raise KeyError(
                     f"'{col}' column must be present in a PredictionDataFrame object."
                 )
             
 
-    def _warn_na_in_must_columns(self, df: pd.DataFrame) -> None:
+    def _warn_na_in_mandatory_columns(self, df: pd.DataFrame) -> None:
         '''Warns about NAs in must columns'''
-        for col in self.must_columns:
+        for col in self.mandatory_columns:
             if df[col].isna().any():
                 warn(f"Found NAs in '{col}' columns.")

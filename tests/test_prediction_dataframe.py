@@ -20,17 +20,20 @@ def create_data(error_type: Literal["length", "dimension", "shape", "na"] | None
     optionally with different type of errors.
     '''
     rng = np.random.default_rng(100)
-    dataset = "first_dataset" if error_type  == "length" else ["first_dataset", "second_dataset"]
+
+    dataset = "first_dataset" \
+        if error_type  == "length" \
+        else ["first_dataset", "second_dataset"]
 
     if error_type == "dimension":
-        y_train = [
-            rng.integers(low=0, high=2, size=(30, 2)), 
-            rng.integers(low=0, high=3, size=45)
+        classes = [
+            rng.integers(low=0, high=2, size=(2, 2)), 
+            rng.integers(low=0, high=3, size=2)
         ]
     else:
-        y_train = [
-            rng.integers(low=0, high=2, size=30), 
-            rng.integers(low=0, high=3, size=45)
+        classes = [
+            rng.integers(low=0, high=2, size=2), 
+            rng.integers(low=0, high=3, size=2)
         ]
     
     if error_type == "shape":
@@ -48,18 +51,22 @@ def create_data(error_type: Literal["length", "dimension", "shape", "na"] | None
         softmax(rng.normal(size=(10, 2))), 
         softmax(rng.normal(size=(20, 3)))
     ]
-    
+
     if error_type == "na":
         pred_proba[0] = np.nan
+
+    classes_counts = [
+        np.array([12, 12]),
+        np.array([12, 12])
+    ]
     
-    return dataset, y_train, y_test, pred_proba
+    return dataset, y_test, pred_proba, classes, classes_counts
 
 
 
 def test_build_method_works():
-    dataset, y_train, y_test, pred_proba = create_data()
     pred_df = PredictionDataframe()
-    pred_df.build_from_data(dataset, y_train, y_test, pred_proba, sup_col="additional")
+    pred_df.build_from_data(*create_data(), sup_col="additional")
 
 
 
@@ -69,7 +76,7 @@ def test_build_method_raise_expections():
     with pytest.raises(Exception, match="The input iterables have not the same length"):
         pred_df.build_from_data(*create_data("length"))
 
-    with pytest.raises(Exception):
+    with pytest.raises(Exception, match="Is not possible to add columns with one of the following names"):
         pred_df.build_from_data(*create_data(), test_labels=22)
 
     with pytest.raises(Exception, match="Not all arrays in"):
@@ -93,7 +100,8 @@ def create_rows_to_add(n_rows: int):
         rows.append({
             "dataset": f"dataset_{i}",
             "pred_proba": softmax(rng.normal(size=(2, 2))),
-            "y_train": rng.integers(low=0, high=1, endpoint=True, size=10),
+            "classes": np.array(["a", "b"]),
+            "classes_counts": np.array([10, 10]),
             "y_test": np.array([0, 1])
         })    
     return rows
@@ -123,7 +131,7 @@ def test_add_rows_build_the_dataframe_if_missing():
     single_row_to_add = create_rows_to_add(1)
     pred_df.add_rows(single_row_to_add, compute_metrics=False)
     assert isinstance(pred_df.df, pd.DataFrame), "add_rows is not able to build the dataframe when it is missing."
-    assert pred_df.df.shape[0] == 1, "Problems inthe underlying dataframe when adding rows from nothing."
+    assert pred_df.df.shape[0] == 1, "Problems in the underlying dataframe when adding rows from nothing."
 
 
 

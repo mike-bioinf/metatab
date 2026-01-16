@@ -14,7 +14,6 @@ from typing import Literal, TYPE_CHECKING
 from functools import partial
 from sklearn.utils.validation import check_is_fitted
 from metatab.metatab_utils.exceptions import TimiLimitError
-from metatab.estimators.utils.general import collect_sklearn_classification_fit_info_from_data
 from metatab.estimators.utils.fit import fit_with_early_stop_on_validation_set, set_params_into_clf
 from metatab.hp_search.point_corrector import PointCorrector
 from metatab.metalearning.acquisition_funcs import compute_upper_confidence_bound
@@ -155,7 +154,7 @@ class EnsembleEstimator:
             Level of the internal logger. The default assures logs at info level.
             To suppress it set a value of 40 or 50.
 
-    ** Attributes:
+    ## Attributes:
         is_void_ (bool): Flag informing whether the ensemble is void.
         fit_time_ (float): Ensemble total fit time in seconds.
         successful_members_ (list[str]): List with the names of the successfully fitted members.
@@ -163,15 +162,9 @@ class EnsembleEstimator:
         successful_hps_confs_ (list[dict]): List of the hps configurations of the successfull members.
         failed_hps_confs_ (list[dict]): List of the hps configurations of the failed members. 
         df_members_ (pd.DataFrame): DataFrame with info about the members fit process.
-        classes_ (np.ndarray): Array of unique classes seen at fit level.
-        n_features_in_ (int): Number of features seen at fit level.
         is_cleaned_ (bool): 
             Flag informing whether the ensemble models have been deleted from disk using the
             "delete_models_from_disk" method.
-        feature_names_in_ (np.ndarray): 
-            Names of the features seen at fit level.
-            This attribute exists only when the instance is fitted with pandas dataframe 
-            with all string columns.
     '''
     def __init__(
         self,
@@ -326,13 +319,6 @@ class EnsembleEstimator:
             raise ValueError("The ensemble is void. All members fit/saving process failed.")
         
         self.df_members_ = pd.DataFrame(self._recap_members)
-        
-        # this assumes that the y is already integer encoded
-        # if this was not the case then different classifiers learns 
-        # different mapping label-class
-        for k, v in collect_sklearn_classification_fit_info_from_data(X, y).items():
-            setattr(self, k, v)
-        
         self.fit_time_ = time.time() - start_time
         
         logger.info(

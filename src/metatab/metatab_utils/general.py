@@ -220,6 +220,7 @@ def subset_xy(
     '''
     Subset X and y a with binary set of indices. 
     The utility assumes that X is 2D and y is 1D.
+    No check is done on X and y shape compability.
     '''
     X_sub = subset_2d(X, idx_rows, idx_cols)
     y_sub = subset_1d(y, idx_rows)

@@ -41,8 +41,8 @@ class SearchCV:
     Some key features:
     - Implements different optimazation algorithms: random, tpe and meta. 
     - Allows a meta-learning informed search via surrogate models using the "meta" algo.
-    - Allows early stop on a validation set at fit time. This functionality is possible 
-    only when the classifier implements an "eval_set-like" interface.
+    - Allows early stop on a validation set at fit time. This functionality needs the 
+    classifier to implement an "eval_set-like" interface.
     - Allows to optionally refit the classifier with the best hyperparameters.
     - The search is not parallelizable even when the "random" algo is used. 
     
