@@ -17,7 +17,7 @@ def parse_args(args):
     p = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter)
 
     # first layer resample mode: cv or holdout
-    sub_resample_mode = p.add_subparsers(required=True, title="Resample Mode", description="valid subcommands")
+    sub_resample_mode = p.add_subparsers(required=True, title="Resample Mode", description="Valid subcommands")
     p_holdout = sub_resample_mode.add_parser("holdout", help="Holdout resample")
     p_cv = sub_resample_mode.add_parser("cv", help="Cross-validation resample")
 

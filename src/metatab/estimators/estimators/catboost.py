@@ -3,11 +3,14 @@ from functools import partial
 from catboost import CatBoostClassifier
 from metatab.estimators.params import TuningParams, DefaultParams
 from metatab.metatab_utils.types import XType, YType
+from metatab.estimators.core.configurations import EarlyStopConfiguration
 
 from metatab.estimators.core import (
     DefaultEstimatorMixin,
     TunedEstimatorMixin,
     EnsembleEstimatorMixin,
+    MetaEnsembleBaseEstimator,
+    MetaTuneBaseEstimator,
     AbstractBaseEstimator
 )
 
@@ -182,4 +185,46 @@ class MyEnsembledESCatBoostClassifier(EnsembleEstimatorMixin, AbstractBaseEstima
                 partial(adjust_es_logloss_metric, framework="catboost")
             ]
         )
+        return self
+    
+
+
+class MetaTuneCatBoostClassifier(MetaTuneBaseEstimator):
+    def fit(self, X: XType, y: YType) -> "MetaTuneCatBoostClassifier":
+        super().fit(X, y, "base", MyTunedCatBoostClassifier, TuningParams.CATBOOST_C0, None)
+        return self
+
+
+
+class MetaTuneEsCatBoostClassifier(MetaTuneBaseEstimator):
+    def fit(
+        self,
+        X: XType, 
+        y: YType,
+        early_stop_rounds: int = 100,
+        validation_set_size: float = 0.3
+    ) -> "MetaTuneEsCatBoostClassifier":
+        early_stop_conf = EarlyStopConfiguration(early_stop_rounds, validation_set_size)
+        super().fit(X, y, "base", MyTunedESCatBoostClassifier, TuningParams.CATBOOST_C0, early_stop_conf)
+        return self
+
+
+
+class MetaEnsembleCatboostClassifier(MetaEnsembleBaseEstimator):
+    def fit(self, X: XType, y: YType) -> "MetaEnsembleCatboostClassifier":
+        super().fit(X, y, "base", MyEnsembledCatBoostClassifier, TuningParams.CATBOOST_C0, None)
+        return self
+    
+
+
+class MetaEnsembleEsCatboostClassifier(MetaEnsembleBaseEstimator):
+    def fit(
+        self, 
+        X: XType, 
+        y: YType, 
+        early_stop_rounds: int = 100, 
+        validation_set_size: float = 0.3
+    ) -> "MetaEnsembleEsCatboostClassifier":
+        early_stop_conf = EarlyStopConfiguration(early_stop_rounds, validation_set_size)
+        super().fit(X, y, "base", MyEnsembledESCatBoostClassifier, TuningParams.CATBOOST_C0, early_stop_conf)
         return self

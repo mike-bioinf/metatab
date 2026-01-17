@@ -40,8 +40,9 @@ def make_extra_base_parser() -> ArgumentParser:
                    Note: ignored by "realmlp" also since it uses a stopping mechanism based on best-last-epoch or adaptive patience.""")
 
     p.add_argument("--validation-set-size", type=float, default=0.3,
-                   help="""Fraction of training data to use as validation for the early stop like mechanisms. Must be a float in (0, 1).
-                   This option is ignored when an estimator different from an "es" estimator or "realmlp" is used.""")
+                   help="""Fraction of training data to use as validation for the early stop like mechanisms. 
+                   Must be a float in (0, 1).
+                   This option is ignored when a non early stopped estimator is used.""")
 
     p.add_argument("-p", "--preprocessing", default="estimator_default", 
                     choices=["estimator_default", "base", "density_filter", "pca", "no"],
@@ -161,7 +162,7 @@ def make_tune_parser() -> ArgumentParser:
     
     # TODO: for now we do not allow to specify the specifics for the strategies
     p.add_argument("--tune-meta-strategy", choices=["best", "random_from_best", "uniform_from_best", "random_uniform_from_best"], default="best",
-                   help="""Strategy used to select the points proposed and evaluated by the surrogate model.
+                   help="""Strategy used to select the points evaluated and proposed by the meta-framework.
                    These points are the ones that will be tested in the inner cv.
                    -best: The n '--tune-n-iter' best points according to the surrogate model are selected.
                    -random_from_best: '--tune-n-iter' points are selected randomly from the best.
@@ -204,7 +205,7 @@ def make_ensemble_parser() -> ArgumentParser:
 
     p.add_argument("--ensemble-meta-surrogate-model", default=None,
                    help="""Not intended for users. This parameter allows to pass an external surrogate model 
-                   to use instead of the default one in the meta-ensembleing process. The model must be serialized with joblib.
+                   to use instead of the default one in the meta-ensembling process. The model must be serialized with joblib.
                    Ignored when '--ensemble-algo' is not "meta".""")
     
     # TODO: for now we do not allow to specify the specifics for the strategies

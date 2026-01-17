@@ -15,7 +15,6 @@ def test_surrogate_random_forest_predictions():
 
 
 
-
 ### --- testing the surrogate models loading process ----------------------------------------------------------------- 
 
 TEST_MANIFEST = {

@@ -19,7 +19,11 @@ from metatab.estimators.estimators.catboost import (
     MyTunedCatBoostClassifier,
     MyTunedESCatBoostClassifier,
     MyEnsembledCatBoostClassifier,
-    MyEnsembledESCatBoostClassifier
+    MyEnsembledESCatBoostClassifier,
+    MetaTuneCatBoostClassifier,
+    MetaTuneEsCatBoostClassifier,
+    MetaEnsembleCatboostClassifier,
+    MetaEnsembleEsCatboostClassifier
 )
 
 from metatab.estimators.estimators.rf import (
