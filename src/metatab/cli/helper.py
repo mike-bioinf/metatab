@@ -53,7 +53,7 @@ def check_early_stop_parameters(pars: dict) -> None:
 def check_holdout_train_size(pars: dict) -> None:
     if (
         pars["splitting_mode"] == "holdout" and 
-        (pars["holdout_train_size"] <=0 or pars["holdout_train_size"] >= 1)
+        (pars["holdout_train_size"] <= 0 or pars["holdout_train_size"] >= 1)
     ):
         raise ValueError(
             "'holdout_train_size' must be a float in (0, 1)."

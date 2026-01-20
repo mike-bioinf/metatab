@@ -1,4 +1,5 @@
 import argparse
+from autogluon.tabular import TabularPredictor
 from metatab.ensemble.family import FamilyEnsembleEstimator
 
 from metatab.estimators.estimators import (
@@ -58,7 +59,8 @@ def check_is_estimator_object(obj) -> None:
             MyTabPFNClassifier,
             MyTunedTabPFNClassifier,
             MyEnsembledTabPFNClassifier,
-            FamilyEnsembleEstimator
+            FamilyEnsembleEstimator,
+            TabularPredictor
         )
     ):
         raise TypeError("The deserialized object isn't an estimator.")
@@ -66,11 +68,15 @@ def check_is_estimator_object(obj) -> None:
 
 
 def check_estimator_is_fitted(obj) -> None:
-    if (
-        (isinstance(obj, FamilyEnsembleEstimator) and not hasattr(obj, "ensembles_")) or
-        not hasattr(obj, "estimator_")
-    ):
-        raise ValueError("The estimator is not fitted.")
+    if isinstance(obj, FamilyEnsembleEstimator):
+        if not hasattr(obj, "ensembles_"):
+            raise ValueError("The estimator is not fitted.")
+    elif isinstance(obj, TabularPredictor):
+        if not obj.is_fit:
+            raise ValueError("The estimator is not fitted.")
+    else:
+        if not hasattr(obj, "estimator_"):
+            raise ValueError("The estimator is not fitted.")
 
 
 

@@ -225,3 +225,19 @@ def subset_xy(
     X_sub = subset_2d(X, idx_rows, idx_cols)
     y_sub = subset_1d(y, idx_rows)
     return X_sub, y_sub
+
+
+
+def create_unique_column_name(X: pd.DataFrame, prefix: str) -> str:
+    '''
+    Creates a new unique, non-duplicated column name with the input prefix appending a number to it.
+    Returns the name or raise an error when unable to create a unique column name.
+    '''
+    str_columns = [str(col) for col in X.columns]
+
+    for i in range(0, 100000):
+        new_column_name = prefix + str(i)
+        if new_column_name not in str_columns:
+            return new_column_name
+        
+    raise ValueError("Is impossible to build a unique column name with the specified prefix.")

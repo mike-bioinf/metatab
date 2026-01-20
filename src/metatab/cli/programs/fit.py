@@ -4,17 +4,21 @@ The program seralizes the fitted model in a binary file via pickle.
 """
 
 import sys
+import pickle
 import argparse
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import LabelEncoder
+from autogluon.tabular import TabularPredictor
 from metatab.metatab_utils.data_loader import DataLoader
+from metatab.metatab_utils.general import create_unique_column_name
 from metatab.estimators.estimators import Estimator
 from metatab.estimators.utils.pick import pick_estimator_class
-from metatab.estimators.utils.general import check_meta_tuning_options, learn_sklearn_features_attributes
+from metatab.estimators.utils.general import check_meta_tuning_options
 from metatab.metalearning.load import query_surrogate_framework
 from metatab.ensemble.family import FamilyEnsembleEstimator
 from metatab.ensemble.utils import BagCV
+
 
 from metatab.cli.helper import (
     adjust_io_paths_, 
@@ -37,22 +41,26 @@ from metatab.cli.parser import (
     make_tune_parser,
     make_extra_base_parser,
     make_ensemble_parser,
-    make_family_ensemble_parser
+    make_family_ensemble_parser,
+    make_autogluon_parser
 )
 
 
 
 def parse_args(args):
     p = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter)
+    # add subparser for estimator mode
     sub_estimator_mode = p.add_subparsers(required=True, title="Estimator Mode", description="valid subcommands")
     p_default = sub_estimator_mode.add_parser("default", parents=[make_base_parser(), make_extra_base_parser(), make_fit_parser()])
     p_tune = sub_estimator_mode.add_parser("tune", parents=[make_base_parser(), make_extra_base_parser(), make_fit_parser(), make_tune_parser()])
     p_ensemble = sub_estimator_mode.add_parser("ensemble", parents=[make_base_parser(), make_extra_base_parser(), make_fit_parser(), make_ensemble_parser()])
     p_family_ensemble = sub_estimator_mode.add_parser("family-ensemble", parents=[make_base_parser(), make_fit_parser(), make_family_ensemble_parser()])
+    p_autogluon = sub_estimator_mode.add_parser("autogluon", parents=[make_base_parser(), make_autogluon_parser()])
     p_default.set_defaults(estimator_mode="default")
     p_tune.set_defaults(estimator_mode="tune")
     p_ensemble.set_defaults(estimator_mode="ensemble")
     p_family_ensemble.set_defaults(estimator_mode="family_ensemble")
+    p_autogluon.set_defaults(estimator_mode="autogluon")
     return p.parse_args(args)
 
 
@@ -62,9 +70,12 @@ def main():
     pars = vars(parse_args(sys.argv[1:]))
 
     check_target_feature(pars)
-    check_device(pars)
 
-    if pars["estimator_mode"] != "family_ensemble":
+    # autogluon has no device parameter
+    if pars.get("device", None) is not None:
+        check_device(pars)
+
+    if pars["estimator_mode"] not in ["family_ensemble", "autogluon"]:
         check_early_stop_parameters(pars)
 
     if (
@@ -121,7 +132,29 @@ def main():
             n_jobs=pars["nthreads"],
             log=50 #suppress logging
         )
+
+        estimator.fit(X, y_enc)
     
+    elif pars["estimator_mode"] == "autogluon":
+        y_enc.name = pars["target_feature"] if pars["input_mode"] == "df" else create_unique_column_name(X, "_target_")
+        data = pd.concat([X, y_enc], axis=1)
+        
+        estimator = TabularPredictor(
+            label=y_enc.name,
+            eval_metric=pars["eval_metric"],
+            path=str(pars["output_dir"]),
+            verbosity=0
+        )
+
+        estimator.fit(
+            train_data=data,
+            presets=pars["preset"],
+            time_limit=pars["time_limit"],
+            num_cpus=pars["nthreads"],
+            num_gpus=pars["ngpus"],
+            auto_stack=True            
+        )
+
     else:
         # build configuration objects
         ens_conf = None
@@ -146,8 +179,9 @@ def main():
             ensemble_configuration=ens_conf
         )
 
+        estimator.fit(X, y_enc)
 
-    estimator.fit(X, y_enc)
+
     logger.debug("Estimator fitted on training data.")
     
     # we set attributes requested by the predict program
@@ -158,7 +192,13 @@ def main():
     estimator._fit_features_ = X.columns
 
     out_filepath = pars["output_dir"] / "estimator.pkl"
-    estimator.save(out_filepath, check_is_fitted=True)
+    
+    if pars["estimator_mode"] != "autogluon":
+        estimator.save(out_filepath, check_is_fitted=True)
+    else:
+        with open(out_filepath, "wb") as f:
+            pickle.dump(estimator, f)
+
     logger.debug(f"Estimator serialized in '{out_filepath}'.")
 
 

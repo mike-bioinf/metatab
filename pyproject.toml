@@ -60,5 +60,7 @@ filterwarnings = [
     # filter deprecation pkg_resources warnings
     'ignore:.*pkg_resources.*:DeprecationWarning',
     # filter hugging face warning when downloading models on windows
-    'ignore:`huggingface_hub` cache-system uses symlinks by default to efficiently store.*'
+    'ignore:`huggingface_hub` cache-system uses symlinks by default to efficiently store.*',
+    # filter autogluon fastai warning
+    'ignore: numpy.core is deprecated and has been renamed to numpy._core.*'
 ]

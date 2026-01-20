@@ -1,12 +1,15 @@
 """
 This module contains a battery of test executed on the classifiers used in this package.
 The classifiers are from third party packages or wrappers around them.
-This modules aims to verify a set of expectations about the classigiers on which we rely.
+This modules aims to verify a set of expectations about the classiiers on which we rely.
 """
 
-import warnings
 import pytest
+import warnings
+import shutil
 import numpy as np
+import pandas as pd
+from pathlib import Path
 from sklearn.datasets import load_iris
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
@@ -17,6 +20,7 @@ from tabpfn import TabPFNClassifier
 from metatab.estimators.estimators.realmlp import RealMLPClassifier
 from metatab.estimators.estimators.tabm import TabMClassifier
 from metatab.estimators.estimators.catboost import CatBoostClassifierInterface
+from autogluon.tabular import TabularPredictor
 
 
 classifier_classes = [
@@ -79,3 +83,23 @@ def test_that_classifiers_learns_sklearn_attributes_as_expected(classifier_class
     ## NOT NECESSARY
     #assert hasattr(clf, "n_features_in_"), "The classifier does not learn the 'n_features_in_' attribute."
     #assert hasattr(clf, "feature_names_in_"), "The classifier does not learn the 'feature_names_in_' attribute."
+
+
+
+def test_that_autogluon_learns_expected_class_order():
+    X, y = load_iris(return_X_y=True, as_frame=True)
+    data = pd.concat([X, y], axis=1)
+    expected_classes = np.sort(y.unique())
+
+    out_path = Path(__file__).parent / "autogluon_test_folder"
+    predictor = TabularPredictor(label="target", path=str(out_path), verbosity=0)
+
+    try:
+        predictor.fit(data, presets="medium_quality", time_limit=30)
+    except Exception as e:
+        shutil.rmtree(out_path)
+        raise
+
+    shutil.rmtree(out_path)
+
+    assert (predictor.classes_ == expected_classes).all(), "Autogluon does not learn integer-encoded labels in a increasing sorted order." 
