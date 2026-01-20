@@ -57,7 +57,8 @@ TUNABLE_ESTIMATORS = [
     "catboost",
     "es_catboost",
     "tabpfn",
-    "realmlp"
+    "realmlp",
+    "tabm"
 ]
 
 
@@ -71,5 +72,6 @@ ALL_ESTIMATORS = [
     "catboost",
     "es_catboost",
     "tabpfn",
-    "realmlp"
+    "realmlp",
+    "tabm"
 ]
