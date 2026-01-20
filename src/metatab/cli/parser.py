@@ -70,14 +70,11 @@ def make_fit_parser() -> ArgumentParser:
 
 
 
-def make_resample_parser() -> ArgumentParser:
+def make_base_resample_parser() -> ArgumentParser:
     p = ArgumentParser(add_help=False)
 
     p.add_argument("--seed-splitter", default=42, type=int, 
                    help="Seed used to control the randomness of the splitting procedure. Defaults to 42.")
-    
-    p.add_argument("--seed-estimator", default=42, type=int, 
-                   help="""Seed used to control the estimators randomness. Defaults to 42.""")
 
     p.add_argument("-q", "--save-estimators", action="store_true",
                    help="""Option to save the fitted estimators. 
@@ -86,6 +83,16 @@ def make_resample_parser() -> ArgumentParser:
                    The filenames follow two potential generic structure:
                    - {estimator}_{repetition}{fold} when resample mode equal 'cv';
                    - {estimator}_{number} when resample mode equal 'holdout'.""")
+
+    return p
+
+
+
+def make_resample_seed_parser() -> ArgumentParser:
+    p = ArgumentParser(add_help=False)
+
+    p.add_argument("--seed-estimator", default=42, type=int, 
+                   help="""Seed used to control the estimators randomness. Defaults to 42.""")
 
     return p
 
@@ -257,4 +264,24 @@ def make_family_ensemble_parser() -> ArgumentParser:
 
     p.add_argument("--ensemble-time-limit", type=int, default="10000000", help="Time limit for ensembling.")
 
+    return p
+
+
+
+def make_autogluon_parser() -> ArgumentParser:
+    p = ArgumentParser(add_help=False)
+
+    p.add_argument("--preset", default="extreme_quality", 
+                   help="""Autogluon preset to use. 
+                   See "https://auto.gluon.ai/dev/api/autogluon.tabular.TabularPredictor.fit.html" for additional info.""")
+
+    p.add_argument("--time-limit", default=60, type=int, help="Fit time limit.")
+    
+    p.add_argument("--eval-metric", default="log_loss",
+                   help="""Name of the validation metric used by autogluon. 
+                   See "https://auto.gluon.ai/stable/api/autogluon.tabular.TabularPredictor.html for all options.""")
+
+    p.add_argument("--ngpus", default=0, type=int,
+                   help="Number of gpus to use. It fallbacks to the available ones when a number greater than that is used.")
+    
     return p

@@ -5,6 +5,7 @@ Program to do inference on a dataset using an serialized fitted model via the "f
 import sys
 import pickle
 import numpy as np
+from autogluon.tabular import TabularPredictor
 from metatab.metatab_utils.data_loader import DataLoader
 from metatab.metatab_utils.prediction import PredictionDataframe
 from metatab.estimators.estimators import Estimator
@@ -62,7 +63,7 @@ def main():
     # encode y
     y_enc = estimator._le_.transform(y)
 
-    if isinstance(estimator, FamilyEnsembleEstimator):
+    if isinstance(estimator, (FamilyEnsembleEstimator, TabularPredictor)):
         fit_preprocessing_dict = {}
     else:
         fit_preprocessing_dict = estimator.collect_fit_preprocessing_info()
@@ -77,7 +78,13 @@ def main():
         X = X.reindex(columns=fit_features, fill_value=0.0)
         logger.debug("Test feature space uniformed to training space.")
     
-    pred_proba = estimator.predict_proba(X)
+    if isinstance(estimator, TabularPredictor):
+        pred_proba = estimator.predict_proba(X, as_pandas=False)
+        preprocessing = None
+    else:
+        pred_proba = estimator.predict_proba(X)
+        preprocessing = estimator.preprocessing
+
     pdf = PredictionDataframe()
 
     pdf.build_from_data(
@@ -88,7 +95,7 @@ def main():
         classes_counts=estimator._classes_counts_,
         save_path=None,
         predict_dataset=predict_dataset_name,
-        preprocessing=estimator.preprocessing,
+        preprocessing=preprocessing,
         **fit_preprocessing_dict
     )
     

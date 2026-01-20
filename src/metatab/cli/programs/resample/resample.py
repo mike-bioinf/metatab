@@ -4,6 +4,7 @@ from metatab.cli.programs.resample.main_programs.main_tune import main_tune
 from metatab.cli.programs.resample.main_programs.main_default import main_default
 from metatab.cli.programs.resample.main_programs.main_ensemble import main_ensemble
 from metatab.cli.programs.resample.main_programs.main_family_ensemble import main_family_ensemble
+from metatab.cli.programs.resample.main_programs.main_autogluon import main_autogluon
 
 
 
@@ -17,6 +18,8 @@ def main():
         main_ensemble(pars)
     elif pars["estimator_mode"] == "family_ensemble":
         main_family_ensemble(pars)
+    elif pars["estimator_mode"] == "autogluon":
+        main_autogluon(pars)
 
 
 
