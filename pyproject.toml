@@ -18,6 +18,8 @@ dependencies = [
     "pydantic>=2.12.5,<3",
     "torch>=2.6.0",
     "pytabkit>=1.7.3,<2",
+    "autogluon>=1.4,<2",
+    "sentencepiece>0.2,!=0.2.1", # the latest 0.2.1 version gives installation problem on python 3.12
     "joblib==1.5.1",  # the exact version assures the deserialization of the surrogate models???
     "tabpfn==2.1.3",  #TODO: update. Our checkpoint download process rely on this specific version for now.
 ]
@@ -27,7 +29,6 @@ dependencies = [
 dev = [
     "pytest>=8.4.1"
 ]
-
 paper = [
     "seaborn>=0.13.2,<1",
     "matplotlib>=3.10.3,<4",
