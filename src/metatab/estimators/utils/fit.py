@@ -137,7 +137,7 @@ def set_params_into_clf(
         
         for k, v in params.items():
             if k.startswith("inference_config__"):
-                inference_config[f"{k.removeprefix("inference_config__")}"] = v
+                inference_config[k.removeprefix("inference_config__")] = v
             else:
                 cleaned_params[k] = v
 
