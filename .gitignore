@@ -165,7 +165,5 @@ idelete.ipynb
 interactive.ipynb
 debug_code
 old_code.py
-data
-tests/data
-## the surrogate models are too big to be pushed on github
-src/metalearning/database/database/* 
+vs_data
+tests/data/metadata

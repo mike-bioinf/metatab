@@ -5,14 +5,14 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "metatab"
 version = "0.1.0"
-description = "A comprehensive classification benchmark framework for metagenomics taxonomic data"
+description = "A comprehensive classification benchmark framework for microbial taxonomic profiles"
 readme = "README.md"
 license = "MIT"
 authors = [
     {name = "Michele Avagliano", email = "avaglianomichele@outlook.it"},
     {name = "Edoardo Pasolli", email = "edoardo.pasolli@unina.it"}
 ]
-keywords = ["metagenomics", "taxonomic-tables", "benchmark", "machine-learning", "deep-learning"]
+keywords = ["metagenomics", "benchmark", "machine-learning", "deep-learning"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Science/Research",
