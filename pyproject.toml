@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "metatab"
 version = "0.1.0"
-description = "A comprehensive classification benchmark framework for microbial taxonomic profiles"
+description = "A comprehensive suite of ML classifiers for microbial taxonomic profiles"
 readme = "README.md"
 license = "MIT"
 authors = [
@@ -45,7 +45,7 @@ dependencies = [
     "autogluon>=1.4,<2",
     "sentencepiece>=0.2,!=0.2.1", # the latest 0.2.1 version gives installation problem on python 3.12
     "joblib==1.5.1",  # the exact version assures the deserialization of the surrogate models???
-    "tabpfn==2.1.3",  #TODO: update. Our checkpoint download process rely on this specific version for now.
+    "tabpfn==2.1.3",  # TODO: to update with tabpfn. Checkpoint download process rely on this specific version for now
 ]
 
 [project.optional-dependencies]
@@ -61,7 +61,7 @@ paper = [
 ]
 
 [project.scripts]
-metatab-fit = "metatab.cli.programs.fit.fit:main"
+metatab-fit = "metatab.cli.programs.fit:main"
 metatab-predict = "metatab.cli.programs.predict.predict:main"
 metatab-resample = "metatab.cli.programs.resample.resample:main"
 metatab-opt-search = "metatab.cli.programs.metalearning.opt_search:main"

@@ -37,7 +37,7 @@ def make_extra_base_parser() -> ArgumentParser:
                    help="""Number of early stop rounds to use when using the "es" estimators.
                    Must be a positive integer greater than 0. Defaults to 100. 
                    This option is ignored when a non "es" estimator is used.
-                   Note: ignored by "realmlp" also since it uses a stopping mechanism based on best-last-epoch or adaptive patience.""")
+                   Note: ignored by "realmlp" and "tabm" since they use more sophisticaed early stopping strategies.""")
 
     p.add_argument("--validation-set-size", type=float, default=0.3,
                    help="""Fraction of training data to use as validation for the early stop like mechanisms. 
@@ -254,7 +254,7 @@ def make_family_ensemble_parser() -> ArgumentParser:
                    the number of estimators used.""")
 
     p.add_argument("--bag-cv-repats", type=int, default=5, 
-                   help="Number of repeats to use in the bag-cv procedure. Ignored when '--use-ba-cv' flag is down.")
+                   help="Number of repeats to use in the bag-cv procedure. Ignored when '--use-bag-cv' flag is down.")
 
     p.add_argument("--bag-cv-folds", type=int, default=5, 
                    help="Number of folds to use in the bag-cv procedure. Ignored when '--use-bag-cv' flag is down.")
@@ -265,6 +265,7 @@ def make_family_ensemble_parser() -> ArgumentParser:
     p.add_argument("--ensemble-time-limit", type=int, default="10000000", help="Time limit for ensembling.")
 
     return p
+
 
 
 

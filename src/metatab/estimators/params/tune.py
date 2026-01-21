@@ -403,8 +403,8 @@ class TuningParams:
         "first_layer_lr_factor": hp.loguniform("first_layer_lr_factor", np.log(0.3), np.log(1.5)),
         "lr": hp.loguniform("lr", np.log(2e-2), np.log(3e-1)),
         "wd": hp.loguniform("wd", np.log(1e-3), np.log(5e-2)),
-        # "use_early_stopping": hp.choice("use_early_stopping", [False, True]), # can help in reducing computational time
-        # "early_stopping_additive_patience": hp.choice("early_stopping_additive_patience", [60]) # we x3 the default of 20 to be less aggressive
+        "use_early_stopping": hp.choice("use_early_stopping", [False, True]), # can help in reducing computational time
+        "early_stopping_additive_patience": hp.choice("early_stopping_additive_patience", [60]) # we x3 the default of 20 to be less aggressive
     }
 
 

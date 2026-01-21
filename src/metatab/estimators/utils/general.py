@@ -116,12 +116,11 @@ def check_validation_set_options(
     validation_set_size: float
 ) -> None:
     '''
-    General check on validation set and early stop related parameters. 
-    In detail checks:
-    0. The estimator needing validation sets are used with the flag on.
-    1. The estimator working without validation sets are used with the flag off.
-    2. early_stop_rounds is a integer in [0, +inf) when needed.
-    3. validation_set_size is a positive float in (0, 1) when needed.
+    General check on validation set and early stop related parameters. In detail checks:
+        0. The estimator needing validation sets are used with the flag on.
+        1. The estimator working without validation sets are used with the flag off.
+        2. early_stop_rounds is a integer in [0, +inf) when needed.
+        3. validation_set_size is a positive float in (0, 1) when needed.
     '''
     if not use_validation_sets and estimator in EARLY_STOPPED_ESTIMATORS:
         raise ValueError(f"'{estimator}' needs a validation set.")

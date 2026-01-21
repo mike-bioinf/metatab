@@ -89,8 +89,8 @@ def parse_args(args):
     p.add_argument("-i", "--input-data", required=True, 
                    help="Path of the file/folder containing the data on which doing predictions.")
     
-    p.add_argument("-m", "--input-mode", required=True, choices=["sets", "xy", "df"],
-                   help="Defines the data input format. One of 'sets', 'xy', or 'df'.")
+    p.add_argument("-m", "--input-mode", required=True, choices=["xy", "df"],
+                   help="Defines the data input format. One of 'xy' and 'df'.")
     
     p.add_argument("-y", "--target-feature", default=None,
                     help="Name of the target feature column. Must be provided if --input-mode is equal to 'df'.")
