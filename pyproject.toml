@@ -1,7 +1,32 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "metatab"
-version = "0.1"
-requires-python = ">=3.9"
+version = "0.1.0"
+description = "A comprehensive classification benchmark framework for metagenomics taxonomic data"
+readme = "README.md"
+license = "MIT"
+authors = [
+    {name = "Michele Avagliano", email = "avaglianomichele@outlook.it"},
+    {name = "Edoardo Pasolli", email = "edoardo.pasolli@unina.it"}
+]
+keywords = ["metagenomics", "taxonomic-tables", "benchmark", "machine-learning", "deep-learning"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Bio-Informatics ",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+requires-python = ">=3.9,<=3.13"
 dependencies = [
     "packaging>=25.0,<26.0",
     "numpy>=2.1.3,<3",
@@ -24,7 +49,6 @@ dependencies = [
     "tabpfn==2.1.3",  #TODO: update. Our checkpoint download process rely on this specific version for now.
 ]
 
-
 [project.optional-dependencies]
 dev = [
     "pytest>=8.4.1"
@@ -37,7 +61,6 @@ paper = [
     "scipy>=1.16.0,<2"
 ]
 
-
 [project.scripts]
 metatab-fit = "metatab.cli.programs.fit.fit:main"
 metatab-predict = "metatab.cli.programs.predict.predict:main"
@@ -47,11 +70,10 @@ metatab-prepare-metadata = "metatab.cli.programs.metalearning.prepare_metadata:m
 metatab-fit-surrogate = "metatab.cli.programs.metalearning.fit_surrogate:main"
 metatab-fit-surrogate-loo = "metatab.cli.programs.metalearning.fit_surrogate_loo:main"
 
-
-[build-system]
-requires = ["setuptools", "wheel"]
-build-backend = "setuptools.build_meta"
-
+[project.urls]
+Homepage = "https://github.com/mike-bioinf/metatab"
+Repository = "https://github.com/mike-bioinf/metatab"
+Issues = "https://github.com/mike-bioinf/metatab/issues"
 
 [tool.pytest.ini_options]
 filterwarnings = [
