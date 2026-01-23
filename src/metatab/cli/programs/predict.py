@@ -108,10 +108,7 @@ def parse_args(args):
     p.add_argument("-i", "--input-data", required=True, 
                    help="Path of the file/folder containing the data on which doing predictions.")
     
-    p.add_argument("-o", "--output-dir", required=True,        
-                   help="""Path of the folder in which the output file is created.
-                   Note that one must provide only the output folder path without a filename.
-                   The name of the created file is automatically inferred and must not be specified.""")
+    p.add_argument("-o", "--output-dir", required=True, help="Output folder path.")
     
     p.add_argument("-m", "--input-mode", required=True, choices=["xy", "df"],
                    help="Defines the data input format. One of 'xy' and 'df'.")
@@ -123,6 +120,10 @@ def parse_args(args):
                    help="Uniform the data feature space to the one seen by the estimator at fit level.")
 
     p.add_argument("--create-outdir", action="store_true", help="Create the output directory if does not exists.")
+
+    p.add_argument("--disable-additional-txt-output", action="store_true", 
+                   help="""Disable the generation of the txt file with the predicted estimator probabilities.
+                   In this case the predictions are only available in the encoded str format in the main output.""")
     
     return p.parse_args(args)
 
@@ -173,7 +174,7 @@ def main():
     
     # uniform feature space when requested
     if pars["x_uniform"]:
-        fit_features = estimator._fit_features_
+        fit_features: np.ndarray = estimator._fit_features_
         if not np.isin(X.columns.to_numpy(), fit_features).any():
             raise ValueError(
                 "Test feature space has no feature in common with the training space."
@@ -203,10 +204,17 @@ def main():
     )
     
     pdf.compute_metrics(multiclass="average", average_strategy="macro")
-    filename = f"pred_df__{fit_dataset_name}__{predict_dataset_name}.txt"
-    filepath = pars["output_dir"] / filename
-    pdf.to_csv(filepath, sep="\t", index=False)
-    logger.debug(f"Output created at: {filepath}.")
+    filename = f"pred_dataframe__{fit_dataset_name}__{predict_dataset_name}.txt"
+    pdf.to_csv(pars["output_dir"] / filename, sep="\t", index=False)
+    
+    if not pars["disable_txt_output"]:
+        np.savetxt(
+            pars["output_dir"] / "predicted_probabilities.txt",
+            pred_proba,
+            delimiter="\t"
+        )
+    
+    logger.debug(f"Output created at: {pars["output_dir"]}.")
 
 
 

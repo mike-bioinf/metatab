@@ -14,7 +14,8 @@ from metatab.cli.programs.resample.helper import (
     get_repetition_fold,
     log_iteration,
     populate_dict_lists_,
-    get_iteration_estimator_filepath
+    get_iteration_estimator_filepath,
+    get_resample_iteration_signature
 )
 
 from metatab.cli.helper import (
@@ -75,8 +76,12 @@ def main_default(pars: dict):
     create_json_configuration_file(pars, configuration_filepath)
     dict_results = defaultdict(list)
     df_pred_results = PredictionDataframe()
-
     
+    if not pars["disable_txt_output"]: 
+        txt_folder = output_dir / "txt_info"
+        txt_folder.mkdir(exist_ok=True)
+
+
     # run resampling
     for i, (train_idx, test_idx) in enumerate(splitter.split(X, y)):
         repetition, fold = get_repetition_fold(i, pars)
@@ -131,6 +136,13 @@ def main_default(pars: dict):
 
         if pars["save_estimators"]:
             estimator.save(get_iteration_estimator_filepath(pars, repetition, fold))
+
+        if not pars["disable_txt_output"]:
+            txt_folder_iter = txt_folder / f"iter_{get_resample_iteration_signature(repetition, fold)}"
+            txt_folder_iter.mkdir(exist_ok=True)
+            np.savetxt(txt_folder_iter / "predicted_probabilities.txt", pred_proba, delimiter="\t")
+            np.savetxt(txt_folder_iter / "y_true.txt", y_test, fmt="%.1i", delimiter="\t")
+            np.savetxt(txt_folder / "classes.txt", le.classes_, fmt="%.10000s", delimiter="\t")
 
 
     df_pred_results.build_from_data(**dict_results, save_path=output_dir)

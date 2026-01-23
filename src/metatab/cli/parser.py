@@ -80,7 +80,7 @@ def make_base_resample_parser() -> ArgumentParser:
     p.add_argument("--seed-splitter", default=42, type=int, 
                    help="Seed used to control the randomness of the splitting procedure. Defaults to 42.")
 
-    p.add_argument("-q", "--save-estimators", action="store_true",
+    p.add_argument("--save-estimators", action="store_true",
                    help="""Option to save the fitted estimators. 
                    The estimators object are saved via pickle in the 'estimators' folder.
                    Note that all estimators fitted during the resample procedure are saved.
@@ -88,6 +88,10 @@ def make_base_resample_parser() -> ArgumentParser:
                    - {estimator}_{repetition}{fold} when resample mode equal 'cv';
                    - {estimator}_{number} when resample mode equal 'holdout'.""")
 
+    p.add_argument("--disable-additional-txt-output", action="store_true", 
+                   help="""Disable the generation of the txt files of the predicted estimator probabilities, 
+                   target encoded values and original target classes.
+                   In this case these info are only available in the encoded str format in the main output.""")
     return p
 
 

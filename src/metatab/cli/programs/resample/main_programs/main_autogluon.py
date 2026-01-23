@@ -56,8 +56,6 @@ def main_autogluon(pars: dict):
     y = pd.Series(le.fit_transform(y))
     y.name = pars["target_feature"] if pars["input_mode"] == "df" else create_unique_column_name(X, "_target_")
 
-    splitter = pick_splitter(pars)
-
     # initialize outputs
     output_dir = pars["output_dir"]
     results_filepath = output_dir / "pred_dataframe.txt"
@@ -67,7 +65,13 @@ def main_autogluon(pars: dict):
     dict_results = defaultdict(list)
     df_pred_results = PredictionDataframe()
 
+    if not pars["disable_txt_output"]: 
+        txt_folder = output_dir / "txt_info"
+        txt_folder.mkdir(exist_ok=True)
+
+    splitter = pick_splitter(pars)
     
+
     # run resampling
     for i, (train_idx, test_idx) in enumerate(splitter.split(X, y)):
         repetition, fold = get_repetition_fold(i, pars)
@@ -127,6 +131,14 @@ def main_autogluon(pars: dict):
 
         if not pars["save_estimators"]:
             shutil.rmtree(path_iteration)
+
+        if not pars["disable_txt_output"]:
+            txt_folder_iter = txt_folder / f"iter_{get_resample_iteration_signature(repetition, fold)}"
+            txt_folder_iter.mkdir(exist_ok=True)
+            np.savetxt(txt_folder_iter / "predicted_probabilities.txt", pred_proba, delimiter="\t")
+            np.savetxt(txt_folder_iter / "y_true.txt", y_test, fmt="%.1i", delimiter="\t")
+            np.savetxt(txt_folder / "classes.txt", le.classes_, fmt="%.1000s", delimiter="\t")
+
 
     # remove the estimators folder
     if not pars["save_estimators"]:

@@ -66,7 +66,18 @@ The pickled estimator needed in input can be obtained from:
 ### Quick usage guide
 - Use metatab-resample to train and evaluate models under CV or holdout resampling.
 - Use metatab-fit to train a model on the full dataset.
-- Use metatab-predict to apply a trained model to new, external data.
+- Use metatab-predict to use a trained model to new, external data.
+
+
+### Note on metatab-resample and metatab-predict output
+The main output of the metatab-resample and metatab-predict programs is a txt file referred as "pred_dataframe".
+This is a tab-separated file containing estimator predictions and performance metrics info, among the others.
+Some fields (such as predictions) are stored as strings that can be decoded back into the original numpy array objects.
+This conversion is executed by the "PredictionDataframe" python class (see Python API below), 
+which provides a convenient way to load and parse these files into pandas DataFrames.
+By default, the same information is also written in the non-encoded form in additional text files. 
+The creation of these additional outputs can be avoided via the "--disable-additional-txt-output" flag.
+
 
 ```bash
 # Fit a model on a dataset
@@ -148,7 +159,7 @@ metatab-fit autogluon \
     --create-outdir
 
 # Fit ensemble models on a dataset in a cross-validation procedure
-metatab-resample cv tune \
+metatab-resample cv ensemble \
     --input-data "path/to/your/data" \
     --output-dir "path/of/your/output-directory" \
     --input-mode df \
@@ -172,11 +183,13 @@ metatab-resample cv tune --help
 
 
 ### Python API
-Metatab exposes meta tuned and ensembled classifiers and the hierachical (or family) ensembler constructor.
+- Metatab exposes meta tuned and ensembled classifiers and the hierachical (or family) ensembler constructor.
+- The PredictionDataframe class can be used to easily load and parse the pred_dataframe* files generated through the CLI API into a pandas DataFrame.
 
 ```python
 from metatab import MetaTuneRandomForestClassifier, FamilyEnsembleEstimator
 from metatab.ensemble.configuration import UserEnsembleConfiguration, CollectionUserEnsembleConfiguration
+from metatab.metatab_utils.prediction import PredictionDataframe
 
 ## zero-shot meta-tuning
 meta_tuned_rf = MetaTuneRandomForestClassifier(n_iter=1)
@@ -222,6 +235,12 @@ family_ensemble = FamilyEnsembleEstimator(
 ## use your data
 # family_ensemble.fit(X_train, y_train)
 # pred_proba = family_ensemble.predict_proba(X_test)
+
+
+### load the "pred_dataframe" files generated with the CLI API into pandas dataframes
+pdf = PredictionDataframe()
+# out_df = pdf.build_from_file(file="pred_dataframe.txt", sep="\t").get_df()
+# out_df = pdf.build_from_folder(folder="results", glob_pattern="pred_dataframe*", recursive=True, sep="\t").get_df()
 ```
 
 

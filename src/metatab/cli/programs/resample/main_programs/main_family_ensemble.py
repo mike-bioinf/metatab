@@ -74,6 +74,11 @@ def main_family_ensemble(pars: dict):
     splitter = pick_splitter(pars)
     rng_ensemble = np.random.default_rng(pars["seed_estimator"])
     configuration = get_ensemble_configuration(pars["ensemble_configuration"])
+    
+    if not pars["disable_txt_output"]: 
+        txt_folder = output_dir / "txt_info"
+        txt_folder.mkdir(exist_ok=True)
+    
     # this is to avoid the first download inside the fit call inflating times
     download_required_surrogate_models(configuration)
 
@@ -147,6 +152,13 @@ def main_family_ensemble(pars: dict):
             ensemble.save(ens_filepath)
         else:
             ensemble.delete_models_from_disk()
+
+        if not pars["disable_txt_output"]:
+            txt_folder_iter = txt_folder / f"iter_{get_resample_iteration_signature(repetition, fold)}"
+            txt_folder_iter.mkdir(exist_ok=True)
+            np.savetxt(txt_folder_iter / "predicted_probabilities.txt", pred_proba, delimiter="\t")
+            np.savetxt(txt_folder_iter / "y_true.txt", y_test, fmt="%.1i", delimiter="\t")
+            np.savetxt(txt_folder / "classes.txt", le.classes_, fmt="%.1000s", delimiter="\t")
 
 
     df_pred_results.build_from_data(**dict_results, save_path=output_dir)

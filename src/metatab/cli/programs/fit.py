@@ -189,7 +189,7 @@ def main():
     estimator._classes_ = le.classes_
     estimator._classes_counts_ = np.unique(y_enc.to_numpy(), return_counts=True)[1]
     estimator._fit_dataset_name_ = fit_dataset_name
-    estimator._fit_features_ = X.columns
+    estimator._fit_features_ = X.columns.to_numpy()
 
     out_filepath = pars["output_dir"] / "estimator.pkl"
     

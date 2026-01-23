@@ -95,6 +95,10 @@ def main_ensemble(pars: dict):
     list_dfs_ensemble_info = []
     filepath_df_ensemble_info = output_dir / "ensemble.txt"
 
+    if not pars["disable_txt_output"]: 
+        txt_folder = output_dir / "txt_info"
+        txt_folder.mkdir(exist_ok=True)
+    
     # this is to avoid the first download inside the fit call inflating times
     if pars["ensemble_algo"] == "meta":
         _ = query_surrogate_framework(pars["estimator"])
@@ -174,6 +178,13 @@ def main_ensemble(pars: dict):
         else:
             estimator.estimator_.delete_models_from_disk()
             iter_folder_models.rmdir()
+
+        if not pars["disable_txt_output"]:
+            txt_folder_iter = txt_folder / f"iter_{get_resample_iteration_signature(repetition, fold)}"
+            txt_folder_iter.mkdir(exist_ok=True)
+            np.savetxt(txt_folder_iter / "predicted_probabilities.txt", pred_proba, delimiter="\t")
+            np.savetxt(txt_folder_iter / "y_true.txt", y_test, fmt="%.1i", delimiter="\t")
+            np.savetxt(txt_folder / "classes.txt", le.classes_, fmt="%.1000s", delimiter="\t")
 
     
     if not pars["save_estimators"]:
