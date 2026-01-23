@@ -28,6 +28,86 @@ from metatab.metalearning.utils import (
 
 
 class UserEnsembleConfiguration(BaseModel):
+    '''
+    Parameters:
+        name (str): 
+            Ensemble name.
+            
+        algo (Literal["random", "meta"]):
+            Strategy used to derive hyperparameter configurations.
+            - "random": random sampling from the tune space.
+            - "meta": use metatab meta-learning framework.
+            Requires the estimator default `tune_space`, 
+            and works best when using the estimator default preprocessing (`preprocessing` parameter).
+
+        n_members (int):
+            Number of ensemble members.
+
+        estimator (TunableEstimatorType):
+            Estimator to ensemble.
+            
+        preprocessing (PreprocessingStrategy):
+            Preprocessing strategy to use.
+            Use "estimator_default" to apply the estimator default preprocessing.
+
+        tune_space (str): 
+            Hyperparameter space to use.
+            - Use "default" or "c0" for the estimator default.
+            - For GBDTs, multiple spaces are available ("c{number}").
+
+        early_stop_on_validation_set (bool):
+           Whether to enable early stopping using a validation set. 
+            Although partly redundant with the `estimator` choice, this parameter
+            is kept explicit to clearly signal early-stopping behavior to the user. In detail
+            - This flag must be consistent with the chosen estimator.
+            - Estimators that do not support early stopping will raise an error if this is set to True.
+            - Estimators that require a validation set will raise an error if this is set to False.
+            - For GBDTs, early stopping is available only when using the "es" variants (e.g. "es_catboost").
+
+        early_stop_rounds (int, optional):
+            Number of rounds without improvement before stopping (GBDTs only).
+            Usage is discouraged and may be removed in future versions in favor
+            of fixed values defined in metatab tune spaces.
+            Ignored when `early_stop_on_validation_set` is False.
+
+        validation_set_size (float, optional):
+            Fraction of data used as validation in early stopping.
+            Ignored when `early_stop_on_validation_set` is False.
+
+        meta_surrogate_model (None | str | Path, optional):
+            Surrogate model to use in the meta-learning scenario. 
+            Intended for advanced usage only. Ignored when `algo` is not "meta".
+            - If str or Path, the path to the joblib serialized surrogate model.
+            - If None the "default" surrogate model is used.
+
+        meta_strategy (MetaStrategy, optional):
+           Strategy used to select hyperparameter configurations in meta-learning.
+            It has no effect when `algo` is not "meta".
+            - "best": select the top-n configurations.
+            - "random_from_best": random selection from the top.
+            - "uniform_from_best": uniform step selection from the top.
+            - "random_uniform_from_best": random selection within uniform intervals from the top.
+
+        meta_strategy_params (None | MetaStrategyParams, optional):
+            Parameters controlling the selected meta strategy.
+            Defaults are used when None.
+
+        meta_seed (int, optional):
+            Seed used specifically to draw hps configurations in the meta-optimized scenario.
+            Importanlty the default value of 42 is the one used to generate the prior.
+            Therefore using the default seed allow to draw and evaluate real-evaluated 
+            hps configurations. It's therefore highly suggested to not change this value in most
+            applications.
+
+        seed (int, optional):
+            Seed used to derive the hps configurations in the random scenario,
+            and the validation sets for the early stopped estimators.
+
+        device (Literal["cpu", "cuda", "auto"], optional):
+            Device to use. "auto" selects cuda when the estimator can 
+            be run on cuda and cuda is available. 
+            Note: metatab run the GBDTs estimators only on CPU.
+    '''
     model_config = ConfigDict(strict=True, extra="forbid")
     name: str
     algo: Literal["random", "meta"]
@@ -86,7 +166,7 @@ class UserEnsembleConfiguration(BaseModel):
         check_validation_set_options(self.estimator, self.early_stop_on_validation_set, self.early_stop_rounds, self.validation_set_size)
         check_device_estimator_combination(self.device, self.estimator)
         check_meta_strategy_params(self.meta_strategy, self.meta_strategy_params, safe_none_params=True)
-        check_meta_tuning_options(self.estimator, self.preprocessing, self.tune_space)
+        if self.algo == "meta": check_meta_tuning_options(self.estimator, self.preprocessing, self.tune_space)
         return self
 
 
@@ -186,7 +266,7 @@ class CollectionUserEnsembleConfiguration:
         for i, estimator in enumerate(target_estimators):
             collection.append(
                 UserEnsembleConfiguration(
-                    name="ens" + f"{i}",
+                    name="ens_" + f"{i}",
                     algo=ensemble_algo,
                     n_members=n_members,
                     estimator=estimator,

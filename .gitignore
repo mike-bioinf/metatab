@@ -154,7 +154,7 @@ dmypy.json
 cython_debug/
 
 # non code folders
-.vscode/launch.json
+.vscode
 
 # personal file and folders
 notes.txt
@@ -165,5 +165,4 @@ idelete.ipynb
 interactive.ipynb
 debug_code
 old_code.py
-vs_data
 tests/data/metadata

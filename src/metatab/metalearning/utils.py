@@ -20,7 +20,8 @@ def get_estimator_n_candidate_points(type_estimator: TunableEstimatorType) -> in
 class BestMetaStrategyParams:
     '''
     Dataclass to pass custom parameters for the 'best' meta-optimization strategy.
-    n_candidate_points (int): Number of points to draw as candidates.
+    Parameters:
+        n_candidate_points (int): Number of points to draw as candidates.
     '''
     n_candidate_points: int
 
@@ -29,9 +30,10 @@ class BestMetaStrategyParams:
 class RandomFromBestMetaStrategyParams:
     '''
     Dataclass to pass custom parameters for the 'random_from_best' meta-optimization strategy.
-    n_candidate_points (int): Number of points to draw as candidates.
-    top (int): Number of top points from which draw the random ones.
-    seed (int): Control the randomness of the point selection procedure.   
+    Parameters:
+        n_candidate_points (int): Number of points to draw as candidates.
+        top (int): Number of top points from which draw the random ones.
+        seed (int): Control the randomness of the point selection procedure.   
     '''
     n_candidate_points: int
     top: int
@@ -42,8 +44,9 @@ class RandomFromBestMetaStrategyParams:
 class UniformFromBestMetaStrategyParams:
     '''
     Dataclass to pass custom parameters for the 'uniform_from_best' meta-optimization strategy.
-    n_candidate_points (int): Number of points to draw as candidates.
-    step_size (int): Size of the step used to choose points starting from the best.
+    Parameters:
+        n_candidate_points (int): Number of points to draw as candidates.
+        step_size (int): Size of the step used to choose points starting from the best.
     '''
     n_candidate_points: int
     step_size: int
@@ -53,8 +56,9 @@ class UniformFromBestMetaStrategyParams:
 class RandomUniformFromBestMetaStrategyParams:
     '''
     Dataclass to pass custom parameters for the 'random_uniform_from_best' meta-optimization strategy.
-    n_candidate_points (int): Number of points to draw as candidates.
-    step_size (int): Size of the step used to define intervals starting from the best.
+    Parameters:
+        n_candidate_points (int): Number of points to draw as candidates.
+        step_size (int): Size of the step used to define intervals starting from the best.
     '''
     n_candidate_points: int
     step_size: int

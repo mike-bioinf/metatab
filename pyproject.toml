@@ -62,7 +62,7 @@ paper = [
 
 [project.scripts]
 metatab-fit = "metatab.cli.programs.fit:main"
-metatab-predict = "metatab.cli.programs.predict.predict:main"
+metatab-predict = "metatab.cli.programs.predict:main"
 metatab-resample = "metatab.cli.programs.resample.resample:main"
 metatab-opt-search = "metatab.cli.programs.metalearning.opt_search:main"
 metatab-prepare-metadata = "metatab.cli.programs.metalearning.prepare_metadata:main"

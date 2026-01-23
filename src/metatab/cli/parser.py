@@ -5,11 +5,15 @@ from argparse import ArgumentParser
 def make_base_parser() -> ArgumentParser:
     p = ArgumentParser(add_help=False)
     
-    p.add_argument("-i", "--input-data", required=True, help="Path to the dataset folder/file.")
+    p.add_argument("-i", "--input-data", required=True, help="Path to the dataset folder/file. See 'imput_mode' for details.")
     
     p.add_argument("-o", "--output-dir", required=True, help="Path of the folder where the results are created.")
 
-    p.add_argument("-m", "--input-mode", required=True, choices=["xy", "df"], help="Defines the data input format. One between 'xy' and 'df'.")
+    p.add_argument("-m", "--input-mode", required=True, choices=["xy", "df"], 
+                   help="""Defines the data input format. One between 'xy' and 'df'.
+                    -xy: A folder containing `X.txt` and `y.txt` named files.
+                    -df: A file containing both X and y data.
+                    In both cases the program EXPECTS tab-separated text files.""")
     
     p.add_argument("-y", "--target-feature", default=None,
                     help="Name of the target feature column. Must be provided when '--input-mode' is equal to 'df'")
@@ -163,8 +167,8 @@ def make_tune_parser() -> ArgumentParser:
                    help="""Number of folds used in the inner cross-validation during hyperparameter tuning. Defaults to 5.""")
     
     p.add_argument("--tune-meta-surrogate-model", default=None,
-                   help="""Not intended for users. This parameter allows to pass an external surrogate model 
-                   to use instead of the default one in the tune meta optimization process. The model must be serialized with joblib.
+                   help="""For advanced usage only. 
+                   This parameter allows to pass an external surrogate model to use in the tune meta optimization process.
                    Ignored when '--tune-algo' is not "meta".""")
     
     # TODO: for now we do not allow to specify the specifics for the strategies
@@ -211,8 +215,8 @@ def make_ensemble_parser() -> ArgumentParser:
     p.add_argument("--ensemble-time-limit", type=int, default="10000000", help="Time limit for ensembling.")
 
     p.add_argument("--ensemble-meta-surrogate-model", default=None,
-                   help="""Not intended for users. This parameter allows to pass an external surrogate model 
-                   to use instead of the default one in the meta-ensembling process. The model must be serialized with joblib.
+                   help="""For advanced use only.
+                   This parameter allows to pass an external surrogate model to use in the meta-ensembling process.
                    Ignored when '--ensemble-algo' is not "meta".""")
     
     # TODO: for now we do not allow to specify the specifics for the strategies
@@ -244,7 +248,7 @@ def make_family_ensemble_parser() -> ArgumentParser:
                    - meta|random: The algorithm used to infer the estimators hps configurations.
                    - n_members: The number of members for every inner estimator ensemble.
                    In this case the estimators that can be GPU-accelerated are run on GPU if CUDA is available.
-                   If a configuration file it must be derived from the "CollectionUserEnsembleConfiguration" 
+                   If a json file it must be derived from the "CollectionUserEnsembleConfiguration" 
                    python class or must follow its signature.""")
 
     p.add_argument("--use-bag-cv", action="store_true",

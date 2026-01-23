@@ -102,7 +102,7 @@ def check_meta_tuning_options(
         (estimator != "tabpfn" and preprocessing not in ["estimator_default", "base"])    
     ):
         warnings.warn(
-            "Metalearning is less effective when the following estimator-preprocessing couples are NOT respected:" +
+            "Metalearning is LESS effective when the following estimator-preprocessing couples are NOT respected:" +
             " tabpfn --> density_filter," +
             " others estimators --> base."
         )

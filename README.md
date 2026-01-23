@@ -4,14 +4,13 @@ A comprehensive classification framework for microbial taxonomic profiles.
 
 ## Features
 - **Wide Model Library**: Includes 9 models spanning trees, deep learning methods, and AutoGluon
-- **Tailored HPO Search Spaces**: Offers hyperparameter spaces tailored for microbial profiles properties
+- **Tailored HPO Search Spaces**: Offers hyperparameter spaces tailored for microbial profiles
 - **Flexible HPO Optimization**: Supports different hyperparameter optimization algorithms
 - **Default, Tune and Ensemble Model Versions**: Each model supports default parameters, HPO tuned and ensembled versions
 - **Metalearning options**: Provides metalearning capabilities to guide HPO
 - **Hierarchical Ensembling**: Enables building ensembles of model ensembles
 - **Multiple CLI Fitting Strategies**: Supports whole-dataset, holdout, and cross-validation fitting strategies via CLI on custom datasets
 - **Basic Preprocessing Support**: Supports a limited suite of data preprocessing options
-- **Optional Early Stopping for Boosted Trees**: Allows boosted tree models to be trained with or without early stopping on a validation set
 
 
 ## Installation
@@ -24,20 +23,56 @@ conda activate metatab
 # Clone the repository
 git clone https://github.com/mike-bioinf/metatab.git
 
-# Install metatab
-pip install metatab
+# Install metatab in development mode
+pip install -e metatab
 ```
 
 
 ## Quick Start
 
 ### CLI
+Metatab provides three main commands:
+- metatab-fit
+- metatab-resample
+- metatab-predict
+
+Each command serves a different purpose and exposes a different subcommand structure.
+
+
+### metatab-resample
+metatab-resample is used to fit and evaluate estimators on a dataset using a resampling strategy.
+It supports two levels of subcommands:
+
+- Resampling strategy, defines how the data is split: cv or holdout.
+
+- Estimator mode, defines how estimators are trained within the chosen resampling strategy: default, tune, ensemble, family-ensemble and autogluon.
+
+In practice, a metatab-resample command always selects one resampling strategy followed by one estimator mode (e.g. metatab-resample cv tune).
+
+### metatab-fit
+metatab-fit is used to fit an estimator on the entire dataset, without applying any resampling strategy.
+It supports only estimator-mode subcommands: default, tune, ensemble, family-ensemble and autogluon.
+This command is typically used when the goal is to train a model for later deployment or inference.
+
+
+### metatab-predict
+metatab-predict has no subcommands.
+It is used to evaluate a previously fitted estimator on new data. 
+The pickled estimator needed in input can be obtained from:
+- metatab-fit
+- metatab-resample, when run with the --save-estimators option enabled.
+
+
+### Quick usage guide
+- Use metatab-resample to train and evaluate models under CV or holdout resampling.
+- Use metatab-fit to train a model on the full dataset.
+- Use metatab-predict to apply a trained model to new, external data.
 
 ```bash
 # Fit a model on a dataset
 metatab-fit default \
     --input-data "path/to/your/data" \
-    --output-dir "path/to/your/output-directory" \
+    --output-dir "path/of/your/output-directory" \
     --input-mode df \
     --target-feature "your_target_column" \
     --estimator random_forest \
@@ -49,7 +84,7 @@ metatab-fit default \
 # Fit a tuned model on a dataset
 metatab-fit tune \
     --input-data "path/to/your/data" \
-    --output-dir "path/to/your/output-directory" \
+    --output-dir "path/of/your/output-directory" \
     --input-mode df \
     --target-feature "your_target_column" \
     --estimator es_lgbm \
@@ -64,10 +99,10 @@ metatab-fit tune \
     --create-outdir
 
 
-# Fit an ensembled model on a dataset using metatab metalearning framework
+# Fit an ensembled model on a dataset using metatab metalearning capabilities
 metatab-fit ensemble \
     --input-data "path/to/your/data" \
-    --output-dir "path/to/your/output-directory" \
+    --output-dir "path/of/your/output-directory" \
     --input-mode df \
     --target-feature "your_target_column" \
     --estimator extra_trees \
@@ -79,10 +114,10 @@ metatab-fit ensemble \
     --create-outdir
 
 
-# Fit a hierarchical ensemble on a single dataset
+# Fit a hierarchical ensemble of all classifiers on a dataset
 metatab-fit family-ensemble \
     --input-data "path/to/your/data" \
-    --output-dir "path/to/your/output-directory" \
+    --output-dir "path/of/your/output-directory" \
     --input-mode df \
     --target-feature "your_target_column" \
     --ensemble-configuration "all_random_8" \
@@ -91,18 +126,31 @@ metatab-fit family-ensemble \
 
 # Use a fitted model to obtain predictions and performance metrics on a second dataset
 metatab-predict \
-    --file-estimator "path/to/fitted/estimator_file" \
+    --file-estimator "path/fitted/estimator_file" \
     --input-data "path/to/your/data" \
-    --output-dir "path/to/your/output-directory" \
+    --output-dir "path/of/your/output-directory" \
     --input-mode df \
     --target-feature "your_target_column" \
     --x-uniform \
     --create-outdir
 
-# Fit an ensembled model in a resampling procedure on a single dataset
+# Fit autogluon on a dataset
+metatab-fit autogluon \
+    --input-data "path/to/your/data" \
+    --output-dir "path/of/your/output-directory" \
+    --input-mode df \
+    --target-feature "your_target_column" \
+    --preset extreme_quality \
+    --time-limit 600 \
+    --eval-metric log_loss \
+    --nthreads 1 \
+    --ngpus 1 \
+    --create-outdir
+
+# Fit ensemble models on a dataset in a cross-validation procedure
 metatab-resample cv tune \
     --input-data "path/to/your/data" \
-    --output-dir "path/to/your/output-directory" \
+    --output-dir "path/of/your/output-directory" \
     --input-mode df \
     --target-feature "your_target_column" \
     --estimator extra_trees \
@@ -116,6 +164,9 @@ metatab-resample cv tune \
     --n-cv-folds 5 \
     --nthreads 1 \
     --create-outdir
+
+# consult help pages for detailed info
+metatab-resample cv tune --help
 ```
 
 
@@ -155,8 +206,7 @@ es_xgb_0 = UserEnsembleConfiguration(
     preprocessing="estimator_default",
     tune_space="default",
     early_stop_on_validation_set=True,
-    early_stop_rounds=20,
-    validation_set_size=0.2,
+    validation_set_size=0.2
 )
 
 # 1. Merge the configurations into a single one
@@ -190,7 +240,7 @@ family_ensemble = FamilyEnsembleEstimator(
 | TabPFN v2 | ✅ | ✅ | ✅ |
 | AutoGluon | ✅ | N/A* | N/A* |
 
-*N/A: Model handles its own hyperparameter optimization internally
+*N/A: Model handles tuning and ensembling internally.
 
 
 ## Authors

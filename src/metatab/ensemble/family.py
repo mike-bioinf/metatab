@@ -80,7 +80,7 @@ class FamilyEnsembleEstimator:
             The default is 10 million equal to 115 days approximately, meaning no limit.
 
         n_jobs (int, optional):
-            Number of threads used to parallelize the internal classifiers.
+            Number of threads used to parallelize the classifiers fitting process.
 
         log (int, optional):
             Level of the internal logger.
