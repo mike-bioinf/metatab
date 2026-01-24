@@ -1,8 +1,11 @@
+from __future__ import annotations
+
 import re
 import json
 import logging
 from pathlib import Path
-from typing import Literal
+from typing import Literal, TYPE_CHECKING
+import numpy as np
 from metatab.estimators.params.utils import pick_estimator_tune_space
 from metatab.estimators.utils.constants import EARLY_STOPPED_ESTIMATORS
 from metatab.metalearning.load import query_surrogate_framework
@@ -19,6 +22,14 @@ from metatab.estimators.core.configurations import (
     TuneConfiguration,
     EnsembleConfiguration
 )
+
+if TYPE_CHECKING:
+    import pandas as pd
+    from sklearn.preprocessing import LabelEncoder
+    from metatab.estimators.estimators import Estimator
+    from metatab.ensemble.family import FamilyEnsembleEstimator
+    from autogluon.tabular import TabularPredictor
+
 
 
 
@@ -144,6 +155,27 @@ def build_early_stop_configuration(pars: dict) -> None | EarlyStopConfiguration:
     return EarlyStopConfiguration(
         early_stop_rounds=pars["early_stop_rounds"],
         validation_set_size=pars["validation_set_size"]
+    )
+
+
+def add_predict_attrs_to_estimator(
+    estimator: Estimator | FamilyEnsembleEstimator | TabularPredictor,
+    label_encoder: LabelEncoder,
+    X_train: pd.DataFrame,
+    y_train: pd.Series,
+    fit_dataset_name: str
+) -> None:
+    '''
+    Add to the estimator object the info needed by the predict program.
+    These are added in a dictionary stored in the "_info_predict_program_" attribute.
+    Returns None.
+    '''
+    estimator._info_predict_program_ = dict(
+        le = label_encoder,
+        classes = label_encoder.classes_,
+        classes_counts = np.unique(y_train.to_numpy(), return_counts=True)[1],
+        fit_dataset_name = fit_dataset_name,
+        fit_features = X_train.columns.to_numpy()
     )
 
 

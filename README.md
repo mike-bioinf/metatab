@@ -58,7 +58,7 @@ This command is typically used when the goal is to train a model for later deplo
 ### metatab-predict
 metatab-predict has no subcommands.
 It is used to evaluate a previously fitted estimator on new data. 
-The pickled estimator needed in input can be obtained from:
+The pickled estimator needed by this program can be obtained from:
 - metatab-fit
 - metatab-resample, when run with the --save-estimators option enabled.
 
@@ -76,8 +76,7 @@ Some fields (such as predictions) are stored as strings that can be decoded back
 This conversion is executed by the "PredictionDataframe" python class (see Python API below), 
 which provides a convenient way to load and parse these files into pandas DataFrames.
 By default, the same information is also written in the non-encoded form in additional text files. 
-The creation of these additional outputs can be avoided via the "--disable-additional-txt-output" flag.
-
+The creation of these additional redundant outputs can be avoided via the "--disable-additional-txt-output" flag.
 
 ```bash
 # Fit a model on a dataset

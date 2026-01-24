@@ -1,4 +1,6 @@
+import os
 import sys
+import pickle
 import shutil
 import numpy as np
 import pandas as pd
@@ -24,7 +26,8 @@ from metatab.cli.helper import (
     check_target_feature,
     check_holdout_train_size,
     adjust_io_paths_,
-    manage_output_path
+    manage_output_path,
+    add_predict_attrs_to_estimator
 )
 
 
@@ -65,8 +68,8 @@ def main_autogluon(pars: dict):
     dict_results = defaultdict(list)
     df_pred_results = PredictionDataframe()
 
-    if not pars["disable_txt_output"]: 
-        txt_folder = output_dir / "txt_info"
+    if not pars["disable_additional_txt_output"]: 
+        txt_folder = output_dir / "additional_txt_info"
         txt_folder.mkdir(exist_ok=True)
 
     splitter = pick_splitter(pars)
@@ -75,12 +78,13 @@ def main_autogluon(pars: dict):
     # run resampling
     for i, (train_idx, test_idx) in enumerate(splitter.split(X, y)):
         repetition, fold = get_repetition_fold(i, pars)
+        iter_signature = get_resample_iteration_signature(repetition, fold)
         log_iteration(pars, fold, repetition, logger)
         
         X_train, y_train = X.iloc[train_idx, :], y.iloc[train_idx]
         X_test, y_test = X.iloc[test_idx, :], y.iloc[test_idx]
         train_data = pd.concat([X_train, y_train], axis=1)
-        path_iteration = str(path_estimators / f"estimator_{get_resample_iteration_signature(repetition, fold)}")
+        path_iteration = str(path_estimators / f"estimator_{iter_signature}")
 
         autogluon_predictor = TabularPredictor(
             label=y.name,
@@ -131,19 +135,25 @@ def main_autogluon(pars: dict):
 
         if not pars["save_estimators"]:
             shutil.rmtree(path_iteration)
+        else:
+            add_predict_attrs_to_estimator(autogluon_predictor, le, X_train, y_train, name_dataset)
+            with open(os.path.join(path_iteration, "estimator.pkl"), "wb") as f:
+                pickle.dump(autogluon_predictor, f)
 
-        if not pars["disable_txt_output"]:
-            txt_folder_iter = txt_folder / f"iter_{get_resample_iteration_signature(repetition, fold)}"
+        if not pars["disable_additional_txt_output"]:
+            txt_folder_iter = txt_folder / f"iter_{iter_signature}"
             txt_folder_iter.mkdir(exist_ok=True)
             np.savetxt(txt_folder_iter / "predicted_probabilities.txt", pred_proba, delimiter="\t")
             np.savetxt(txt_folder_iter / "y_true.txt", y_test, fmt="%.1i", delimiter="\t")
-            np.savetxt(txt_folder / "classes.txt", le.classes_, fmt="%.1000s", delimiter="\t")
 
 
     # remove the estimators folder
     if not pars["save_estimators"]:
         shutil.rmtree(path_estimators)
 
+    if not pars["disable_additional_txt_output"]:
+        np.savetxt(txt_folder / "classes.txt", le.classes_, fmt="%.1000s", delimiter="\t")
+    
     df_pred_results.build_from_data(**dict_results, save_path=output_dir)
 
     if not df_pred_results.has_recovered:

@@ -6,7 +6,6 @@ The program seralizes the fitted model in a binary file via pickle.
 import sys
 import pickle
 import argparse
-import numpy as np
 import pandas as pd
 from sklearn.preprocessing import LabelEncoder
 from autogluon.tabular import TabularPredictor
@@ -18,7 +17,6 @@ from metatab.estimators.utils.general import check_meta_tuning_options
 from metatab.metalearning.load import query_surrogate_framework
 from metatab.ensemble.family import FamilyEnsembleEstimator
 from metatab.ensemble.utils import BagCV
-
 
 from metatab.cli.helper import (
     adjust_io_paths_, 
@@ -32,7 +30,8 @@ from metatab.cli.helper import (
     build_ensemble_configuration,
     get_ensemble_configuration,
     download_required_surrogate_models,
-    create_json_configuration_file
+    create_json_configuration_file,
+    add_predict_attrs_to_estimator
 )
 
 from metatab.cli.parser import (
@@ -101,16 +100,13 @@ def main():
         mode=pars["input_mode"],
         path=pars["input_data"],
         target_feature=pars["target_feature"],
-        load_as="train",
-        skip=["X_test", "y_test"]
+        load_as="generic"
     )
 
-    X, y = dl.X_train, dl.y_train
+    X, y = dl.X, dl.y
+    fit_dataset_name = dl.generic_dataset_name
     logger.debug("Data loaded in memory!")
-    
-    # here we consider all 3 load methods to retrieve the dataset_name
-    fit_dataset_name = dl.train_dataset_name if dl.train_dataset_name else dl.generic_dataset_name
-    
+
     # encode y
     le = LabelEncoder()
     y_enc = pd.Series(le.fit_transform(y)) # to have Xy "type" uniformity
@@ -185,11 +181,13 @@ def main():
     logger.debug("Estimator fitted on training data.")
     
     # we set attributes requested by the predict program
-    estimator._le_ = le
-    estimator._classes_ = le.classes_
-    estimator._classes_counts_ = np.unique(y_enc.to_numpy(), return_counts=True)[1]
-    estimator._fit_dataset_name_ = fit_dataset_name
-    estimator._fit_features_ = X.columns.to_numpy()
+    add_predict_attrs_to_estimator(
+        estimator=estimator,
+        label_encoder=le,
+        X_train=X,
+        y_train=y_enc,
+        fit_dataset_name=fit_dataset_name
+    )
 
     out_filepath = pars["output_dir"] / "estimator.pkl"
     

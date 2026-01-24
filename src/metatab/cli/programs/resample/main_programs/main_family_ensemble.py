@@ -25,7 +25,8 @@ from metatab.cli.helper import (
     adjust_io_paths_,
     manage_output_path,
     get_ensemble_configuration,
-    download_required_surrogate_models
+    download_required_surrogate_models,
+    add_predict_attrs_to_estimator
 )
 
 
@@ -75,8 +76,8 @@ def main_family_ensemble(pars: dict):
     rng_ensemble = np.random.default_rng(pars["seed_estimator"])
     configuration = get_ensemble_configuration(pars["ensemble_configuration"])
     
-    if not pars["disable_txt_output"]: 
-        txt_folder = output_dir / "txt_info"
+    if not pars["disable_additional_txt_output"]: 
+        txt_folder = output_dir / "additional_txt_info"
         txt_folder.mkdir(exist_ok=True)
     
     # this is to avoid the first download inside the fit call inflating times
@@ -148,18 +149,21 @@ def main_family_ensemble(pars: dict):
         list_dfs_ensemble_info.append(df_ensemble_members_recap)
 
         if pars["save_estimators"]:
+            add_predict_attrs_to_estimator(ensemble, le, X_train, y_train, name_dataset)
             ens_filepath = output_dir / "estimators" / f"ensemble_{iter_signature}.pkl"
             ensemble.save(ens_filepath)
         else:
             ensemble.delete_models_from_disk()
 
-        if not pars["disable_txt_output"]:
-            txt_folder_iter = txt_folder / f"iter_{get_resample_iteration_signature(repetition, fold)}"
+        if not pars["disable_additional_txt_output"]:
+            txt_folder_iter = txt_folder / f"iter_{iter_signature}"
             txt_folder_iter.mkdir(exist_ok=True)
             np.savetxt(txt_folder_iter / "predicted_probabilities.txt", pred_proba, delimiter="\t")
             np.savetxt(txt_folder_iter / "y_true.txt", y_test, fmt="%.1i", delimiter="\t")
-            np.savetxt(txt_folder / "classes.txt", le.classes_, fmt="%.1000s", delimiter="\t")
 
+
+    if not pars["disable_additional_txt_output"]:
+        np.savetxt(txt_folder / "classes.txt", le.classes_, fmt="%.1000s", delimiter="\t")
 
     df_pred_results.build_from_data(**dict_results, save_path=output_dir)
 

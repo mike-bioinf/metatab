@@ -13,7 +13,7 @@ def make_base_parser() -> ArgumentParser:
                    help="""Defines the data input format. One between 'xy' and 'df'.
                     -xy: A folder containing `X.txt` and `y.txt` named files.
                     -df: A file containing both X and y data.
-                    In both cases the program EXPECTS tab-separated text files.""")
+                    In both cases the program DEMANDS tab-separated text files.""")
     
     p.add_argument("-y", "--target-feature", default=None,
                     help="Name of the target feature column. Must be provided when '--input-mode' is equal to 'df'")
@@ -26,27 +26,27 @@ def make_base_parser() -> ArgumentParser:
 
 
 
-# set of options that are not required by family ensembles only
+# set of options that are NOT used by family_ensemble and autogluon modes
 def make_extra_base_parser() -> ArgumentParser:
     p = ArgumentParser(add_help=False)
 
     p.add_argument("-e", "--estimator", required=True,
                     choices=[
-                        "random_forest", "extra_trees","xgb", "es_xgb", "catboost", "es_catboost", "lgbm", "es_lgbm", "tabpfn", "realmlp",
-                        "tabm"
+                        "random_forest", "extra_trees","xgb", "es_xgb", "catboost", "es_catboost", 
+                        "lgbm", "es_lgbm", "tabpfn", "realmlp", "tabm"
                     ],
                     help="ML estimator to use.")
     
     p.add_argument("--early-stop-rounds", type=int, default=100,
-                   help="""Number of early stop rounds to use when using the "es" estimators.
-                   Must be a positive integer greater than 0. Defaults to 100. 
+                   help="""Number of early stop rounds for "es" GBDT models only.
+                   Must be a positive integer greater than 0. Defaults to 100.
                    This option is ignored when a non "es" estimator is used.
-                   Note: ignored by "realmlp" and "tabm" since they use more sophisticaed early stopping strategies.""")
+                   Note: ignored by "realmlp" and "tabm" estimators since they use more sophisticaed early stopping strategies.
+                   Note: the usage of this parameter is discouraged since it can be removed in future versions.""")
 
     p.add_argument("--validation-set-size", type=float, default=0.3,
-                   help="""Fraction of training data to use as validation for the early stop like mechanisms. 
-                   Must be a float in (0, 1).
-                   This option is ignored when a non early stopped estimator is used.""")
+                   help="""Fraction of training data to use as validation for early stop stop. Must be a float in (0, 1).
+                   This option is ignored when a non early stoppable estimator is used.""")
 
     p.add_argument("-p", "--preprocessing", default="estimator_default", 
                     choices=["estimator_default", "base", "density_filter", "pca", "no"],
@@ -59,7 +59,8 @@ def make_extra_base_parser() -> ArgumentParser:
     
     p.add_argument("--device", choices=["cpu", "cuda", "auto"], default="auto",
                     help="""Select the device on which fit the estimator(s). 
-                    When auto (default) 'cuda' is selected if available AND the estimator requires GPU else 'cpu'.""")
+                    When auto (default) 'cuda' is selected if available AND the estimator requires GPU else 'cpu'.
+                    Note: The GBDTs estimators can be run on CPU only.""")
     
     return p
 
