@@ -11,8 +11,8 @@ def make_base_parser() -> ArgumentParser:
 
     p.add_argument("-m", "--input-mode", required=True, choices=["xy", "df"], 
                    help="""Defines the data input format. One between 'xy' and 'df'.
-                    -xy: A folder containing `X.txt` and `y.txt` named files.
-                    -df: A file containing both X and y data.
+                    -xy: A folder containing `X.txt` and `y.txt` files. The file names as well as the extensions must exactly match. 
+                    -df: A file containing both X and y features in a table.
                     In both cases the program DEMANDS tab-separated text files.""")
     
     p.add_argument("-y", "--target-feature", default=None,
@@ -145,7 +145,7 @@ def make_tune_parser() -> ArgumentParser:
                    help="""Optimization algorithm to use. Possible options are 'random', 'tpe'(default) and 'meta'.
                    The meta option enables a metalearning powered tuning, where the points are suggested
                    by a surrogate model trained on our tuning prior.Three important notes:
-                   1. The tuning prior is generated on a collection of 32 real datasets (info here).
+                   1. The tuning prior is generated on a collection of 32 real datasets (see paper for details).
                    Therefore this strategy should NOT be used on these datasets to avoid leakage and overoptimistic results.
                    2. The tuning prior is generate only considering the default '--tune-space' for every estimator.
                    An error will be raised if an alternative space is requested.
@@ -202,7 +202,7 @@ def make_ensemble_parser() -> ArgumentParser:
                     help="""How to derive the hps configurations to ensemble.
                     The meta option enables a metalearning powered procedure, where the points are suggested
                     by a surrogate model trained on our tuning prior.Three important notes:
-                    1. The tuning prior is generated on a collection of 32 real datasets (info here).
+                    1. The tuning prior is generated on a collection of 32 real datasets (see paper for details).
                     Therefore this strategy should NOT be used on these datasets to avoid leakage and overoptimistic results.
                     2. The tuning prior is generate only considering the default '--ensemble-space' for every estimator.
                     An error will be raised if an alternative space is requested.

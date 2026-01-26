@@ -60,13 +60,25 @@ metatab-predict has no subcommands.
 It is used to evaluate a previously fitted estimator on new data. 
 The pickled estimator needed by this program can be obtained from:
 - metatab-fit
-- metatab-resample, when run with the --save-estimators option enabled.
+- metatab-resample, when run with the "--save-estimators" option enabled.
 
 
 ### Quick usage guide
 - Use metatab-resample to train and evaluate models under CV or holdout resampling.
 - Use metatab-fit to train a model on the full dataset.
 - Use metatab-predict to use a trained model to new, external data.
+
+
+### Note on metatab-fit and metatab-resample input data
+Both metatab-fit and metatab-resample expect microbial profiles formatted as tab-separated text files, 
+with microorganisms on columns. The target variable can be provided either within the same table or in a separate file.
+
+Two input data "modes" are supported:
+- "xy" mode: the program expects two files named exactly "X.txt" and "y.txt" (note that the extensions must match as well).
+Both files must be tab-separated and located in the same input folder, which is passed as the program input.
+
+- "df" mode: the program expects a single tab-separated file containing both features and target.
+In this case, the target column name must be specified using the "--target-feature" option.
 
 
 ### Note on metatab-resample and metatab-predict output
@@ -79,6 +91,10 @@ By default, the same information is also written in the non-encoded form in addi
 The creation of these additional redundant outputs can be avoided via the "--disable-additional-txt-output" flag.
 
 ```bash
+# consult help pages for detailed info
+metatab-resample cv tune --help
+
+# get example dataset path
 example_dataset_path=$(metatab-get-example-data-path)
 
 # Fit a model on a dataset
@@ -176,9 +192,6 @@ metatab-resample cv ensemble \
     --n-cv-folds 5 \
     --nthreads 1 \
     --create-outdir
-
-# consult help pages for detailed info
-metatab-resample cv tune --help
 ```
 
 
