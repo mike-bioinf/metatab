@@ -82,12 +82,11 @@ class MetaTuneBaseEstimator(ClassifierMixin, BaseEstimator):
             
             meta_strategy (MetaStrategy, optional):
                 Set the strategy used by the metalearning framework to select points.
-                In detail the following `MetadataEvaluator` utilities are used:
-                - "best": `propose_n_best`
-                - "random_from_best": `propose_random_from_top`
-                - "uniform_from_best": `propose_uniform_from_top`
-                - "random_uniform_from_best": `propose_random_uniform_from_top`
-                See the specific method for more details.
+                It has no effect when `algo` is not "meta".
+                - "best": select the top-n configurations.
+                - "random_from_best": random selection from the top.
+                - "uniform_from_best": uniform step selection from the top.
+                - "random_uniform_from_best": random selection within uniform intervals from the top.
                 
             meta_strategy_params (None | MetaStrategyParams, optional):
                 Meta strategy specifics in form of dataclass.

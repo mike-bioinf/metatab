@@ -79,12 +79,14 @@ By default, the same information is also written in the non-encoded form in addi
 The creation of these additional redundant outputs can be avoided via the "--disable-additional-txt-output" flag.
 
 ```bash
+example_dataset_path=$(metatab-get-example-data-path)
+
 # Fit a model on a dataset
 metatab-fit default \
-    --input-data "path/to/your/data" \
+    --input-data "${example_dataset_path}" \
     --output-dir "path/of/your/output-directory" \
     --input-mode df \
-    --target-feature "your_target_column" \
+    --target-feature "Group" \
     --estimator random_forest \
     --preprocessing estimator_default \
     --seed 42 \
@@ -93,10 +95,10 @@ metatab-fit default \
 
 # Fit a tuned model on a dataset
 metatab-fit tune \
-    --input-data "path/to/your/data" \
+    --input-data "${example_dataset_path}" \
     --output-dir "path/of/your/output-directory" \
     --input-mode df \
-    --target-feature "your_target_column" \
+    --target-feature "Group" \
     --estimator es_lgbm \
     --validation-set-size 0.3 \
     --early-stop-rounds 10 \
@@ -111,10 +113,10 @@ metatab-fit tune \
 
 # Fit an ensembled model on a dataset using metatab metalearning capabilities
 metatab-fit ensemble \
-    --input-data "path/to/your/data" \
+    --input-data "${example_dataset_path}" \
     --output-dir "path/of/your/output-directory" \
     --input-mode df \
-    --target-feature "your_target_column" \
+    --target-feature "Group" \
     --estimator extra_trees \
     --preprocessing estimator_default \
     --ensemble-algo meta \
@@ -126,10 +128,10 @@ metatab-fit ensemble \
 
 # Fit a hierarchical ensemble of all classifiers on a dataset
 metatab-fit family-ensemble \
-    --input-data "path/to/your/data" \
+    --input-data "${example_dataset_path}" \
     --output-dir "path/of/your/output-directory" \
     --input-mode df \
-    --target-feature "your_target_column" \
+    --target-feature "Group" \
     --ensemble-configuration "all_random_8" \
     --nthreads 1 \
     --create-outdir
@@ -137,19 +139,19 @@ metatab-fit family-ensemble \
 # Use a fitted model to obtain predictions and performance metrics on a second dataset
 metatab-predict \
     --file-estimator "path/fitted/estimator_file" \
-    --input-data "path/to/your/data" \
+    --input-data "${example_dataset_path}" \
     --output-dir "path/of/your/output-directory" \
     --input-mode df \
-    --target-feature "your_target_column" \
+    --target-feature "Group" \
     --x-uniform \
     --create-outdir
 
 # Fit autogluon on a dataset
 metatab-fit autogluon \
-    --input-data "path/to/your/data" \
+    --input-data "${example_dataset_path}" \
     --output-dir "path/of/your/output-directory" \
     --input-mode df \
-    --target-feature "your_target_column" \
+    --target-feature "Group" \
     --preset extreme_quality \
     --time-limit 600 \
     --eval-metric log_loss \
@@ -159,10 +161,10 @@ metatab-fit autogluon \
 
 # Fit ensemble models on a dataset in a cross-validation procedure
 metatab-resample cv ensemble \
-    --input-data "path/to/your/data" \
+    --input-data "${example_dataset_path}" \
     --output-dir "path/of/your/output-directory" \
     --input-mode df \
-    --target-feature "your_target_column" \
+    --target-feature "Group" \
     --estimator extra_trees \
     --preprocessing estimator_default \
     --ensemble-algo random \
@@ -186,20 +188,27 @@ metatab-resample cv tune --help
 - The PredictionDataframe class can be used to easily load and parse the pred_dataframe* files generated through the CLI API into a pandas DataFrame.
 
 ```python
-from metatab import MetaTuneRandomForestClassifier, FamilyEnsembleEstimator
+from sklearn.model_selection import train_test_split
+from metatab import MetaTuneRandomForestClassifier, FamilyEnsembleEstimator, get_example_data
 from metatab.ensemble.configuration import UserEnsembleConfiguration, CollectionUserEnsembleConfiguration
 from metatab.metatab_utils.prediction import PredictionDataframe
 
+
+# get data and split in train and test sets
+data = get_example_data()
+X = data.drop(columns="Group")
+y = data["Group"]
+X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=0.7, random_state=0, stratify=y)
+
+
 ## zero-shot meta-tuning
 meta_tuned_rf = MetaTuneRandomForestClassifier(n_iter=1)
-## use your data
-# meta_tuned_rf.fit(X_train, y_train)
-# pred_proba = meta_tuned_rf.predict_proba(X_test)
+meta_tuned_rf.fit(X_train, y_train)
+pred_proba = meta_tuned_rf.predict_proba(X_test)
 
 
 ## Building an hierarchical ensemble
-
-# 0. specify the inner-ensemble configurations
+# 0. Specify the inner-ensemble configurations
 rf_0 = UserEnsembleConfiguration(
     name="ens_rf_0",
     algo="random",
@@ -212,8 +221,8 @@ rf_0 = UserEnsembleConfiguration(
 
 es_xgb_0 = UserEnsembleConfiguration(
     name="ens_esxgb_0",
-    algo="meta",
-    n_members=4,
+    algo="random",
+    n_members=2,
     estimator="es_xgb",
     preprocessing="estimator_default",
     tune_space="default",
@@ -224,16 +233,16 @@ es_xgb_0 = UserEnsembleConfiguration(
 # 1. Merge the configurations into a single one
 family_ensemble_configuration = CollectionUserEnsembleConfiguration([rf_0, es_xgb_0])
 
-# 2. build the hierarchical ensemble
+# 2. Build the hierarchical ensemble
 family_ensemble = FamilyEnsembleEstimator(
     name="fam_ens",
     configuration=family_ensemble_configuration,
-    save_path="path/output/folder"
+    save_path="output" ## put your folder output path (it will be created automatically if not existent)
 )
 
-## use your data
-# family_ensemble.fit(X_train, y_train)
-# pred_proba = family_ensemble.predict_proba(X_test)
+# 3. Fit and then predict
+family_ensemble.fit(X_train, y_train)
+pred_proba = family_ensemble.predict_proba(X_test)
 
 
 ### load the "pred_dataframe" files generated with the CLI API into pandas dataframes

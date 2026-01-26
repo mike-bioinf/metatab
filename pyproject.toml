@@ -64,10 +64,17 @@ paper = [
 metatab-fit = "metatab.cli.programs.fit:main"
 metatab-predict = "metatab.cli.programs.predict:main"
 metatab-resample = "metatab.cli.programs.resample.resample:main"
+metatab-get-example-data-path = "metatab.cli.programs.get_example_data_path:main"
 metatab-opt-search = "metatab.cli.programs.metalearning.opt_search:main"
 metatab-prepare-metadata = "metatab.cli.programs.metalearning.prepare_metadata:main"
 metatab-fit-surrogate = "metatab.cli.programs.metalearning.fit_surrogate:main"
 metatab-fit-surrogate-loo = "metatab.cli.programs.metalearning.fit_surrogate_loo:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+metatab = ["data/*.txt"]
 
 [project.urls]
 Homepage = "https://github.com/mike-bioinf/metatab"
