@@ -307,19 +307,3 @@ def make_autogluon_parser() -> ArgumentParser:
                    help="Number of gpus to use. It fallbacks to the available ones when a number greater than that is used.")
     
     return p
-
-
-
-### TODO: write better help messages
-### TODO: complete this
-def make_repeat_learning_curves_parser() -> ArgumentParser:
-    p = ArgumentParser(add_help=False)
-
-    p.add_argument("--seed", default=42, type=int,
-                   help="""Controls the estimator randomness as well as the data splits.""")
-    
-    p.add_argument("--test-fraction", default=0.25, type=float,
-                   help="""Fraction of data to use as test set.""")
-
-    p.add_argument("--splits", required=True, nargs="+", type=float,
-                   help="""Data fractions to use on the training set for subsetting""")
