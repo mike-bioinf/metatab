@@ -21,6 +21,6 @@ def get_example_data() -> pd.DataFrame:
 
 def get_example_data_path() -> str:
     '''
-    Get the example microbial profile absolute path.
+    Get the example microbial profile absolute path as string.
     '''
     return str(files("metatab").joinpath("data/castronaller_2015.txt"))

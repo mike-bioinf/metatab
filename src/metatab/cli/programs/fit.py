@@ -111,7 +111,7 @@ def main():
     # encode y
     le = LabelEncoder()
     y_enc = pd.Series(le.fit_transform(y)) # to have Xy "type" uniformity
-   
+    
 
     if pars["estimator_mode"] == "family_ensemble":
         configuration = get_ensemble_configuration(pars["ensemble_configuration"])
@@ -141,8 +141,8 @@ def main():
             on_empty="error"
         ).set_output(transform="pandas")
         
-        X_filt = density_selector.fit_transform(X)
-        data = pd.concat([X_filt, y_enc], axis=1)
+        X = density_selector.fit_transform(X)
+        data = pd.concat([X, y_enc], axis=1)
         
         estimator = TabularPredictor(
             label=y_enc.name,

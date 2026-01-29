@@ -5,7 +5,7 @@ from argparse import ArgumentParser
 def make_base_parser() -> ArgumentParser:
     p = ArgumentParser(add_help=False)
     
-    p.add_argument("-i", "--input-data", required=True, help="Path to the dataset folder/file. See 'imput_mode' for details.")
+    p.add_argument("-i", "--input-data", required=True, help="Path to the dataset folder/file. See 'input_mode' for details.")
     
     p.add_argument("-o", "--output-dir", required=True, help="Path of the folder where the results are created.")
 
@@ -86,7 +86,7 @@ def make_base_resample_parser() -> ArgumentParser:
                    The estimators object are saved via pickle in the 'estimators' folder.
                    Note that all estimators fitted during the resample procedure are saved.
                    The filenames follow two potential generic structure:
-                   - {estimator}_{repetition}{fold} when resample mode equal 'cv';
+                   - {estimator}_{repeat}{fold} when resample mode equal 'cv';
                    - {estimator}_{number} when resample mode equal 'holdout'.""")
 
     p.add_argument("--disable-additional-txt-output", action="store_true", 
@@ -307,3 +307,19 @@ def make_autogluon_parser() -> ArgumentParser:
                    help="Number of gpus to use. It fallbacks to the available ones when a number greater than that is used.")
     
     return p
+
+
+
+### TODO: write better help messages
+### TODO: complete this
+def make_repeat_learning_curves_parser() -> ArgumentParser:
+    p = ArgumentParser(add_help=False)
+
+    p.add_argument("--seed", default=42, type=int,
+                   help="""Controls the estimator randomness as well as the data splits.""")
+    
+    p.add_argument("--test-fraction", default=0.25, type=float,
+                   help="""Fraction of data to use as test set.""")
+
+    p.add_argument("--splits", required=True, nargs="+", type=float,
+                   help="""Data fractions to use on the training set for subsetting""")
