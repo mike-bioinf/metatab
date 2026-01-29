@@ -282,10 +282,22 @@ def make_autogluon_parser() -> ArgumentParser:
     p = ArgumentParser(add_help=False)
 
     p.add_argument("--preset", default="extreme_quality", 
-                   help="""Autogluon preset to use. 
+                   help="""Autogluon preset to use. Set the ML classifiers used by autogluon and the relative hps space portfolio.
                    See "https://auto.gluon.ai/dev/api/autogluon.tabular.TabularPredictor.fit.html" for additional info.""")
 
     p.add_argument("--time-limit", default=60, type=int, help="Fit time limit.")
+    
+    p.add_argument("--n-columns-density-filter", default=500, type=int,
+                   help="""Filter the most sparse columns in the data to reach the specified number of columns.
+                   Ties are arbritarily broken in a reproducible way thanks to an underlying sorting stable algorithmn.
+                   Keep in mind that changing the feature order can affect the filtering since ties will be internally ordered in a different way.
+                   Useful to allow autogluon to fit tabpfn and other foundational models with a limited feature window.
+                   The default value of 500 is choosen based on the feature limit window of tabpfn and mitra models.
+                   If a number greater than the actual number of columns is used, then all columns are selected (no filtering).
+                   Note: autogluon skip the foundational models when the number of features is not within their feature limits. 
+                   Note that these models are run only with the most performant presets. 
+                   So with lower quality presets the filtering process can be skipped.
+                   See autogluon documentation for detailed info about the presets.""")
     
     p.add_argument("--eval-metric", default="log_loss",
                    help="""Name of the validation metric used by autogluon. 

@@ -114,7 +114,7 @@ class DensityFeatureSelector(SelectorMixin, BaseEstimator):
                 self.n_selected_features_ = self.n_features_in_
                 self._mask = np.array([True] * self.n_features_in_)
                 # we allow made-up names since it's only for set_output API
-                self._selected_features = X.columns
+                self._selected_features = X.columns.to_numpy()
                 # when we pass all features then the minimun density score is the maximum
                 self.minimum_density_score_ = self.densities_.max()
             else:
@@ -124,7 +124,7 @@ class DensityFeatureSelector(SelectorMixin, BaseEstimator):
         else:
             self.n_selected_features_ = len(features_to_keep)
             self._mask = X.columns.isin(features_to_keep)
-            self._selected_features = X.columns[self._mask]
+            self._selected_features = X.columns.to_numpy()[self._mask]
             self.minimum_density_score_ = minimum_density_score
         
         return self

@@ -10,8 +10,7 @@ from metatab.estimators.utils.fit import fit_with_early_stop_on_validation_set, 
 
 if TYPE_CHECKING:
     from sklearn.pipeline import Pipeline
-    from metatab.estimators.utils.types import Classifier
-    
+
 
 
 class CrossValidator:

@@ -11,12 +11,13 @@ from sklearn.preprocessing import LabelEncoder
 from autogluon.tabular import TabularPredictor
 from metatab.metatab_utils.data_loader import DataLoader
 from metatab.metatab_utils.general import create_unique_column_name
-from metatab.estimators.estimators import Estimator
-from metatab.estimators.utils.pick import pick_estimator_class
 from metatab.estimators.utils.general import check_meta_tuning_options
-from metatab.metalearning.load import query_surrogate_framework
+from metatab.estimators.utils.pick import pick_estimator_class
+from metatab.estimators.estimators import Estimator
 from metatab.ensemble.family import FamilyEnsembleEstimator
 from metatab.ensemble.utils import BagCV
+from metatab.preprocessing.density_selector import DensityFeatureSelector
+from metatab.metalearning.load import query_surrogate_framework
 
 from metatab.cli.helper import (
     adjust_io_paths_, 
@@ -133,7 +134,15 @@ def main():
     
     elif pars["estimator_mode"] == "autogluon":
         y_enc.name = pars["target_feature"] if pars["input_mode"] == "df" else create_unique_column_name(X, "_target_")
-        data = pd.concat([X, y_enc], axis=1)
+        
+        density_selector = DensityFeatureSelector(
+            n_target_cols=pars["n_columns_density_filter"],
+            strategy="exact",
+            on_empty="error"
+        ).set_output(transform="pandas")
+        
+        X_filt = density_selector.fit_transform(X)
+        data = pd.concat([X_filt, y_enc], axis=1)
         
         estimator = TabularPredictor(
             label=y_enc.name,

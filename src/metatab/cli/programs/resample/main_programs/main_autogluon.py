@@ -11,6 +11,7 @@ from autogluon.tabular import TabularPredictor
 from metatab.metatab_utils.data_loader import DataLoader
 from metatab.metatab_utils.prediction import PredictionDataframe
 from metatab.metatab_utils.general import create_unique_column_name
+from metatab.preprocessing.density_selector import DensityFeatureSelector
 
 from metatab.cli.programs.resample.helper import (
     pick_splitter,
@@ -73,7 +74,13 @@ def main_autogluon(pars: dict):
         txt_folder.mkdir(exist_ok=True)
 
     splitter = pick_splitter(pars)
-    
+
+    density_selector = DensityFeatureSelector(
+        n_target_cols=pars["n_columns_density_filter"],
+        strategy="exact",
+        on_empty="error"
+    ).set_output(transform="pandas")
+
 
     # run resampling
     for i, (train_idx, test_idx) in enumerate(splitter.split(X, y)):
@@ -83,7 +90,11 @@ def main_autogluon(pars: dict):
         
         X_train, y_train = X.iloc[train_idx, :], y.iloc[train_idx]
         X_test, y_test = X.iloc[test_idx, :], y.iloc[test_idx]
-        train_data = pd.concat([X_train, y_train], axis=1)
+
+        X_train_filt = density_selector.fit_transform(X_train)
+        X_test_filt = density_selector.transform(X_test)
+
+        train_data = pd.concat([X_train_filt, y_train], axis=1)
         path_iteration = str(path_estimators / f"estimator_{iter_signature}")
 
         autogluon_predictor = TabularPredictor(
@@ -108,7 +119,7 @@ def main_autogluon(pars: dict):
         logger.debug(f"\t-Fit time in minutes: {round(fit_time/60, 2)}")
         
         t = time()
-        pred_proba = autogluon_predictor.predict_proba(X_test, as_pandas=False)
+        pred_proba = autogluon_predictor.predict_proba(X_test_filt, as_pandas=False)
         predict_time = time() - t
         logger.debug(f"\t-Inference time in minutes: {round(predict_time/60, 2)}\n")
 
@@ -136,7 +147,7 @@ def main_autogluon(pars: dict):
         if not pars["save_estimators"]:
             shutil.rmtree(path_iteration)
         else:
-            add_predict_attrs_to_estimator(autogluon_predictor, le, X_train, y_train, name_dataset)
+            add_predict_attrs_to_estimator(autogluon_predictor, le, X_train_filt, y_train, name_dataset)
             with open(os.path.join(path_iteration, "estimator.pkl"), "wb") as f:
                 pickle.dump(autogluon_predictor, f)
 
