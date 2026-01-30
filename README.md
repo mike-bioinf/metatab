@@ -8,7 +8,7 @@ A comprehensive classification framework for microbial taxonomic profiles.
 - **Flexible HPO Optimization**: Supports different hyperparameter optimization algorithms
 - **Default, Tune and Ensemble Model Versions**: Each model supports default parameters, HPO tuned and ensembled versions
 - **Metalearning options**: Provides metalearning capabilities to guide HPO
-- **Hierarchical Ensembling**: Enables building ensembles of model ensembles
+- **Hierarchical Post Hoc Ensembling**: Enables building inner and/or cross model ensembles of model ensembles
 - **Multiple CLI Fitting Strategies**: Supports whole-dataset, holdout, and cross-validation fitting strategies via CLI on custom datasets
 - **Basic Preprocessing Support**: Supports a limited suite of data preprocessing options
 
