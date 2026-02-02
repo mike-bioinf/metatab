@@ -101,7 +101,7 @@ def main_ensemble(pars: dict):
         txt_folder.mkdir(exist_ok=True)
     
     # this is to avoid the first download inside the fit call inflating times
-    if pars["ensemble_algo"] == "meta":
+    if pars["ensemble_algo"] == "meta" and not pars["ensemble_meta_surrogate_model"]:
         _ = query_surrogate_framework(pars["estimator"])
     
 

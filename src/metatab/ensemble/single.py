@@ -479,6 +479,7 @@ class EnsembleEstimator:
                 mean_direction="lower_is_better", # we currently use only the logloss
             )
 
+            # use the input model or use the default
             surrogate_model = joblib.load(self.meta_surrogate_model) \
                 if self.meta_surrogate_model \
                 else query_surrogate_framework(self.type_estimator)

@@ -101,7 +101,7 @@ def main_tune(pars: dict):
         txt_folder.mkdir(exist_ok=True)
 
     # this is to avoid the first download inside the fit call inflating times
-    if pars["tune_algo"] == "meta":
+    if pars["tune_algo"] == "meta" and not pars["tune_meta_surrogate_model"]:
         _ = query_surrogate_framework(pars["estimator"])
     
     
