@@ -195,10 +195,11 @@ def is_gbdt_estimator(estimator: EstimatorType, invert: bool = False) -> bool:
     return is_gbdt if not invert else not is_gbdt
 
 
-
-def refine_tune_info(
-    tune_algo_series: pd.Series,
-    distinguish_tpe_from_random: bool = False
+### TODO we should pass directly the dataframe
+## and then we have to take in consideratio both estimator_mode and algo colum, and also n_members and n_iter
+def refine_estimator_mode_info(
+    estimator_mode_series: pd.Series,
+    distinguish_tpe_from_random: bool = True
 ) -> pd.Series:
     '''
     Refine the tune info using the "tune_algo" column.
@@ -216,8 +217,8 @@ def refine_tune_info(
     '''
     refined_values = []
 
-    for value in tune_algo_series:
-        if pd.isna(value):
+    for value in estimator_mode_series:
+        if value == "default":
             refined_values.append("DF")
         elif value == "random":
             rvalue = "RHPO" if distinguish_tpe_from_random else "HPO"
