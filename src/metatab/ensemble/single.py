@@ -17,7 +17,7 @@ from metatab.metatab_utils.exceptions import TimiLimitError
 from metatab.estimators.utils.fit import fit_with_early_stop_on_validation_set, set_params_into_clf
 from metatab.hp_search.point_corrector import PointCorrector
 from metatab.metalearning.acquisition_funcs import compute_upper_confidence_bound
-from metatab.metalearning.utils import check_meta_strategy, check_meta_strategy_params, get_estimator_n_candidate_points
+from metatab.metalearning.utils import get_estimator_n_candidate_points
 from metatab.metalearning.sampler import HyperoptRandomSampler
 from metatab.metalearning.metafeatures import CustomMFE
 from metatab.metalearning.metadata_evaluator import MetadataEvaluator
@@ -87,8 +87,11 @@ class EnsembleEstimator:
             validation set(s) at fit level. Can be None.
             Ignored when "early_stop_on_validation_set" is False.
         
-        validation_set_size (float, optional):
-            The ratio of the early stop validation set.
+        validation_set (float | tuple[XType, YType] | None, optional):
+            Can be either:
+            - Float indicating the fraction of train data to use as validation.
+            - The X, y validation sets directly.
+            - None, possible only when "early_stop_on_validation_set" is False. 
             Ignored when "early_stop_on_validation_set" is False.
 
         meta_surrogate_model (None | str | Path, optional):
@@ -178,7 +181,7 @@ class EnsembleEstimator:
         params_distributions: dict,
         early_stop_on_validation_set: bool, 
         eval_set_parameter: str = "eval_set",
-        validation_set_size: float = 0.3,
+        validation_set: float | None | tuple[XType | YType] = 0.3,
         fit_classifier_kwargs: None | dict = None,
         meta_surrogate_model: None | str | Path = None,
         meta_strategy: MetaStrategy = "random_uniform_from_best",
@@ -202,7 +205,7 @@ class EnsembleEstimator:
         self.params_distributions=params_distributions
         self.early_stop_on_validation_set=early_stop_on_validation_set
         self.eval_set_parameter=eval_set_parameter
-        self.validation_set_size=validation_set_size
+        self.validation_set=validation_set
         self.fit_classifier_kwargs=fit_classifier_kwargs
         self.meta_surrogate_model=meta_surrogate_model
         self.meta_strategy=meta_strategy
@@ -219,14 +222,7 @@ class EnsembleEstimator:
 
     def fit(self, X: XType, y: YType) -> "EnsembleEstimator":
         start_time = time.time()
-
-        if self.algo not in ["random", "meta"]:
-            raise ValueError("algo must be equal to 'random' or 'meta'.")
-
-        if self.algo == "meta":
-            check_meta_strategy(self.meta_strategy)
-            check_meta_strategy_params(self.meta_strategy, self.meta_strategy_params, safe_none_params=True)
-        
+                
         logger = self._get_logger()
         logger.info(f"Starting building process of '{self.name}' ensemble.")
 
@@ -266,7 +262,7 @@ class EnsembleEstimator:
                         y=y,
                         seed=rng_early_stop.integers(low=0, high=2**30),
                         eval_set_parameter=self.eval_set_parameter,
-                        validation_set_size=self.validation_set_size,
+                        validation_set=self.validation_set,
                         fit_classifier_kwargs=fit_classifier_kwargs,
                         return_fit_time=True
                     )
@@ -274,13 +270,13 @@ class EnsembleEstimator:
                     t = time.time()
                     pipe.fit(X, y, **fit_classifier_kwargs)
                     fit_time = time.time() - t
-
+                
                 logger.debug(f"'{member_name}' member has been fitted in {round(fit_time / 60, 2)} minutes.")                
                 
                 # save model
                 with open(self._save_path / f"{member_name}.pkl", "wb") as f:
                     pickle.dump(pipe, f)
-
+                
                 logger.debug(f"'{member_name}' member saved on disk.")
                 
                 # the model is considered successful if fitted AND saved on disk
@@ -327,7 +323,7 @@ class EnsembleEstimator:
         )
 
         return self
-
+    
 
     def predict(self, X: XType) -> np.ndarray:
         '''
@@ -390,7 +386,22 @@ class EnsembleEstimator:
             file_model.unlink(missing_ok=True)
 
         self.is_cleaned_ = True
-        
+    
+
+    def collect_fit_info(self) -> dict:
+        '''Collect and return ensemble fit info into a dict.'''
+        check_is_fitted(self, "is_void_")
+        return {
+            "is_void_": self.is_void_,
+            "is_cleaned_": self.is_cleaned_,
+            "fit_time_": self.fit_time_,
+            "successful_members_": self.successful_members_, 
+            "failed_members_": self.failed_members_,
+            "successful_hps_confs_": self.successful_hps_confs_,
+            "failed_hps_confs_": self.failed_hps_confs_,
+            "df_members_": self.df_members_
+        }
+
 
     def _check_on_predict_calls(self) -> None:
         # we perform the fitted check on "fit_time_" since is defined at the end of the fit call. 

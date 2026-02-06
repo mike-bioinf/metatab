@@ -161,17 +161,18 @@ def main():
         )
 
     else:
-        # build configuration objects
-        ens_conf = None
-        tune_conf = None
-        early_stop_conf = build_early_stop_configuration(pars)
+        # # build configuration objects
+        # ens_conf = None
+        # tune_conf = None
+        # early_stop_conf = build_early_stop_configuration(pars)
 
+        ### QUI DOVREMMO PULIRE PARS DEPENDING DAL CASO
         if pars["estimator_mode"] == "ensemble":
             ens_conf = build_ensemble_configuration(pars)
         elif pars["estimator_mode"] == "tune":
             tune_conf = build_tune_configuration(pars)
         
-        # get concrete estimator class
+        ### QUI DOVREMMO PRENDERE DIRETTAMENTE LA "PYTHON" CLASS 
         estimator_class = pick_estimator_class(pars["estimator"], pars["estimator_mode"])
         
         estimator: Estimator = estimator_class(

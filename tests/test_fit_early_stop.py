@@ -25,7 +25,7 @@ def test_that_pipeline_is_fitted_after_decomposition():
         X=X,
         y=y,
         seed=0,
-        validation_set_size=0.3,
+        validation_set=0.3,
         eval_set_parameter="eval_set",
         fit_classifier_kwargs={},
         return_fit_time=False

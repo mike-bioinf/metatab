@@ -12,10 +12,6 @@ from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import RepeatedStratifiedKFold
 from sklearn.utils.validation import check_is_fitted, check_X_y
 from metatab.metatab_utils.general import subset_xy, subset_2d
-from metatab.metalearning.metafeatures import CustomMFE
-from metatab.estimators.params.utils import pick_estimator_tune_space
-from metatab.estimators.core.configurations import EnsembleConfiguration, EarlyStopConfiguration
-from metatab.estimators.utils.pick import pick_estimator_class
 
 from metatab.estimators.utils.general import (
     check_predict_features,
@@ -23,7 +19,7 @@ from metatab.estimators.utils.general import (
 )
 
 from metatab.ensemble.utils import BagCV
-from metatab.ensemble.configuration import UserEnsembleConfiguration, CollectionUserEnsembleConfiguration
+from metatab.ensemble.configuration import CollectionEnsembleEstimators
 
 if TYPE_CHECKING:
         from metatab.estimators.estimators import EnsembledEstimator
@@ -38,12 +34,12 @@ class FamilyEnsembleEstimator:
     Parameters:
         name (str): Family ensemble name.
         
-        configuration (UserEnsembleConfiguration | CollectionUserEnsembleConfiguration): 
-            Configuration instace/s describing and characterinzing the first 
-            level ensemble/s that form the ensemble family.
+        collection (CollectionEnsembleEstimators): 
+            Collection of ensembled estimator to ensemble.
         
         save_path (str | Path):
-            Path to the directory where ensemble members will be saved. 
+            Path to the directory where ensemble members will be saved.
+            Overloads directive of the individaul ensemble estimators.
             For each first-level ensemble in the family, 
             a subfolder with the ensemble name is created. 
             Inside each subfolder, the first-level ensemble members are 
@@ -71,23 +67,12 @@ class FamilyEnsembleEstimator:
         seed (int, optional):
             Seed used to control the feature space randomization.
 
-        time_limit (int, optional):
-            Time in seconds to spend for ensemble construction.
-            It's important to know that this value is equally divided among the first-level ensembles. 
-            This choice aims to favor scenarios with more partial ensembles than few complete ones. 
-            These ensemble families have more diversification and should give better performance.
-            The ensemble building process is stopped when this limit is violated.
-            The default is 10 million equal to 115 days approximately, meaning no limit.
-
-        n_jobs (int, optional):
-            Number of threads used to parallelize the classifiers fitting process.
-
         log (int, optional):
-            Level of the internal logger.
-            Controls both the family and first-level ensembles logging.
+            Level of the family ensemble constructor logger.
             The default assures logs at info level.
             To suppress it set a value of 40 or 50.
 
+    
     ## Attributes:
 
         ensembles_ (list[EnsembleEstimator]):
@@ -130,35 +115,35 @@ class FamilyEnsembleEstimator:
     def __init__(
         self,
         name: str,
-        configuration: UserEnsembleConfiguration | CollectionUserEnsembleConfiguration,
+        collection: CollectionEnsembleEstimators,
         save_path: str | Path,
         bag_cv: None | BagCV = None,
-        feature_space_ratio: float = 1,
+        feature_space_ratio: float = 1.0,
         raise_error_void_ensemble: bool = True,
         seed: int = 0,
-        time_limit: int = 10_000_000,
-        n_jobs: int = 1, 
         log: int = 20
     ):
         self.name=name
-        self.configuration=configuration
+        self.collection=collection
         self.save_path=save_path
         self.bag_cv=bag_cv
         self.feature_space_ratio=feature_space_ratio
         self.raise_error_void_ensemble=raise_error_void_ensemble
         self.seed=seed
-        self.time_limit=time_limit
-        self.n_jobs=n_jobs
         self.log=log
 
 
-    def fit(self, X: XType, y: YType) -> "FamilyEnsembleEstimator":
+    def fit(self, X: XType, y: YType, validation_set_size: float = 0.3) -> "FamilyEnsembleEstimator":
         '''
         Fit the ensemble
 
         Parameters:
             X (XType): Train data.
             y (YType): Train labels.
+            validation_set_size (float, optional):
+                The fraction of training data to use as validation.
+                Is used only by the early stopped estimators and
+                ignored by the others.
 
         Returns:
             self
@@ -171,11 +156,7 @@ class FamilyEnsembleEstimator:
         y = le.fit_transform(y)
         y = pd.Series(y) if isinstance(X, pd.DataFrame) else y  # for Xy "type" uniformity
 
-        confs = [self.configuration]\
-            if isinstance(self.configuration, UserEnsembleConfiguration)\
-            else self.configuration.configurations
-
-        n_confs = len(confs)
+        n_ens = len(self.collection)
         logger = self._get_logger()
         self._save_path = Path(self.save_path) if isinstance(self.save_path, str) else self.save_path
 
@@ -183,9 +164,9 @@ class FamilyEnsembleEstimator:
 
         # get rows indexes
         if self.bag_cv:
-            if (bag_n_iter := self.bag_cv.n_repeats * self.bag_cv.n_folds) < n_confs:
+            if (bag_n_iter := self.bag_cv.n_repeats * self.bag_cv.n_folds) < n_ens:
                 raise ValueError(
-                    f"BagCV total iterations ({bag_n_iter}) < number of input configurations ({n_confs})."
+                    f"BagCV total iterations ({bag_n_iter}) < number of input configurations ({n_ens})."
                 )
             
             bag_cv_splitter = RepeatedStratifiedKFold(
@@ -194,9 +175,9 @@ class FamilyEnsembleEstimator:
                 random_state=self.bag_cv.seed
             )
 
-            row_idx = [t[0] for i, t in enumerate(bag_cv_splitter.split(X, y)) if i < n_confs]
+            row_idx = [t[0] for i, t in enumerate(bag_cv_splitter.split(X, y)) if i < n_ens]
         else:
-            row_idx = [None] * n_confs
+            row_idx = [None] * n_ens
 
         logger.info("Preparation phase: obtained train rows indices.")
 
@@ -207,47 +188,27 @@ class FamilyEnsembleEstimator:
             n_subset_features = int(n_features * self.feature_space_ratio)
             col_idx = [
                 rng.choice(n_features, size=n_subset_features, replace=False)
-                for _ in range(n_confs)
+                for _ in range(n_ens)
             ]
         else:
-            col_idx = [None] * n_confs
+            col_idx = [None] * n_ens
         
         # we need the cols indices for inference
         self._col_idx = col_idx
         logger.info("Preparation phase: obtained train cols indices.")
 
-        # get metafeatures
-        if self.bag_cv is None and self.feature_space_ratio == 1:
-            mfe = CustomMFE()
-            metafeatures, _ = mfe.fit(X, y).extract()
-        else:
-            metafeatures = None
-
-        logger.info("Preparation phase: processed metafeatures directive.")
-
-        # TODO: for now we do not optimize-cache the candidate points drawing process
-        # since it's more difficult to control this and the raw process is quite fast        
-        meta_candidate_points = None
-        logger.info("Preparation phase: processed meta_candidate_points directive.")
-
-        # we give equal time to favor more ensembles with less members 
-        # than fewer ensembles with all members
-        time_ens = int(self.time_limit / n_confs)
-
-        ens_classifiers = [
-            self._get_ensemble_classifier(conf, metafeatures, meta_candidate_points, time_ens) 
-            for conf in confs
-        ]
-        
-        assert len(set([len(ens_classifiers), len(row_idx), len(col_idx)])) == 1
+        assert len(set([len(self.collection), len(row_idx), len(col_idx)])) == 1
         
         logger.info("Completed Preparation phase.\n")
         logger.info("Starting ensemble building process.\n")
 
         self.ensembles_: list[EnsembledEstimator] = []
-        for rows, cols, ens_classifier in zip(row_idx, col_idx, ens_classifiers):
+        for rows, cols, ens_estimator in zip(row_idx, col_idx, self.collection):
+            # we overload the save_path
+            ens_estimator.save_path = self._save_path / ens_estimator.name
             X_clf, y_clf = subset_xy(X, y, rows, cols)
-            self.ensembles_.append(ens_classifier.fit(X_clf, y_clf))
+            ###REFACTOR: pass here validation_set_size after conditional check if is early stopped
+            self.ensembles_.append(ens_estimator.fit(X_clf, y_clf))
 
         self._collect_inner_ensembles_info()
         self.is_cleaned_ = False        
@@ -421,56 +382,6 @@ class FamilyEnsembleEstimator:
         self.df_members_ = pd.concat(df_members_list, axis=0, ignore_index=True)
 
 
-    def _get_ensemble_classifier(
-        self, 
-        conf: UserEnsembleConfiguration,
-        metafeatures: None | dict,
-        meta_candidate_points: None | list[dict],
-        time_ens: int
-    ) -> EnsembledEstimator:
-        '''
-        Method that process the user ensemble estimator configuration, the family instance
-        attributes, metafeatures and meta candidate points to initialize and get the 
-        concrete "MyEnsembled*" estimator instances.
-        '''
-        estimator_class = pick_estimator_class(conf.estimator, "ensemble")
-
-        ens_conf = EnsembleConfiguration(
-            name=conf.name,
-            algo=conf.algo,
-            n_members=conf.n_members,
-            save_path=self._save_path / conf.name,
-            params_distributions=pick_estimator_tune_space(conf.estimator, conf.tune_space),
-            meta_strategy=conf.meta_strategy,
-            meta_strategy_params=conf.meta_strategy_params,
-            meta_surrogate_model=conf.meta_surrogate_model,
-            meta_seed=conf.meta_seed,
-            meta_features=metafeatures,
-            meta_candidate_points=meta_candidate_points,
-            time_limit=time_ens,
-            log=self.log,
-            raise_error_fit_member=False,
-            raise_error_void_ensemble=False
-        )
-
-        if conf.early_stop_on_validation_set:
-            esc = EarlyStopConfiguration(
-                early_stop_rounds=conf.early_stop_rounds,
-                validation_set_size=conf.validation_set_size
-            )
-        else:
-            esc = None
-
-        return estimator_class(
-            preprocessing=conf.preprocessing, 
-            seed=conf.seed,
-            n_threads=self.n_jobs,
-            device=conf.device,
-            early_stop_configuration=esc,
-            ensemble_configuration=ens_conf
-        )
-
-
     def _get_logger(self) -> logging.Logger:
         logger = logging.getLogger(self.name)
         logger.setLevel(logging.DEBUG)
@@ -483,13 +394,7 @@ class FamilyEnsembleEstimator:
 
     
     def _check_initialization_inputs(self) -> None:
-        if not isinstance(
-            self.configuration, 
-            (UserEnsembleConfiguration, CollectionUserEnsembleConfiguration)
-        ):
-            raise ValueError(
-                "'configuration' parameter must be a UserEnsembleConfiguration" +
-                " or CollectionUserEnsembleConfiguration instance."
-            )        
+        if not isinstance(self.collection, CollectionEnsembleEstimators):
+            raise ValueError("'collection' parameter must be a CollectionEnsembleEstimators instance.")
         if not 0 < self.feature_space_ratio <= 1:
             raise ValueError("'feature_space_ratio' must be in (0, 1].")

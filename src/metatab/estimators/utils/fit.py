@@ -21,7 +21,7 @@ def fit_with_early_stop_on_validation_set(
     X: XType,
     y: YType,
     seed: int,
-    validation_set_size: float,
+    validation_set: float | tuple[XType, YType],
     eval_set_parameter: str,
     fit_classifier_kwargs: dict,
     return_fit_time: bool = False
@@ -41,10 +41,12 @@ def fit_with_early_stop_on_validation_set(
         
         seed (int): 
             Seed for reproducibility used ONLY in the train/val splitting.
+            Unused when validation data is directly passed.
         
-        validation_set_size (float): 
-            Ratio of training data to use as validation.
-            Must be a number in (0, 1).
+        validation_set (float | tuple[XType, YType]):
+            Can espress either:
+            - Ratio of training data to use as validation. Must be a float in (0, 1).
+            - The X and y sets directly.
         
         eval_set_parameter (str): 
             Name of the parameter accepting the validation sets.
@@ -61,13 +63,17 @@ def fit_with_early_stop_on_validation_set(
         Pipeline|tuple: 
         The fitted pipeline alone or in a tuple with the fit time.
     '''
-    X_train, X_val, y_train, y_val = train_test_split(
-        X, 
-        y, 
-        test_size=validation_set_size,
-        random_state=seed,
-        stratify=y
-    )
+    if isinstance(validation_set, float):
+        X_train, X_val, y_train, y_val = train_test_split(
+            X, 
+            y, 
+            test_size=validation_set,
+            random_state=seed,
+            stratify=y
+        )
+    else:
+        X_train, y_train = X, y
+        X_val, y_val = validation_set
 
     # we fit the underlying classifier directly in every scenario  
     fit_classifier_kwargs = remove_prefix_from_params(

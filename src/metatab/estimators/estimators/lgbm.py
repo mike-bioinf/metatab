@@ -10,8 +10,14 @@ from metatab.estimators.core import (
     DefaultEstimatorMixin,
     TunedEstimatorMixin, 
     EnsembleEstimatorMixin,
-    MetaTuneBaseEstimator,
-    MetaEnsembleBaseEstimator
+    MetaTuneBaseEstimator
+)
+
+from metatab.estimators.core.meta_ens_base_estimator import (
+    MetaEnsembleInitializer, 
+    StandardEnsembleInitializer,
+    BaseEnsembleEstimator,
+
 )
 
 from metatab.estimators.utils.gbdt import ( 
@@ -233,14 +239,49 @@ class MetaEnsembleLGBMClassifier(LGBMPredictMixin, MetaEnsembleBaseEstimator):
 
 
 
-class MetaEnsembleEsLGBMClassifier(LGBMPredictMixin, MetaEnsembleBaseEstimator):
+###REFACTOR: add callbacks
+class MetaEnsembleEsLGBMClassifier(MetaEnsembleInitializer, LGBMPredictMixin, BaseEnsembleEstimator):
     def fit(
         self,
         X: XType, 
         y: YType, 
-        early_stop_rounds: int = 100, 
+        # early_stop_rounds: int = 100, ###REFACTOR: da mettere come fixed params
         validation_set_size: float = 0.3
     ) -> "MetaEnsembleEsLGBMClassifier":
-        early_stop_conf = EarlyStopConfiguration(early_stop_rounds, validation_set_size)
-        super().fit(X, y, "base", MyEnsembledESLGBMClassifier, TuningParams.LGMB_C0, early_stop_conf)
+        super().fit(
+            X=X, 
+            y=y,
+            type_ensemble="meta",
+            classifier_class=LGBMClassifier,
+            classifier_random_state_parameter="random_state",
+            classifier_nthreads_paramater="n_jobs",
+            classifier_device_paramater=None,
+            fixed_params=TuningParams.ES_LGBM_FIXED_PARAMS,
+            type_estimator="es_lgbm",
+            validation_set=validation_set_size
+        )
+        return self
+    
+
+###REFACTOR: add callbacks
+class StandardEnsembleEsLGBMClassifier(StandardEnsembleInitializer, LGBMPredictMixin, BaseEnsembleEstimator):
+    def fit(
+        self,
+        X: XType, 
+        y: YType,
+        ##early_stop_rounds: int = 100, ###REFACTOR: da mettere come fixed params
+        validation_set: float | tuple[XType, YType] = 0.3
+    ) -> "StandardEnsembleEsLGBMClassifier":
+        super().fit(
+            X=X, 
+            y=y,
+            type_ensemble="random",
+            classifier_class=LGBMClassifier,
+            classifier_random_state_parameter="random_state",
+            classifier_nthreads_paramater="n_jobs",
+            classifier_device_paramater=None,
+            fixed_params=TuningParams.ES_LGBM_FIXED_PARAMS,
+            type_estimator="es_lgbm",
+            validation_set=validation_set
+        )
         return self

@@ -7,8 +7,13 @@ from metatab.estimators.core import (
     DefaultEstimatorMixin,
     TunedEstimatorMixin,
     EnsembleEstimatorMixin,
-    MetaTuneBaseEstimator,
-    MetaEnsembleBaseEstimator
+    MetaTuneBaseEstimator
+)
+
+from metatab.estimators.core.meta_ens_base_estimator import (
+    MetaEnsembleInitializer, 
+    RandomEnsembleInitializer,
+    BaseEnsembleEstimator
 )
 
 
@@ -82,7 +87,24 @@ class MetaTuneRandomForestClassifier(MetaTuneBaseEstimator):
 
 
 
-class MetaEnsembleRandomForestClassifier(MetaEnsembleBaseEstimator):
-    def fit(self, X: XType, y: YType) -> "MetaEnsembleRandomForestClassifier":
-        super().fit(X, y, "base", MyEnsembledRandomForestClassifier, TuningParams.RF_C0, None)
+
+
+
+
+
+
+
+class MetaEnsembleRandomForestClassifier(MetaEnsembleInitializer, BaseEnsembleEstimator):     
+    def fit(self, X: XType, y: YType) -> "MetaEnsembleRandomForestClassifier":        
+        super().fit(
+            X=X, 
+            y=y, 
+            classifier_cls=RandomForestClassifier,
+            classifier_random_state_parameter="random_state",
+            classifier_nthreads_paramater="n_jobs",
+            classifier_device_parameter=None,
+            fixed_params=TuningParams.RANDOM_FOREST_FIXED_PARAMS, 
+            tuning_params=TuningParams.RF_C0, 
+            type_estimator="random_forest",
+        )
         return self

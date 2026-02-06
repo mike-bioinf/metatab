@@ -52,6 +52,12 @@ class EnsembleEstimatorMixin:
         }
 
     
+
+
+
+
+
+    ####REFACTOR: ATTENTO QUI
     def collect_fit_preprocessing_info(self) -> dict:
         check_is_fitted(self, "estimator_")
         # this check is useful also in this case

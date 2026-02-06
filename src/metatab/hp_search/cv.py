@@ -136,7 +136,7 @@ class CrossValidator:
                     X=X_train,
                     y=y_train,
                     seed=self.seed,
-                    validation_set_size=self.validation_set_size,
+                    validation_set=self.validation_set_size,
                     eval_set_parameter=self.eval_set_parameter,
                     fit_classifier_kwargs=self.fit_classifier_kwargs
                 )

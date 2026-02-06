@@ -280,7 +280,7 @@ class SearchCV:
                     X=X,
                     y=y,
                     seed=self.seed,
-                    validation_set_size=self.validation_set_size,
+                    validation_set=self.validation_set_size,
                     eval_set_parameter=self.eval_set_parameter,
                     fit_classifier_kwargs=self.fit_classifier_kwargs,
                     return_fit_time=True

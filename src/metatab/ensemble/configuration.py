@@ -1,11 +1,12 @@
+from __future__ import annotations
+
 import re
 import json
-from typing import Literal
+import importlib
+from typing import Literal, TYPE_CHECKING
 from pathlib import Path
 from dataclasses import asdict
-from pydantic import BaseModel, ConfigDict, field_serializer, model_validator
 from metatab.metatab_utils.general import enlist
-from metatab.metatab_utils.device import check_device_estimator_combination
 from metatab.preprocessing.types import PreprocessingStrategy
 from metatab.metalearning.types import MetaStrategy, MetaStrategyParams
 from metatab.estimators.utils.types import TunableEstimatorType
@@ -17,263 +18,159 @@ from metatab.estimators.utils.constants import (
     NON_EARLY_STOPPED_GPU_ESTIMATORS
 )
 
+from metatab.estimators.core.meta_ens_base_estimator import BaseEnsembleEstimator
+
 from metatab.metalearning.utils import (
     BestMetaStrategyParams, 
     RandomFromBestMetaStrategyParams, 
     UniformFromBestMetaStrategyParams,
-    RandomUniformFromBestMetaStrategyParams,
-    check_meta_strategy_params
+    RandomUniformFromBestMetaStrategyParams
 )
 
+if TYPE_CHECKING:
+    from metatab.estimators.estimators import EnsembledEstimator
 
 
-class UserEnsembleConfiguration(BaseModel):
+
+
+class CollectionEnsembleEstimators:
     '''
+    Class that collect the ensembled estimators to further ensemble.
+    Provides capabilities to dump and load json representations,
+    and to create pre-defined collections.
+
     Parameters:
-        name (str): 
-            Ensemble name.
-            
-        algo (Literal["random", "meta"]):
-            Strategy used to derive hyperparameter configurations.
-            - "random": random sampling from the tune space.
-            - "meta": use metatab meta-learning framework.
-            Requires the estimator default `tune_space`, 
-            and works best when using the estimator default preprocessing (`preprocessing` parameter).
-
-        n_members (int):
-            Number of ensemble members.
-
-        estimator (TunableEstimatorType):
-            Estimator to ensemble.
-            
-        preprocessing (PreprocessingStrategy):
-            Preprocessing strategy to use.
-            Use "estimator_default" to apply the estimator default preprocessing.
-
-        tune_space (str): 
-            Hyperparameter space to use.
-            - Use "default" or "c0" for the estimator default.
-            - For GBDTs, multiple spaces are available ("c{number}").
-
-        early_stop_on_validation_set (bool):
-           Whether to enable early stopping using a validation set. 
-            Although partly redundant with the `estimator` choice, this parameter
-            is kept explicit to clearly signal early-stopping behavior to the user. In detail
-            - This flag must be consistent with the chosen estimator.
-            - Estimators that do not support early stopping will raise an error if this is set to True.
-            - Estimators that require a validation set will raise an error if this is set to False.
-            - For GBDTs, early stopping is available only when using the "es" variants (e.g. "es_catboost").
-
-        early_stop_rounds (int, optional):
-            Number of rounds without improvement before stopping (GBDTs only).
-            Usage is discouraged and may be removed in future versions in favor
-            of fixed values defined in metatab tune spaces.
-            Ignored when `early_stop_on_validation_set` is False.
-
-        validation_set_size (float, optional):
-            Fraction of data used as validation in early stopping.
-            Ignored when `early_stop_on_validation_set` is False.
-
-        meta_surrogate_model (None | str | Path, optional):
-            Surrogate model to use in the meta-learning scenario. 
-            Intended for advanced usage only. Ignored when `algo` is not "meta".
-            - If str or Path, the path to the joblib serialized surrogate model.
-            - If None the "default" surrogate model is used.
-
-        meta_strategy (MetaStrategy, optional):
-           Strategy used to select hyperparameter configurations in meta-learning.
-            It has no effect when `algo` is not "meta".
-            - "best": select the top-n configurations.
-            - "random_from_best": random selection from the top.
-            - "uniform_from_best": uniform step selection from the top.
-            - "random_uniform_from_best": random selection within uniform intervals from the top.
-
-        meta_strategy_params (None | MetaStrategyParams, optional):
-            Parameters controlling the selected meta strategy.
-            Defaults are used when None.
-
-        meta_seed (int, optional):
-            Seed used specifically to draw hps configurations in the meta-optimized scenario.
-            Importanlty the default value of 42 is the one used to generate the prior.
-            Therefore using the default seed allow to draw and evaluate real-evaluated 
-            hps configurations. It's therefore highly suggested to not change this value in most
-            applications.
-
-        seed (int, optional):
-            Seed used to derive the hps configurations in the random scenario,
-            and the validation sets for the early stopped estimators.
-
-        device (Literal["cpu", "cuda", "auto"], optional):
-            Device to use. "auto" selects cuda when the estimator can 
-            be run on cuda and cuda is available. 
-            Note: metatab run the GBDTs estimators only on CPU.
+        ensemble_estimators (EnsembledEstimator | list[EnsembledEstimator]) 
+        Collection of ensemble estimators to ensemble.
+        The estimators must be NOT fitted
     '''
-    model_config = ConfigDict(strict=True, extra="forbid")
-    name: str
-    algo: Literal["random", "meta"]
-    n_members: int
-    estimator: TunableEstimatorType
-    preprocessing: PreprocessingStrategy
-    tune_space: str
-    early_stop_on_validation_set: bool
-    early_stop_rounds: int = 100
-    validation_set_size: float = 0.3
-    meta_surrogate_model: None | str | Path = None
-    meta_strategy: MetaStrategy = "random_uniform_from_best"
-    meta_strategy_params: None | MetaStrategyParams = None
-    meta_seed: int = 42
-    seed: int = 0
-    device: Literal["cpu", "cuda", "auto"] = "auto"
-
-
-    @model_validator(mode="before")
-    @classmethod
-    def adjust_meta_strategy_params_from_serialized_data(cls, data):
-        # in before mode we have only data specified in input without defaults
-        # therefore here we use "get" with the default value for meta_strategy 
-        meta_strategy = data.get("meta_strategy", "random_uniform_from_best")
-        meta_strategy_params = data.get("meta_strategy_params", None)
-
-        # we target only the deserialization case
-        if isinstance(
-            meta_strategy_params, 
-            (
-                BestMetaStrategyParams, 
-                RandomFromBestMetaStrategyParams, 
-                UniformFromBestMetaStrategyParams,
-                RandomUniformFromBestMetaStrategyParams
-            )
-        ):
-            return data
-
-        if meta_strategy_params is None:
-            return data
-
-        if meta_strategy == "best":
-            data["meta_strategy_params"] = BestMetaStrategyParams(**meta_strategy_params)
-        elif meta_strategy == "random_from_best":
-            data["meta_strategy_params"] = RandomFromBestMetaStrategyParams(**meta_strategy_params)
-        elif meta_strategy == "uniform_from_best":
-            data["meta_strategy_params"] = UniformFromBestMetaStrategyParams(**meta_strategy_params)
-        else:
-            data["meta_strategy_params"] = RandomUniformFromBestMetaStrategyParams(**meta_strategy_params)
-
-        return data
-    
-
-    @model_validator(mode="after")
-    def general_check_after_validation(self) -> "UserEnsembleConfiguration":
-        check_validation_set_options(self.estimator, self.early_stop_on_validation_set, self.early_stop_rounds, self.validation_set_size)
-        check_device_estimator_combination(self.device, self.estimator)
-        check_meta_strategy_params(self.meta_strategy, self.meta_strategy_params, safe_none_params=True)
-        if self.algo == "meta": check_meta_tuning_options(self.estimator, self.preprocessing, self.tune_space)
-        return self
-
-
-    @field_serializer("meta_strategy_params", when_used="json")
-    def serialize(self, value: MetaStrategyParams):
-        return None if value is None else asdict(value)
-    
-
-
-
-class CollectionUserEnsembleConfiguration:
-    '''
-    Parameters:
-        configurations (UserEnsembleConfiguration | list[UserEnsembleConfiguration]): 
-            Single or list of UserEnsembleConfiguration objects.
-    '''
-    def __init__(self, configurations: UserEnsembleConfiguration | list[UserEnsembleConfiguration]):
-        self.configurations: list[UserEnsembleConfiguration] = enlist(configurations)
+    def __init__(self, ensemble_estimators: EnsembledEstimator | list[EnsembledEstimator]):
+        self.ensemble_estimators = enlist(ensemble_estimators)
         self._check_confs()
 
 
     def _check_confs(self) -> None:
-        for conf in self.configurations:
-            if not isinstance(conf, UserEnsembleConfiguration):
-                raise ValueError(
-                    "'configurations' must be a UserEnsembleConfiguration object or a list of them."
-                )
+        for ens in self.ensemble_estimators:
+            if not isinstance(ens, BaseEnsembleEstimator):
+                raise ValueError("All estimators must be ensemble estimators.")
         
-        conf_names = [conf.name for conf in self.configurations]
-        
-        if len(conf_names) != len(set(conf_names)):
-            raise ValueError(
-                "Passed UserEnsembleConfiguration instances with the same name."
-            )
+        ens_names = [ens.name for ens in self.ensemble_estimators]
 
-    
+        if len(ens_names) != len(set(ens_names)):
+            raise ValueError((
+                "Found duplicate ensemble names."
+                " The names are used as anchor to the saving locations so cannot be duplicated." 
+            ))
+        
+
     def dump_json(self, file: str | Path) -> None:
-        '''Dump the CollectionUserEnsembleConfiguration into a json file'''
+        '''Dump the CollectionEnsembleEstimators into a json file'''
+        json_dict = {}
+        for ens in self.ensemble_estimators:
+            init_conf = ens._get_init_configuration()
+            if init_conf["params"].get("meta_strategy_params"):
+                init_conf["params"]["meta_strategy_params"] = asdict(init_conf["params"]["meta_strategy_params"])
+            json_dict[ens.name] = init_conf
+
         with open(file, "w") as f:
-            json.dump(
-                {conf.name:conf.model_dump(mode="json") for conf in self.configurations},
-                f,
-                indent=4
-            )
+            json.dump(json_dict, f, indent=4)
 
-    
+
     @classmethod
-    def load_json(cls, file: str | Path) -> "CollectionUserEnsembleConfiguration":
-        '''Load from the json file the CollectionUserEnsembleConfiguration object'''
+    def load_json(cls, file: str | Path) -> "CollectionEnsembleEstimators":
+        '''Load from the json file the CollectionEnsembleEstimators object'''
         with open(file, "r") as f:
-            data = json.load(f)
-        return cls([UserEnsembleConfiguration(**conf_data) for conf_data in data.values()])
+            collection: dict = json.load(f)
+        
+        instances = []
+        for init_conf in collection.values():
+            ###REFACTOR: this is weak to internal changes --> find better solutions --> maybe one based on a model registry
+            module = importlib.import_module(init_conf["__module__"])
+            ens_cls = getattr(module, init_conf["__class__"])
+            instances.append(ens_cls(**cls._refine_params(init_conf["params"])))
+        
+        return cls(instances)
+    
+
+    @staticmethod
+    def _refine_params(init_conf) -> dict:
+        '''Takes care of the meta_strategy_params parameter'''
+        meta_strategy_params = init_conf.get("meta_strategy_params", None)
+
+        if meta_strategy_params is None:
+            return init_conf
+        else:
+            meta_strategy = init_conf["meta_strategy"]
+
+            if meta_strategy == "best":
+                init_conf["meta_strategy_params"] = BestMetaStrategyParams(**meta_strategy_params)
+            elif meta_strategy == "random_from_best":
+                init_conf["meta_strategy_params"] = RandomFromBestMetaStrategyParams(**meta_strategy_params)
+            elif meta_strategy == "uniform_from_best":
+                init_conf["meta_strategy_params"] = UniformFromBestMetaStrategyParams(**meta_strategy_params)
+            elif meta_strategy == "random_uniform_from_best":
+                init_conf["meta_strategy_params"] = RandomUniformFromBestMetaStrategyParams(**meta_strategy_params)
+            else:
+                raise ValueError("`meta_strategy` parameter not recognized.")
+        
+        return init_conf
 
 
-    @classmethod
-    def create_predefined_collection(cls, wildcard: str) -> "CollectionUserEnsembleConfiguration":
-        '''
-        Create a predefined collection of user ensemble configurations from a wildcard string.
-        The wildcard must follow the pattern: (all|cpu|gpu)_(meta|random)_{n_members}
 
-        where:
-        - the first component selects the estimators.
-        - the second component selects the ensemble algorithm.
-        - n_members is the number of ensemble members.
+    ###REFACTOR: broken now to update
+    # @classmethod
+    # def create_predefined_collection(cls, wildcard: str) -> "CollectionEnsembleEstimators":
+    #     '''
+    #     Create a predefined collection of user ensemble configurations from a wildcard string.
+    #     The wildcard must follow the pattern: (all|cpu|gpu)_(meta|random)_{n_members}
 
-        Default settings are used for preprocessing, tuning space, and early stopping.
+    #     where:
+    #     - the first component selects the estimators.
+    #     - the second component selects the ensemble algorithm.
+    #     - n_members is the number of ensemble members.
 
-        Parameters:
-            wildcard (str): Wildcard string defining the collection.
+    #     Default settings are used for preprocessing, tuning space, and early stopping.
 
-        Returns:
-            CollectionUserEnsembleConfiguration
-        '''        
-        if not re.match(r'^(all|cpu|gpu)_(meta|random)_\d+$', wildcard):
-            raise ValueError(
-                "The wildcard should adere to the pattern (all|cpu|gpu)_(meta|random)_{n_members}."
-            )
-        estimators, algo, n_members = wildcard.split("_")
-        return cls._create_collection(estimators, algo, int(n_members))
+    #     Parameters:
+    #         wildcard (str): Wildcard string defining the collection.
+
+    #     Returns:
+    #         CollectionEnsembleEstimators
+    #     '''        
+    #     if not re.match(r'^(all|cpu|gpu)_(meta|random)_\d+$', wildcard):
+    #         raise ValueError(
+    #             "The wildcard should adere to the pattern (all|cpu|gpu)_(meta|random)_{n_members}."
+    #         )
+    #     estimators, algo, n_members = wildcard.split("_")
+    #     return cls._create_collection(estimators, algo, int(n_members))
 
 
-    @classmethod
-    def _create_collection(
-        cls,
-        estimators: Literal["all", "cpu", "gpu"],
-        ensemble_algo: Literal["random", "meta"],
-        n_members: int
-    ) -> "CollectionUserEnsembleConfiguration":
-        if estimators == "all":
-            target_estimators = NON_EARLY_STOPPED_ESTIMATORS + ["realmlp", "tabm"]  ## TODO: adjust this 
-        elif estimators == "cpu":
-            target_estimators = NON_EARLY_STOPPED_CPU_ESTIMATORS
-        elif estimators == "gpu":
-            target_estimators = NON_EARLY_STOPPED_GPU_ESTIMATORS + ["realmlp", "tabm"] ## TODO: adjust this
+    # @classmethod
+    # def _create_collection(
+    #     cls,
+    #     estimators: Literal["all", "cpu", "gpu"],
+    #     ensemble_algo: Literal["random", "meta"],
+    #     n_members: int
+    # ) -> "CollectionEnsembleEstimators":
+    #     if estimators == "all":
+    #         target_estimators = NON_EARLY_STOPPED_ESTIMATORS + ["realmlp", "tabm"]  ## TODO: adjust this 
+    #     elif estimators == "cpu":
+    #         target_estimators = NON_EARLY_STOPPED_CPU_ESTIMATORS
+    #     elif estimators == "gpu":
+    #         target_estimators = NON_EARLY_STOPPED_GPU_ESTIMATORS + ["realmlp", "tabm"] ## TODO: adjust this
 
-        collection = []
-        for i, estimator in enumerate(target_estimators):
-            collection.append(
-                UserEnsembleConfiguration(
-                    name="ens_" + f"{i}",
-                    algo=ensemble_algo,
-                    n_members=n_members,
-                    estimator=estimator,
-                    preprocessing="estimator_default",
-                    tune_space="default",
-                    early_stop_on_validation_set=estimator not in NON_EARLY_STOPPED_ESTIMATORS
-                )
-            )
+    #     collection = []
+    #     for i, estimator in enumerate(target_estimators):
+    #         collection.append(
+    #             UserEnsembleConfiguration(
+    #                 name="ens_" + f"{i}",
+    #                 algo=ensemble_algo,
+    #                 n_members=n_members,
+    #                 estimator=estimator,
+    #                 preprocessing="estimator_default",
+    #                 tune_space="default",
+    #                 early_stop_on_validation_set=estimator not in NON_EARLY_STOPPED_ESTIMATORS
+    #             )
+    #         )
 
-        return cls(collection)
+    #     return cls(collection)
