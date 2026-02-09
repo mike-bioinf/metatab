@@ -165,8 +165,9 @@ class UserEnsembleConfiguration(BaseModel):
     def general_check_after_validation(self) -> "UserEnsembleConfiguration":
         check_validation_set_options(self.estimator, self.early_stop_on_validation_set, self.early_stop_rounds, self.validation_set_size)
         check_device_estimator_combination(self.device, self.estimator)
-        check_meta_strategy_params(self.meta_strategy, self.meta_strategy_params, safe_none_params=True)
-        if self.algo == "meta": check_meta_tuning_options(self.estimator, self.preprocessing, self.tune_space)
+        if self.algo == "meta": 
+            check_meta_strategy_params(self.meta_strategy, self.meta_strategy_params, safe_none_params=True)
+            check_meta_tuning_options(self.estimator, self.preprocessing, self.tune_space)
         return self
 
 

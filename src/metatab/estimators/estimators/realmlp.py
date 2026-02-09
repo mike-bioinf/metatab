@@ -6,15 +6,12 @@ from typing import TYPE_CHECKING, Literal
 from sklearn.utils.validation import check_is_fitted
 from pytabkit import RealMLP_TD_Classifier
 from metatab.estimators.params import DefaultParams, TuningParams
-from metatab.estimators.core.configurations import EarlyStopConfiguration
 
 from metatab.estimators.core import (
     AbstractBaseEstimator,
     DefaultEstimatorMixin,
     EnsembleEstimatorMixin,
-    TunedEstimatorMixin,
-    MetaTuneBaseEstimator,
-    MetaEnsembleBaseEstimator
+    TunedEstimatorMixin
 )
 
 if TYPE_CHECKING:
@@ -216,20 +213,4 @@ class MyEnsembledRealMLPClassifier(EnsembleEstimatorMixin, AbstractBaseEstimator
             device_parameter="device",
             density_feature_selector_strategy="undersample" # to speed up.
         )
-        return self
-    
-
-
-class MetaTuneRealMLPClassifier(MetaTuneBaseEstimator):
-    def fit(self, X: XType, y: YType, validation_set_size: float = 0.3) -> "MetaTuneRealMLPClassifier":
-        esc = EarlyStopConfiguration(validation_set_size=validation_set_size)
-        super().fit(X, y, "base", MyTunedRealMLPClassifier, TuningParams.REALMLP_C0, esc)
-        return self
-
-
-
-class MetaEnsembleRealMLPClassifier(MetaEnsembleBaseEstimator):
-    def fit(self, X: XType, y:YType, validation_set_size: float = 0.3) -> "MetaEnsembleRealMLPClassifier":
-        esc = EarlyStopConfiguration(validation_set_size=validation_set_size)
-        super().fit(X, y, "base", MyEnsembledRealMLPClassifier, TuningParams.REALMLP_C0, esc)
         return self

@@ -8,13 +8,19 @@ from abc import ABC, abstractmethod
 from typing import Literal, TYPE_CHECKING, Callable
 from sklearn.pipeline import Pipeline
 from metatab.preprocessing import create_classifier_pipeline
-from metatab.metatab_utils.general import ensure_or_create, asdict_shallow
-from metatab.metatab_utils.device import check_device_estimator_combination, check_cuda_is_available, resolve_device
 from metatab.estimators.utils.general import add_prefix_to_params_when_absent
 from metatab.estimators.utils.fit import fit_with_early_stop_on_validation_set
 from metatab.hp_search.searchcv import SearchCV
 from metatab.ensemble.single import EnsembleEstimator
 from metatab.preprocessing.utils import resolve_preprocessing_info
+from metatab.metatab_utils.general import ensure_or_create, asdict_shallow
+
+from metatab.metatab_utils.device import (
+    check_device_estimator_combination, 
+    check_cuda_is_available, 
+    resolve_device, 
+    check_device
+)
 
 if TYPE_CHECKING:
     from metatab.preprocessing.types import PreprocessingStrategy
@@ -179,6 +185,7 @@ class AbstractBaseEstimator(ABC):
             Pipeline|SearchCV|EnsembleEstimator: 
             The fitted inner estimator.
         '''
+        check_device(self.device)
         resolved_device = resolve_device(self.device, type_estimator)
         if resolved_device == "cuda": check_cuda_is_available()
         check_device_estimator_combination(resolved_device, type_estimator)

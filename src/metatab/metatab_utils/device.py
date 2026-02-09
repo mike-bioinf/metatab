@@ -10,6 +10,11 @@ if TYPE_CHECKING:
 
 
 
+def check_device(device: Literal["cpu", "cuda", "auto"]) -> None:
+    if device not in ["cuda", "cpu", "auto"]:
+        raise ValueError(f"device can be: 'cpu', 'cuda' or 'gpu'. Actual '{device}'.")
+
+
 def resolve_device(device: Literal["cpu", "cuda", "auto"], estimator: EstimatorType) -> Literal["cpu", "cuda"]:
     '''
     Resolve the device based on the device and estimator inputs.

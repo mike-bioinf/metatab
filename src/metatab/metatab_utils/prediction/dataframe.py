@@ -54,14 +54,6 @@ class PredictionDataframe():
         self.has_recovered = None
 
 
-    def __str__(self):
-        return self.df.__str__() if self.df is not None else self
-
-
-    def __repr__(self):
-        return self.df.__repr__() if self.df is not None else self
-
-
     def build_from_data(
         self,
         dataset: str | list[str],

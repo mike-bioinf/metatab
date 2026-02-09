@@ -3,7 +3,6 @@ import warnings
 import numpy as np
 import pandas as pd
 from pathlib import Path
-from typing import Literal
 from sklearn.pipeline import make_pipeline
 from metatab.estimators.utils.types import TunableEstimatorType
 from metatab.metalearning.encode.encode import get_encoding_scheme
@@ -22,7 +21,7 @@ def load_metadata(
 
 
 
-@pytest.mark.skipif((Path(__file__).parent / "data").exists(), reason="Metadata not pushed on github")
+@pytest.mark.skipif(not (Path(__file__).parent / "data/metadata").exists(), reason="Missing Metadata")
 def test_that_nan_to_none_transformer_works():
     metadata = load_metadata("tabpfn")
     assert metadata["inference_config__OUTLIER_REMOVAL_STD"].isna().any()
@@ -39,7 +38,7 @@ def test_that_nan_to_none_transformer_works():
 
 
 
-@pytest.mark.skipif((Path(__file__).parent / "data").exists(), reason="Metadata not pushed on github")
+@pytest.mark.skipif(not (Path(__file__).parent / "data/metadata").exists(), reason="Missing Metadata")
 def test_that_col_to_str_transformer_works():
     metadata = load_metadata("tabpfn")
     assert pd.api.types.is_numeric_dtype(metadata["z_normalized_loss"].dtype)
@@ -55,7 +54,7 @@ def test_that_col_to_str_transformer_works():
 
 
 
-@pytest.mark.skipif((Path(__file__).parent / "data").exists(), reason="Metadata not pushed on github")
+@pytest.mark.skipif(not (Path(__file__).parent / "data/metadata").exists(), reason="Missing Metadata")
 def test_that_inf_to_nan_transformer_works():
     X = pd.DataFrame([[np.inf, -np.inf], [1, None]], dtype="object")
     transformer = InfToNan().set_output(transform="pandas")
@@ -65,9 +64,8 @@ def test_that_inf_to_nan_transformer_works():
 
 
 
-## TODO: add "catboost", "extra_trees", "realmlp", "tabm" when you have metadata
-@pytest.mark.parametrize("estimator", ["random_forest", "xgb", "lgbm", "tabpfn"])
-@pytest.mark.skipif((Path(__file__).parent / "data").exists(), reason="Metadata not pushed on github")
+@pytest.mark.parametrize("estimator", ["random_forest", "xgb", "lgbm", "tabpfn", "catboost", "extra_trees", "realmlp", "tabm"])
+@pytest.mark.skipif(not (Path(__file__).parent / "data/metadata").exists(), reason="Missing Metadata")
 def test_that_estimator_metadata_encoding_scheme_is_correct(estimator):
     enc_pipe = make_pipeline(*get_encoding_scheme(estimator)).set_output(transform="pandas")
     # suppress variance threshold warnings on full na slices

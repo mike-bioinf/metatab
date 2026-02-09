@@ -87,7 +87,7 @@ def check_meta_tuning_options(
     '''
     General check on meta-tuning related options:
     - checks that the meta-tuning option is requested with the right HPs space.
-    - send a message when the preprocessing option is not suggested for meta-tuning. 
+    - send a warning when the preprocessing option is not suggested for meta-tuning. 
     '''
     estimator_default_space = DEFAULT_ESTIMATORS_TUNE_SPACES[estimator][0]
 

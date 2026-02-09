@@ -5,7 +5,7 @@ from time import time
 from collections import defaultdict
 from sklearn.preprocessing import LabelEncoder
 from metatab.metatab_utils.data_loader import DataLoader
-from metatab.metatab_utils.prediction import PredictionDataframe
+from metatab.metatab_utils.prediction.dataframe import PredictionDataframe
 from metatab.estimators.utils.pick import pick_estimator_class
 from metatab.estimators.estimators import EnsembledEstimator
 from metatab.estimators.utils.general import check_meta_tuning_options

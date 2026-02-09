@@ -6,11 +6,7 @@ from metatab.estimators.estimators.xgb import (
     MyTunedXGBClassifier,
     MyTunedESXGBClassifier,
     MyEnsembledXGBClassifier,
-    MyEnsembledESXGBClassifier,
-    MetaTuneXGBClassifier,
-    MetaTuneEsXGBClassifier,
-    MetaEnsembleXGBClassifier,
-    MetaEnsembleEsXGBClassifier
+    MyEnsembledESXGBClassifier
 )
 
 from metatab.estimators.estimators.catboost import (
@@ -19,27 +15,19 @@ from metatab.estimators.estimators.catboost import (
     MyTunedCatBoostClassifier,
     MyTunedESCatBoostClassifier,
     MyEnsembledCatBoostClassifier,
-    MyEnsembledESCatBoostClassifier,
-    MetaTuneCatBoostClassifier,
-    MetaTuneEsCatBoostClassifier,
-    MetaEnsembleCatboostClassifier,
-    MetaEnsembleEsCatboostClassifier
+    MyEnsembledESCatBoostClassifier
 )
 
 from metatab.estimators.estimators.rf import (
     MyRandomForestClassifier,
     MyTunedRandomForestClassifier,
-    MyEnsembledRandomForestClassifier,
-    MetaTuneRandomForestClassifier,
-    MetaEnsembleRandomForestClassifier
+    MyEnsembledRandomForestClassifier
 )
 
 from metatab.estimators.estimators.extra_trees import (
     MyExtraTreesClassifier,
     MyTunedExtraTreesClassifier,
-    MyEnsembledExtraTreesClassifier,
-    MetaTuneExtraTreesClassifier,
-    MetaEnsembleExtraTreesClassifier
+    MyEnsembledExtraTreesClassifier
 )
 
 from metatab.estimators.estimators.lgbm import (
@@ -48,35 +36,25 @@ from metatab.estimators.estimators.lgbm import (
     MyTunedLGBMClassifier,
     MyTunedESLGBMClassifier,
     MyEnsembledLGBMClassifier,
-    MyEnsembledESLGBMClassifier,
-    MetaTuneLGBMClassifier,
-    MetaTuneEsLGBMClassifier,
-    MetaEnsembleLGBMClassifier,
-    MetaEnsembleEsLGBMClassifier
+    MyEnsembledESLGBMClassifier
 )
 
 from metatab.estimators.estimators.tabpfn import (
     MyTabPFNClassifier,
     MyTunedTabPFNClassifier,
-    MyEnsembledTabPFNClassifier,
-    MetaTuneTabPFNClassifier,
-    MetaEnsembleTabPFNClassifier
+    MyEnsembledTabPFNClassifier
 )
 
 from metatab.estimators.estimators.realmlp import (
     MyRealMLPClassifier,
     MyTunedRealMLPClassifier,
-    MyEnsembledRealMLPClassifier,
-    MetaTuneRealMLPClassifier,
-    MetaEnsembleRealMLPClassifier
+    MyEnsembledRealMLPClassifier
 )
 
 from metatab.estimators.estimators.tabm import (
     MyTabMClassifier,
     MyTunedTabMClassifier,
-    MyEnsembledTabMClassifier,
-    MetaTuneTabMClassifier,
-    MetaEnsembleTabMClassifier
+    MyEnsembledTabMClassifier
 )
 
 

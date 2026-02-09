@@ -6,11 +6,8 @@ from metatab.estimators.core import (
     AbstractBaseEstimator, 
     DefaultEstimatorMixin,
     TunedEstimatorMixin,
-    EnsembleEstimatorMixin,
-    MetaTuneBaseEstimator,
-    MetaEnsembleBaseEstimator
+    EnsembleEstimatorMixin
 )
-
 
 
 class MyRandomForestClassifier(DefaultEstimatorMixin, AbstractBaseEstimator):
@@ -71,18 +68,4 @@ class MyEnsembledRandomForestClassifier(EnsembleEstimatorMixin, AbstractBaseEsti
             type_estimator="random_forest",
             is_ensembled=True
         )
-        return self
-
-
-
-class MetaTuneRandomForestClassifier(MetaTuneBaseEstimator):
-    def fit(self, X: XType, y: YType) -> "MetaTuneRandomForestClassifier":
-        super().fit(X, y, "base", MyTunedRandomForestClassifier, TuningParams.RF_C0, None)
-        return self
-
-
-
-class MetaEnsembleRandomForestClassifier(MetaEnsembleBaseEstimator):
-    def fit(self, X: XType, y: YType) -> "MetaEnsembleRandomForestClassifier":
-        super().fit(X, y, "base", MyEnsembledRandomForestClassifier, TuningParams.RF_C0, None)
         return self

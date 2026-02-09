@@ -4,6 +4,7 @@ import re
 import json
 import logging
 from pathlib import Path
+from textwrap import dedent
 from typing import Literal, TYPE_CHECKING
 import numpy as np
 from metatab.estimators.params.utils import pick_estimator_tune_space
@@ -226,3 +227,9 @@ def create_logger(stream) -> logging.Logger:
     logger.addHandler(stream_handler)
     logger.propagate = False
     return logger
+
+
+
+def h(text: str) -> str:
+    '''Utility to clean the argparse help text format'''
+    return dedent(text).strip()
