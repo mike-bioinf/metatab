@@ -197,15 +197,26 @@ metatab-resample cv ensemble \
 
 
 ### Python API
-- Metatab exposes meta tuned and ensembled classifiers and the hierachical (or family) ensembler constructor.
-- The PredictionDataframe class can be used to easily load and parse the pred_dataframe* files generated through the CLI API into a pandas DataFrame.
+- Metatab exposes standard/meta tuned/ensembled classes for each supported classifier (AutoGluon excluded).
+These classes follow a unified sintax: {Meta/Standard}{Tune/Ensemble}{Classifier} (see examples below). 
+They abstract hyperparameter tuning and ensembling using curated predefined search spaces.
+For gradient boosted decision tree classifiers, Metatab provides two variants: one that employs early stop and one that does not.
+The early-stopped versions include "Es" in the class name (e.g., MetaTuneEsLGBMClassifier vs MetaTuneLGBMClassifier).
+- Metatab implements the FamilyEnsembleEstimator class to streamline the evaluation of cross-classifier ensembles (see code snippet).
+- The PredictionDataframe class can be used to easily load and parse the pred_dataframe* files generated through the CLI API into a single pandas DataFrame.
 
 ```python
 from sklearn.model_selection import train_test_split
-from metatab import MetaTuneRandomForestClassifier, FamilyEnsembleEstimator, get_example_data
-from metatab.ensemble.configuration import UserEnsembleConfiguration, CollectionUserEnsembleConfiguration
-from metatab.metatab_utils.prediction import PredictionDataframe
 
+from metatab import (
+    get_example_data,
+    MetaTuneRandomForestClassifier, 
+    StandardEnsembleRandomForestClassifier,
+    UserEnsembleConfiguration,
+    CollectionUserEnsembleConfiguration,
+    FamilyEnsembleEstimator,
+    PredictionDataframe
+)
 
 # get data and split in train and test sets
 data = get_example_data()

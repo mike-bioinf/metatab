@@ -6,9 +6,7 @@ from metatab.estimators.core import (
     AbstractBaseEstimator, 
     DefaultEstimatorMixin,
     TunedEstimatorMixin,
-    EnsembleEstimatorMixin,
-    MetaTuneBaseEstimator,
-    MetaEnsembleBaseEstimator
+    EnsembleEstimatorMixin
 )
 
 
@@ -71,18 +69,4 @@ class MyEnsembledExtraTreesClassifier(EnsembleEstimatorMixin, AbstractBaseEstima
             type_estimator="extra_trees",
             is_ensembled=True
         )
-        return self
-    
-
-
-class MetaTuneExtraTreesClassifier(MetaTuneBaseEstimator):
-    def fit(self, X: XType, y: YType) -> "MetaTuneExtraTreesClassifier":
-        super().fit(X, y, "base", MyTunedExtraTreesClassifier, TuningParams.EXTRA_TREES_C0, None)
-        return self
-
-
-
-class MetaEnsembleExtraTreesClassifier(MetaEnsembleBaseEstimator):
-    def fit(self, X: XType, y: YType) -> "MetaEnsembleExtraTreesClassifier":
-        super().fit(X, y, "base", MyEnsembledExtraTreesClassifier, TuningParams.EXTRA_TREES_C0, None)
         return self

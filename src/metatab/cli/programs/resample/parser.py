@@ -16,7 +16,7 @@ from metatab.cli.parser import (
 
 
 def parse_args(args):
-    p = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter)
+    p = argparse.ArgumentParser(formatter_class=argparse.RawTextHelpFormatter)
 
     # first layer resample mode: cv or holdout
     sub_resample_mode = p.add_subparsers(required=True, title="Resample Mode", description="Valid subcommands")
@@ -28,23 +28,32 @@ def parse_args(args):
     
     p_holdout_default = sub_holdout_estimator_mode.add_parser(
         "default", 
-        parents=[make_base_parser(), make_extra_base_parser(), make_base_resample_parser(), make_resample_seed_parser(), make_holdout_parser()]
-    )    
+        parents=[make_base_parser(), make_extra_base_parser(), make_base_resample_parser(), make_resample_seed_parser(), make_holdout_parser()],
+        formatter_class=argparse.RawTextHelpFormatter
+    )
+
     p_holdout_tune = sub_holdout_estimator_mode.add_parser(
         "tune", 
-        parents=[make_base_parser(), make_extra_base_parser(), make_base_resample_parser(), make_resample_seed_parser(), make_holdout_parser(), make_tune_parser()]
+        parents=[make_base_parser(), make_extra_base_parser(), make_base_resample_parser(), make_resample_seed_parser(), make_holdout_parser(), make_tune_parser()],
+        formatter_class=argparse.RawTextHelpFormatter
     )
+
     p_holdout_ensemble = sub_holdout_estimator_mode.add_parser(
         "ensemble", 
-        parents=[make_base_parser(), make_extra_base_parser(), make_base_resample_parser(), make_resample_seed_parser(), make_holdout_parser(), make_ensemble_parser()]
+        parents=[make_base_parser(), make_extra_base_parser(), make_base_resample_parser(), make_resample_seed_parser(), make_holdout_parser(), make_ensemble_parser()],
+        formatter_class=argparse.RawTextHelpFormatter
     )
+
     p_holdout_family_ensemble = sub_holdout_estimator_mode.add_parser(
         "family-ensemble", 
-        parents=[make_base_parser(), make_base_resample_parser(), make_resample_seed_parser(), make_holdout_parser(), make_family_ensemble_parser()]
+        parents=[make_base_parser(), make_base_resample_parser(), make_resample_seed_parser(), make_holdout_parser(), make_family_ensemble_parser()],
+        formatter_class=argparse.RawTextHelpFormatter
     )
+
     p_holdout_autogluon = sub_holdout_estimator_mode.add_parser(
         "autogluon", 
-        parents=[make_base_parser(), make_base_resample_parser(), make_holdout_parser(), make_autogluon_parser()]
+        parents=[make_base_parser(), make_base_resample_parser(), make_holdout_parser(), make_autogluon_parser()],
+        formatter_class=argparse.RawTextHelpFormatter
     )
 
     p_holdout_default.set_defaults(splitting_mode="holdout", estimator_mode="default")
@@ -57,23 +66,32 @@ def parse_args(args):
     
     p_cv_default = sub_cv_estimator_mode.add_parser(
         "default", 
-        parents=[make_base_parser(), make_extra_base_parser(), make_base_resample_parser(), make_resample_seed_parser(), make_cv_parser()]
+        parents=[make_base_parser(), make_extra_base_parser(), make_base_resample_parser(), make_resample_seed_parser(), make_cv_parser()],
+        formatter_class=argparse.RawTextHelpFormatter
     )
+
     p_cv_tune = sub_cv_estimator_mode.add_parser(
         "tune", 
-        parents=[make_base_parser(), make_extra_base_parser(), make_base_resample_parser(), make_resample_seed_parser(), make_cv_parser(), make_tune_parser()]
+        parents=[make_base_parser(), make_extra_base_parser(), make_base_resample_parser(), make_resample_seed_parser(), make_cv_parser(), make_tune_parser()],
+        formatter_class=argparse.RawTextHelpFormatter
     )
+
     p_cv_ensemble = sub_cv_estimator_mode.add_parser(
         "ensemble", 
-        parents=[make_base_parser(), make_extra_base_parser(), make_base_resample_parser(), make_resample_seed_parser(), make_cv_parser(), make_ensemble_parser()]
+        parents=[make_base_parser(), make_extra_base_parser(), make_base_resample_parser(), make_resample_seed_parser(), make_cv_parser(), make_ensemble_parser()],
+        formatter_class=argparse.RawTextHelpFormatter
     )
+
     p_cv_family_ensemble = sub_cv_estimator_mode.add_parser(
         "family-ensemble", 
-        parents=[make_base_parser(), make_base_resample_parser(), make_resample_seed_parser(), make_cv_parser(), make_family_ensemble_parser()]
+        parents=[make_base_parser(), make_base_resample_parser(), make_resample_seed_parser(), make_cv_parser(), make_family_ensemble_parser()],
+        formatter_class=argparse.RawTextHelpFormatter
     )
+
     p_cv_autogluon = sub_cv_estimator_mode.add_parser(
         "autogluon",
-        parents=[make_base_parser(), make_base_resample_parser(), make_cv_parser(), make_autogluon_parser()]
+        parents=[make_base_parser(), make_base_resample_parser(), make_cv_parser(), make_autogluon_parser()],
+        formatter_class=argparse.RawTextHelpFormatter
     )
 
     p_cv_default.set_defaults(splitting_mode="cv", estimator_mode="default")

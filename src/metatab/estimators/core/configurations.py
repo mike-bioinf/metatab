@@ -20,7 +20,7 @@ class TuneConfiguration:
     n_cv_repeats: int
     n_cv_folds: int
     params_distributions: dict
-    meta_strategy: MetaStrategy
+    meta_strategy: MetaStrategy = "best"
     meta_strategy_params: None | MetaStrategyParams = None
     meta_surrogate_model: None | str | Path = None
     meta_seed: int = 42

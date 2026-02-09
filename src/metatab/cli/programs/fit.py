@@ -5,8 +5,8 @@ The program seralizes the fitted model in a binary file via pickle.
 
 import sys
 import pickle
-import argparse
 import pandas as pd
+from argparse import ArgumentParser, RawTextHelpFormatter
 from sklearn.preprocessing import LabelEncoder
 from autogluon.tabular import TabularPredictor
 from metatab.metatab_utils.data_loader import DataLoader
@@ -48,14 +48,14 @@ from metatab.cli.parser import (
 
 
 def parse_args(args):
-    p = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter)
+    p = ArgumentParser(formatter_class=RawTextHelpFormatter)
     # add subparser for estimator mode
     sub_estimator_mode = p.add_subparsers(required=True, title="Estimator Mode", description="valid subcommands")
-    p_default = sub_estimator_mode.add_parser("default", parents=[make_base_parser(), make_extra_base_parser(), make_fit_parser()])
-    p_tune = sub_estimator_mode.add_parser("tune", parents=[make_base_parser(), make_extra_base_parser(), make_fit_parser(), make_tune_parser()])
-    p_ensemble = sub_estimator_mode.add_parser("ensemble", parents=[make_base_parser(), make_extra_base_parser(), make_fit_parser(), make_ensemble_parser()])
-    p_family_ensemble = sub_estimator_mode.add_parser("family-ensemble", parents=[make_base_parser(), make_fit_parser(), make_family_ensemble_parser()])
-    p_autogluon = sub_estimator_mode.add_parser("autogluon", parents=[make_base_parser(), make_autogluon_parser()])
+    p_default = sub_estimator_mode.add_parser("default", parents=[make_base_parser(), make_extra_base_parser(), make_fit_parser()], formatter_class=RawTextHelpFormatter)
+    p_tune = sub_estimator_mode.add_parser("tune", parents=[make_base_parser(), make_extra_base_parser(), make_fit_parser(), make_tune_parser()], formatter_class=RawTextHelpFormatter)
+    p_ensemble = sub_estimator_mode.add_parser("ensemble", parents=[make_base_parser(), make_extra_base_parser(), make_fit_parser(), make_ensemble_parser()], formatter_class=RawTextHelpFormatter)
+    p_family_ensemble = sub_estimator_mode.add_parser("family-ensemble", parents=[make_base_parser(), make_fit_parser(), make_family_ensemble_parser()], formatter_class=RawTextHelpFormatter)
+    p_autogluon = sub_estimator_mode.add_parser("autogluon", parents=[make_base_parser(), make_autogluon_parser()], formatter_class=RawTextHelpFormatter)
     p_default.set_defaults(estimator_mode="default")
     p_tune.set_defaults(estimator_mode="tune")
     p_ensemble.set_defaults(estimator_mode="ensemble")

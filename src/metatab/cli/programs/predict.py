@@ -6,8 +6,9 @@ import sys
 import pickle
 import argparse
 import numpy as np
+from metatab.cli.helper import h
 from metatab.metatab_utils.data_loader import DataLoader
-from metatab.metatab_utils.prediction import PredictionDataframe
+from metatab.metatab_utils.prediction.dataframe import PredictionDataframe
 from metatab.estimators.estimators import Estimator
 from metatab.ensemble.family import FamilyEnsembleEstimator
 from autogluon.tabular import TabularPredictor
@@ -98,7 +99,7 @@ def check_estimator_is_fitted(obj) -> None:
 
 
 def parse_args(args):
-    p = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter)
+    p = argparse.ArgumentParser(formatter_class=argparse.RawTextHelpFormatter)
 
     p.add_argument("-f", "--file-estimator", required=True,
                    help="Pickle file of the fitted estimator to use in inference.")
@@ -109,10 +110,11 @@ def parse_args(args):
     p.add_argument("-o", "--output-dir", required=True, help="Output folder path.")
     
     p.add_argument("-m", "--input-mode", required=True, choices=["xy", "df"],
-                   help="""Defines the input data format. One of 'xy' and 'df'.
+                   help=h(
+                    """Defines the input data format. One of 'xy' and 'df'.
                     -xy: A folder containing `X.txt` and `y.txt` named files.
                     -df: A file containing both X and y data.
-                    In both cases the program DEMANDS tab-separated text files.""")
+                    In both cases the program DEMANDS tab-separated text files."""))
     
     p.add_argument("-y", "--target-feature", default=None,
                     help="Name of the target feature column. Must be provided if --input-mode is equal to 'df'.")
@@ -123,9 +125,10 @@ def parse_args(args):
     p.add_argument("--create-outdir", action="store_true", help="Create the output directory if does not exists.")
 
     p.add_argument("--disable-additional-txt-output", action="store_true", 
-                   help="""Disable the generation of the txt file with the predicted estimator probabilities.
+                   help=h("""
+                    Disable the generation of the txt file with the predicted estimator probabilities.
                    In this case the predictions are only available in the main output in an encoded format,
-                   which requires the package python API for decoding.""")
+                   which requires the package python API for decoding."""))
     
     return p.parse_args(args)
 

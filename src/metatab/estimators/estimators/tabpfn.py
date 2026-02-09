@@ -8,9 +8,7 @@ from metatab.estimators.core import (
     AbstractBaseEstimator,
     DefaultEstimatorMixin,
     EnsembleEstimatorMixin,
-    TunedEstimatorMixin,
-    MetaTuneBaseEstimator,
-    MetaEnsembleBaseEstimator
+    TunedEstimatorMixin
 )
 
 
@@ -107,18 +105,4 @@ class MyEnsembledTabPFNClassifier(EnsembleEstimatorMixin, AbstractBaseEstimator)
             device_parameter="device",
             density_feature_selector_strategy="undersample" # to speed up.
         )
-        return self
-
-
-
-class MetaTuneTabPFNClassifier(MetaTuneBaseEstimator):
-    def fit(self, X: XType, y: YType) -> "MetaTuneTabPFNClassifier":
-        super().fit(X, y, "density_filter", MyTunedTabPFNClassifier, TuningParams.TABPFN_C0, None)
-        return self
-
-
-
-class MetaEnsembleTabPFNClassifier(MetaEnsembleBaseEstimator):
-    def fit(self, X: XType, y:YType) -> "MetaEnsembleTabPFNClassifier":
-        super().fit(X, y, "density_filter", MyEnsembledTabPFNClassifier, TuningParams.TABPFN_C0, None)
         return self

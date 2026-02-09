@@ -9,7 +9,7 @@ from collections import defaultdict
 from sklearn.preprocessing import LabelEncoder
 from autogluon.tabular import TabularPredictor
 from metatab.metatab_utils.data_loader import DataLoader
-from metatab.metatab_utils.prediction import PredictionDataframe
+from metatab.metatab_utils.prediction.dataframe import PredictionDataframe
 from metatab.metatab_utils.general import create_unique_column_name
 from metatab.preprocessing.density_selector import DensityFeatureSelector
 

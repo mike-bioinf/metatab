@@ -12,9 +12,7 @@ from metatab.estimators.core import (
     AbstractBaseEstimator,
     DefaultEstimatorMixin,
     EnsembleEstimatorMixin,
-    TunedEstimatorMixin,
-    MetaTuneBaseEstimator,
-    MetaEnsembleBaseEstimator
+    TunedEstimatorMixin
 )
 
 if TYPE_CHECKING:
@@ -210,20 +208,4 @@ class MyEnsembledTabMClassifier(EnsembleEstimatorMixin, AbstractBaseEstimator):
             device_parameter="device",
             density_feature_selector_strategy="undersample" # to speed up.
         )
-        return self
-    
-
-
-class MetaTuneTabMClassifier(MetaTuneBaseEstimator):
-    def fit(self, X: XType, y: YType, validation_set_size: float = 0.3) -> "MetaTuneTabMClassifier":
-        esc = EarlyStopConfiguration(validation_set_size=validation_set_size)
-        super().fit(X, y, "base", MyTunedTabMClassifier, TuningParams.TABM_C0, esc)
-        return self
-
-
-
-class MetaEnsembleTabMClassifier(MetaEnsembleBaseEstimator):
-    def fit(self, X: XType, y:YType, validation_set_size: float = 0.3) -> "MetaEnsembleTabMClassifier":
-        esc = EarlyStopConfiguration(validation_set_size=validation_set_size)
-        super().fit(X, y, "base", MyEnsembledTabMClassifier, TuningParams.TABM_C0, esc)
         return self

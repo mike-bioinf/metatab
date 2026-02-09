@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 from typing import Literal
 from pathlib import Path
-from metatab.metatab_utils.prediction import PredictionDataframe
+from metatab.metatab_utils.prediction.dataframe import PredictionDataframe
 
 
 

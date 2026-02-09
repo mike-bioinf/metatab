@@ -2,7 +2,6 @@ import warnings
 from functools import partial
 from lightgbm import LGBMClassifier
 from metatab.estimators.params import TuningParams, DefaultParams
-from metatab.estimators.core.configurations import EarlyStopConfiguration
 from metatab.metatab_utils.types import XType, YType
 
 from metatab.estimators.core import (
@@ -10,8 +9,6 @@ from metatab.estimators.core import (
     DefaultEstimatorMixin,
     TunedEstimatorMixin, 
     EnsembleEstimatorMixin,
-    MetaTuneBaseEstimator,
-    MetaEnsembleBaseEstimator
 )
 
 from metatab.estimators.utils.gbdt import ( 
@@ -181,7 +178,7 @@ class MyEnsembledLGBMClassifier(LGBMPredictMixin, EnsembleEstimatorMixin, Abstra
 
 class MyEnsembledESLGBMClassifier(LGBMPredictMixin, EnsembleEstimatorMixin, AbstractBaseEstimator):
     '''
-    Implementation of the ensmebled LGBMClassifier with early stop.
+    Implementation of the ensembled LGBMClassifier with early stop.
     
     Attributes:
         estimator_ (EnsembleEstimator): Fitted EnsembleEstimator object.
@@ -201,46 +198,4 @@ class MyEnsembledESLGBMClassifier(LGBMPredictMixin, EnsembleEstimatorMixin, Abst
                 partial(adjust_es_logloss_metric, framework="lightgbm") 
             ]
         )
-        return self
-
-
-
-class MetaTuneLGBMClassifier(LGBMPredictMixin, MetaTuneBaseEstimator):
-    def fit(self, X: XType, y: YType) -> "MetaTuneLGBMClassifier":
-        super().fit(X, y, "base", MyTunedLGBMClassifier, TuningParams.LGMB_C0, None)
-        return self
-
-
-
-class MetaTuneEsLGBMClassifier(LGBMPredictMixin, MetaTuneBaseEstimator):
-    def fit(
-        self,
-        X: XType, 
-        y: YType, 
-        early_stop_rounds: int = 100, 
-        validation_set_size: float = 0.3
-    ) -> "MetaTuneEsLGBMClassifier":
-        early_stop_conf = EarlyStopConfiguration(early_stop_rounds, validation_set_size)
-        super().fit(X, y, "base", MyTunedESLGBMClassifier, TuningParams.LGMB_C0, early_stop_conf)
-        return self
-
-
-
-class MetaEnsembleLGBMClassifier(LGBMPredictMixin, MetaEnsembleBaseEstimator):
-    def fit(self, X: XType, y: YType) -> "MetaEnsembleLGBMClassifier":
-        super().fit(X, y, "base", MyEnsembledLGBMClassifier, TuningParams.LGMB_C0, None)
-        return self
-
-
-
-class MetaEnsembleEsLGBMClassifier(LGBMPredictMixin, MetaEnsembleBaseEstimator):
-    def fit(
-        self,
-        X: XType, 
-        y: YType, 
-        early_stop_rounds: int = 100, 
-        validation_set_size: float = 0.3
-    ) -> "MetaEnsembleEsLGBMClassifier":
-        early_stop_conf = EarlyStopConfiguration(early_stop_rounds, validation_set_size)
-        super().fit(X, y, "base", MyEnsembledESLGBMClassifier, TuningParams.LGMB_C0, early_stop_conf)
         return self

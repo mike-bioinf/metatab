@@ -2,29 +2,16 @@ import pytest
 from sklearn.datasets import make_classification
 from metatab.metatab_utils.exceptions import DeviceError
 from metatab.ensemble.configuration import UserEnsembleConfiguration
-
-from metatab.estimators.estimators.rf import (
-    MyRandomForestClassifier,
-    MetaEnsembleRandomForestClassifier,
-    MetaTuneRandomForestClassifier
-)
+from metatab.estimators.estimators.rf import MyRandomForestClassifier
 
 
 
-def test_that_cuda_does_not_work_with_incompatible_estimators(tmp_path):
+def test_that_cuda_does_not_work_with_incompatible_estimators():
     X, y = make_classification()
-
     rf = MyRandomForestClassifier(preprocessing="base", seed=0, n_threads=1, device="cuda")
-    mtrf = MetaTuneRandomForestClassifier(device="cuda")
-    # the save_path is not "used" here but just in case the check fails
-    merf = MetaEnsembleRandomForestClassifier(save_path=tmp_path, device="cuda")
 
     with pytest.raises(expected_exception=DeviceError):
         rf.fit(X, y)
-    with pytest.raises(expected_exception=DeviceError):
-        mtrf.fit(X, y)
-    with pytest.raises(expected_exception=DeviceError):
-        merf.fit(X, y)
 
     with pytest.raises(expected_exception=DeviceError):
         UserEnsembleConfiguration(
@@ -39,7 +26,6 @@ def test_that_cuda_does_not_work_with_incompatible_estimators(tmp_path):
         )
     
 
-
 ## test for no error
 def test_that_device_auto_option_works_correctly():
     X, y = make_classification(n_samples=10, n_features=4)
@@ -47,12 +33,12 @@ def test_that_device_auto_option_works_correctly():
     rf.fit(X, y)
 
     UserEnsembleConfiguration(
-            name="conf",
-            algo="random",
-            n_members=1,
-            estimator="random_forest",
-            preprocessing="estimator_default",
-            tune_space="default",
-            early_stop_on_validation_set=False,
-            device="auto"
-        )
+        name="conf",
+        algo="random",
+        n_members=1,
+        estimator="random_forest",
+        preprocessing="estimator_default",
+        tune_space="default",
+        early_stop_on_validation_set=False,
+        device="auto"
+    )
