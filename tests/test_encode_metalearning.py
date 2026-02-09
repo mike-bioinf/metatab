@@ -3,7 +3,6 @@ import warnings
 import numpy as np
 import pandas as pd
 from pathlib import Path
-from typing import Literal
 from sklearn.pipeline import make_pipeline
 from metatab.estimators.utils.types import TunableEstimatorType
 from metatab.metalearning.encode.encode import get_encoding_scheme
@@ -65,8 +64,7 @@ def test_that_inf_to_nan_transformer_works():
 
 
 
-## TODO: add "catboost", "extra_trees", "realmlp", "tabm" when you have metadata
-@pytest.mark.parametrize("estimator", ["random_forest", "xgb", "lgbm", "tabpfn"])
+@pytest.mark.parametrize("estimator", ["random_forest", "xgb", "lgbm", "tabpfn", "catboost", "extra_trees", "realmlp", "tabm"])
 @pytest.mark.skipif(not (Path(__file__).parent / "data/metadata").exists(), reason="Missing Metadata")
 def test_that_estimator_metadata_encoding_scheme_is_correct(estimator):
     enc_pipe = make_pipeline(*get_encoding_scheme(estimator)).set_output(transform="pandas")
