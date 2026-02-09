@@ -47,6 +47,7 @@ dependencies = [
     "sentencepiece>=0.2,!=0.2.1", # the latest 0.2.1 version gives installation problem on python 3.12
     "joblib==1.5.1",  # the exact version assures the deserialization of the surrogate models???
     "tabpfn==2.1.3",  # TODO: to update with tabpfn. Checkpoint download process rely on this specific version for now
+    "setuptools>=68,<82" # this is for hyperopt that depends on pkg_resources which is not anymore blunded in python and dropped with setuptools >=82
 ]
 
 [project.optional-dependencies]

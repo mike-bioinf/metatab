@@ -41,7 +41,7 @@ class MetaTuneInitializer:
         tune_space: Literal["default"] = "default"
     ):
         '''
-        The meta tuned estimators are backed by a meta-learning framework that suggestes,
+        The meta tuned estimators are backed by a meta-learning framework that suggests,
         evaluates and selects points drawn from pre-defined tuning spaces.
         In detail the process consists of the following phases:
 

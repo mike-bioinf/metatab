@@ -314,7 +314,7 @@ def make_autogluon_parser() -> ArgumentParser:
     p.add_argument("--n-columns-density-filter", default=500, type=int,
                    help=h("""
                    Filter the most sparse columns in the data to reach the specified number of columns.
-                   Ties are arbritarily broken in a reproducible way thanks to an underlying sorting stable algorithmn.
+                   Ties are arbitrarily broken in a reproducible way thanks to an underlying sorting stable algorithm.
                    Keep in mind that changing the feature order can affect the filtering since ties will be internally ordered in a different way.
                    Useful to allow autogluon to fit tabpfn and other foundational models with a limited feature window.
                    The default value of 500 is choosen based on the feature limit window of tabpfn and mitra models.
