@@ -1,4 +1,3 @@
-import re
 import numpy as np
 import pandas as pd
 import warnings
@@ -163,23 +162,6 @@ def filter_hpo(
     return df_hpo.loc[mask, :]
 
 
-
-def is_early_stopped_estimator(estimator: EstimatorType, invert: bool = False) -> bool:
-    '''
-    Utility to infer whether the estimator is early stopped or not based on its "str type".
-
-    Parameters:
-        estimator (EstimatorType): Estimator "str type".
-        invert (bool, optional): Whether to invert the check.
-
-    Returns:
-        bool.
-    '''
-    is_es = True if re.match("es_", estimator) else False
-    return not is_es if invert else is_es
-
-
-
 def is_gbdt_estimator(estimator: EstimatorType, invert: bool = False) -> bool:
     '''
     Utility to infer whether the estimator belongs to the gbdt family based on its "str type"
@@ -193,111 +175,6 @@ def is_gbdt_estimator(estimator: EstimatorType, invert: bool = False) -> bool:
     '''
     is_gbdt = estimator in GBDT_ESTIMATORS
     return is_gbdt if not invert else not is_gbdt
-
-
-### TODO we should pass directly the dataframe
-## and then we have to take in consideratio both estimator_mode and algo colum, and also n_members and n_iter
-def refine_estimator_mode_info(
-    estimator_mode_series: pd.Series,
-    distinguish_tpe_from_random: bool = True
-) -> pd.Series:
-    '''
-    Refine the tune info using the "tune_algo" column.
-
-    Parameters:
-        tune_algo_series (pd.Series): Tune algo series.
-
-        distinguish_tpe_from_random (bool, optional):
-            Whether distinguish the refined value of random and tpe algo.
-            If False then "HPO" is the refined value for both of them.
-            If True then "tpe" maps to "MHPO" and "random" to "RHPO"
-    
-    Returns:
-        pd.Series: The refined values
-    '''
-    refined_values = []
-
-    for value in estimator_mode_series:
-        if value == "default":
-            refined_values.append("DF")
-        elif value == "random":
-            rvalue = "RHPO" if distinguish_tpe_from_random else "HPO"
-            refined_values.append(rvalue)
-        elif value == "tpe":
-            rvalue = "THPO" if distinguish_tpe_from_random else "HPO"
-            refined_values.append(rvalue)
-        elif value == "meta":
-            refined_values.append("MHPO")
-        else:
-            raise ValueError(f"Unrecognized value encountered: {value}")
-
-    return pd.Series(refined_values)
-
-
-
-def simple_refine_tune_info(tune_series: pd.Series, estimator_series: pd.Series) -> pd.Series:
-    '''
-    Refine the tune info using the "tune" boolean info.
-
-    Parameters:
-        tune_series (pd.Series): Series with the boolean tune info.
-        estimator_series (pd.Series): Series with the estimator str info.
-
-    Returns:
-        pd.Series: The refined 'estimator_tune' series.
-    '''
-    if len(tune_series) != len(estimator_series):
-        raise ValueError("'tune_series' and 'estimator_series' have different lengths")
-
-    res = []
-    for t, e in zip(tune_series, estimator_series):
-        v = e + "_HPO" if t else e + "_DF"
-        res.append(v)
-
-    return pd.Series(res, index=tune_series.index)
-
-
-
-def create_early_stopped_estimator_column(
-    df: pd.DataFrame, 
-    estimator_column: str = "estimator", 
-    new_column: str = "is_early_stopped",
-    check_collision_new_column: bool = True,
-    copy: bool = False
-) -> pd.DataFrame:
-    '''
-    Create a boolean column indicating whether the estimator is early stopped.
-    The condition is evaluated using the "is_early_stopped_estimator" utility.
-
-    Parameters:
-        df (pd.DataFrame): Dataframe.
-        
-        estimator_column (str, optional): 
-            Name of the column with the estimator info on which the check is based.
-        
-        new_column (str, optional): Name of the column created.
-
-        check_collision_new_column (bool, optional):
-            Whether to check if the the `new_column` already exists in df.
-            If this is True an error is raised. 
-            If False the column will be replaced by the new created one.
-
-        copy (bool, optional):
-            Whether to act on a deepcopy of the original dataframe.
-
-    Returns:
-        pd.DataFrame: The dataframe with the added column.
-    '''
-    check_presence_col(df, estimator_column)
-    
-    if check_collision_new_column and new_column in df.columns:
-        raise ValueError(f"{new_column} already exists in df.")
-    
-    if copy: 
-        df = df.copy()
-    
-    df[new_column] = df[estimator_column].apply(is_early_stopped_estimator)
-    return df
 
 
 

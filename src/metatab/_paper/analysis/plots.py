@@ -4,6 +4,7 @@ import seaborn as sns
 from typing import Literal
 from matplotlib.axes import Axes
 from adjustText import adjust_text
+from paretoset import paretoset
 
 from metatab._paper.analysis.utils import (
     check_presence_cols, 
@@ -13,42 +14,52 @@ from metatab._paper.analysis.utils import (
 
 
 
-def draw_scatterplot_performance_runtime(
+def draw_scatterplot(
     ax: Axes, 
     df: pd.DataFrame,
-    performance_column: str,
-    runtime_column: str,
-    performance_std_column: str | None = None,
-    runtime_std_column: str | None = None,
+    x_column: str,
+    y_column: str,
+    x_std_column: str | None = None,
+    y_std_column: str | None = None,
     hue_column: str | None = None,
     style_column: str | None = None,
     palette: None | dict = None,
     map_style: None | dict = None,
     label_column: str | None = None,
+    show_pareto_frontier: bool = False,
     error_bar_args: dict | None = None,
     sns_scatterplot_args: dict | None = None,
+    sns_lineplot_frontier_args: dict | None = None
 ) -> Axes:
     '''
-    Plot the performance-runtime scatterplot on the input Axes.
+    Plot the scatterplot on the input Axes.
+    Designed mainly to generate scatterplot of performance metrics (e.g. auc-runtime).
+    The function expects/demands a dataframe in which every row is a point to be plotted.
+    Here statistics like the std must be provided in the dataframes. In other words they must be pre-computed.
+    Here the hue and style column are just for visualization no aggregate statistic compututation is done on them.
     Labels the points with the text in "label_column" column.
 
     Parameters:
-        ax (Axes): Axes onto which draw the plot.
+        ax (Axes): 
+            Axes onto which draw the plot.
         
-        df (pd.DataFrame): Dataframe containing the data to plot.
+        df (pd.DataFrame): 
+            Dataframe containing the data to plot.
         
-        performance_column (str): Name of the column containing the performance info.
+        x_column (str): 
+            Column plotted on x axis.
         
-        runtime_column (str): Name of the column containing the runtime info.
+        y_column (str): 
+            Column plotted on y axis.
         
-        performance_std_column(str | None, optional): 
-            Name of the column containing the performance std info.
-            If None no performance error bar is plotted.
+        x_std_column(str | None, optional): 
+            Name of the column containing the x std info.
+            If None no x error bar is plotted.
         
-        runtime_std_column (str | None, optional):
-            Name of the column containing the runtime std info.
-            If None no runtime error bar is plotted.
-
+        y_std_column (str | None, optional):
+            Name of the column containing the x std info.
+            If None no x error bar is plotted.
+        
         hue_column (str | None, optional): 
             Name of the column to map as color. Can be None.
 
@@ -61,6 +72,12 @@ def draw_scatterplot_performance_runtime(
         palette (dict | None, optional): 
             Dict of color mappings. If None the error bars (if any) will be gray.
         
+        show_pareto_frontier (bool, optional):
+            Show the pareto frontier obtained considering 
+            x and y columns as objective to minimize.
+            The frontier is computed over all points.
+            The hue and style columns has no effect on this specification.
+        
         label_column (str | None, optional): 
             Name of the column with point labels info. Can be None.
 
@@ -70,10 +87,14 @@ def draw_scatterplot_performance_runtime(
         sns_scatterplot_args (dict | None, optional):
             Dict unpackaged in the "scatterplot" seaborne function.
 
+        sns_lineplot_frontier_args (dict | None, optional):
+            Dict unpacked in the "lineplot" seaborne function used to plot the Pareto frontier.
+            Ignored when "show_pareto_frontier" is False.
+            
     Returns:
         Axes: The axes.
     '''
-    cols = [performance_column, runtime_column]
+    cols = [x_column, y_column]
 
     for col in [label_column, hue_column, style_column]:
         cols = append_if_not_none(cols, col)
@@ -85,8 +106,8 @@ def draw_scatterplot_performance_runtime(
 
     ax = sns.scatterplot(
         data=df, 
-        x=performance_column,
-        y=runtime_column,
+        x=x_column,
+        y=y_column,
         hue=hue_column,
         style=style_column,
         palette=palette,
@@ -100,39 +121,49 @@ def draw_scatterplot_performance_runtime(
         for _, row in df.iterrows():
             texts.append(
                 ax.text(
-                    row[performance_column],
-                    row[runtime_column],
+                    row[x_column],
+                    row[y_column],
                     row[label_column]
                 )
         )
         _ = adjust_text(texts, ax=ax, arrowprops=dict(arrowstyle="->", color="gray", lw=0.5))
 
+    df_groups_err_bar = df.groupby(hue_column) if hue_column else [(None, df)]
+    
+    # the logic here is that we we want the error bar colored according to hue column
+    # and error_bar takes vectors of positions ans values that are cross-linked by position
+    # wehn no hue column is provided then we use the whole dataset in one pass to draw all error bars
+    for hue_category, df_hue_category in df_groups_err_bar:
+        color = "gray" \
+            if palette is None or hue_category is None or hue_category not in palette.keys() \
+            else palette[hue_category]
 
-    if hue_column is not None:
-        for hue_category, df_hue_category in df.groupby(hue_column):
-            color = "gray" \
-                if palette is None or hue_category not in palette.keys() \
-                else palette[hue_category]
+        if x_std_column:
+            _ = ax.errorbar(
+                x=df_hue_category[x_column],
+                y=df_hue_category[y_column],
+                xerr=df_hue_category[x_std_column],
+                fmt="none",
+                ecolor=color,
+                **error_bar_args
+            )
+        
+        if y_std_column:
+            _ = ax.errorbar(
+                x=df_hue_category[x_column],
+                y=df_hue_category[y_column],
+                yerr=df_hue_category[y_std_column],
+                fmt="none",
+                ecolor=color,
+                **error_bar_args
+            )
 
-            if performance_std_column:
-                _ = ax.errorbar(
-                    x=df_hue_category[performance_column],
-                    y=df_hue_category[runtime_column],
-                    xerr=df_hue_category[performance_std_column],
-                    fmt="none",
-                    ecolor=color,
-                    **error_bar_args
-                )
-            
-            if runtime_std_column:
-                _ = ax.errorbar(
-                    x=df_hue_category[performance_column],
-                    y=df_hue_category[runtime_column],
-                    yerr=df_hue_category[runtime_std_column],
-                    fmt="none",
-                    ecolor=color,
-                    **error_bar_args
-                )
+    if show_pareto_frontier:
+        sns_lineplot_frontier_args = ensure_or_create(sns_lineplot_frontier_args, dict)
+        pareto_mask = paretoset(df[[x_column, y_column]], sense=["min", "min"])
+        pareto_subset = df.loc[pareto_mask, :]
+        pareto_subset = pareto_subset.iloc[pareto_subset[x_column].argsort(), :]
+        sns.lineplot(pareto_subset, x=x_column, y=y_column, ax=ax, **sns_lineplot_frontier_args)
 
     return ax
 
@@ -141,8 +172,8 @@ def draw_scatterplot_performance_runtime(
 def draw_scatter_diagonal_plot(
     ax: Axes,
     df: pd.DataFrame,
-    performance_column_y: str,
-    performance_column_x: str,
+    x_column: str,
+    y_column: str,
     hue_column: str | None = None,
     style_column: str | None = None,
     palette: dict | None = None,
@@ -152,25 +183,32 @@ def draw_scatter_diagonal_plot(
     sns_scatterplot_args: dict | None = None
 ) -> Axes:
     '''
-    Plot paired xy values in a scatter plot with a diagonal 
-    line representing equal values.
+    Plot paired xy values in a scatter plot with a diagonal line representing equal values.
 
     Parameters:
-        ax (Axes): Axes onto which draw the plot.
+        ax (Axes): 
+            Axes onto which draw the plot.
 
-        df (pd.DataFrame): Dataframe containing the data to plot.
+        df (pd.DataFrame): 
+            Dataframe containing the data to plot.
 
-        performance_column_y (str): Name of performance column put on the y axis.
+        x_column (str): 
+            Name of the column to visualize on the x axis.
 
-        performance_column_x (str): Name of performance column put on the x axis.
+        y_column (str): 
+            Name of the column to visualize on the y axis.
 
-        hue_column (str | None, optional): Name of the column mapped to hue.
+        hue_column (str | None, optional): 
+            Name of the column mapped to hue.
 
-        style_column (str | None, optional): Name of the column mapped to shape.
+        style_column (str | None, optional): 
+            Name of the column mapped to shape.
 
-        palette (dict | None, optional): Palette of colors to use for the hue column.
+        palette (dict | None, optional):  
+            Palette of colors to use for the hue column.
 
-        map_style (dict | None, optional): Map of shapes to use for the shape column.
+        map_style (dict | None, optional): 
+            sMap of shapes to use for the shape column.
 
         top_left_anno (str | None, optional): 
             Text annotation to report on the top left corner of the plot
@@ -184,7 +222,7 @@ def draw_scatter_diagonal_plot(
     Returns:
         Axes: The axes.
     '''
-    cols = [performance_column_x, performance_column_y]
+    cols = [x_column, y_column]
 
     for col in [hue_column, style_column]:
         cols = append_if_not_none(cols, col)
@@ -195,8 +233,8 @@ def draw_scatter_diagonal_plot(
 
     ax = sns.scatterplot(
         data=df, 
-        x=performance_column_x,
-        y=performance_column_y,
+        x=x_column,
+        y=y_column,
         hue=hue_column,
         style=style_column,
         palette=palette,
@@ -215,7 +253,7 @@ def draw_scatter_diagonal_plot(
             transform=ax.transAxes,
             ha='left', 
             va='top',
-            fontsize=10
+            fontsize=8
         )
 
     if bottom_right_anno is not None:
@@ -226,7 +264,7 @@ def draw_scatter_diagonal_plot(
             transform=ax.transAxes,
             ha='right', 
             va='bottom',
-            fontsize=10
+            fontsize=8
         )
 
     return ax

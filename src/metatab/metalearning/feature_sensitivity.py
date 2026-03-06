@@ -4,7 +4,7 @@ import warnings
 import numpy as np
 import pandas as pd
 from typing import TYPE_CHECKING, Literal
-from metatab.metatab_utils.general import select_level_from_columns
+from metatab.metatab_utils.general import select_level_from_columns, ensure_or_create
 
 if TYPE_CHECKING:
     from sklearn.pipeline import Pipeline
@@ -15,8 +15,9 @@ if TYPE_CHECKING:
 def compute_feature_sensitivity_map(
     model: SurrogateRandomForestRegressor | Pipeline, 
     X: pd.DataFrame,
-    column_index_level: str | int,
-    select_column_level_for_model_prediction: int | str | None = -1,
+    column_level_groups: str | int,
+    column_level_prediction: int | str | None = -1,
+    exclude_groups: str | list[str] | None = None,
     n_permutations: int = 20, 
     seed: int = 0
 ) -> dict[str, np.ndarray]:
@@ -30,15 +31,19 @@ def compute_feature_sensitivity_map(
         X (pd.DataFrame): 
             Data on which to evaluate feature sensitivity. 
             Columns must be a MultiIndex.
+        
+        column_level_groups (str | int): 
+            Level name or index of the column MultiIndex used to group features.
+            Sensitivity is computed for each unique value at this level.
 
-        select_column_level_for_model_prediction (int | str | None, optional):
+        column_level_prediction (int | str | None, optional):
             X columns level to select for model predictions. 
             Models and pipelines cannot be adapted to manage the MultiIndex. 
             Therefore one can select the single level to keep for model inference.
-        
-        column_index_level (str | int): 
-            Level name or index of the column MultiIndex used to group features.
-            Sensitivity is computed for each unique value at this level.
+
+        exclude_groups (str | list[str] | None, optional):
+            Groups to exclude from the permutation procedure.
+            We assume that the index are strings since this is our scenario.
 
         n_permutations (int, optional):
             Number of random permutations to generate for sensitivity estimation.
@@ -48,24 +53,27 @@ def compute_feature_sensitivity_map(
 
     Returns:
         dict[str,np.ndarray]:
-        Dictionary mapping each feature group (unique value at `column_index_level`)
+        Dictionary mapping each selected group of the "column_level_group"
         to an array of absolute mean prediction differences across permutations.
     '''
-    X_pred = select_level_from_columns(X, select_column_level_for_model_prediction) \
-        if select_column_level_for_model_prediction \
+    X_pred = select_level_from_columns(X, column_level_prediction) \
+        if column_level_prediction \
         else X
         
     ori_pred, _ = model.predict(X_pred)
     index_permutations = _create_index_permutations(X, n_permutations, seed)
     map_feature_sensivity = {}
 
-    for category in X.columns.unique(column_index_level):
+    categories = X.columns.unique(column_level_groups)
+    selected_categories = categories[~categories.isin(ensure_or_create(exclude_groups, list))]
+
+    for category in selected_categories:
         sensitivity = []
         for index_permutation in index_permutations:
-            X_permuted = _permute_block(X, index_permutation, column_index_level, category)
+            X_permuted = _permute_block(X, index_permutation, column_level_groups, category)
 
-            X_permuted_pred = select_level_from_columns(X_permuted, select_column_level_for_model_prediction) \
-                if select_column_level_for_model_prediction \
+            X_permuted_pred = select_level_from_columns(X_permuted, column_level_prediction) \
+                if column_level_prediction \
                 else X_permuted
 
             perm_pred, _ = model.predict(X_permuted_pred)
@@ -79,7 +87,7 @@ def compute_feature_sensitivity_map(
 def _permute_block(
     X: pd.DataFrame,
     index_permutation: np.ndarray,
-    column_index_level: int | str, 
+    column_level_groups: int | str, 
     column_level_category: str,
     raise_on_empty_permutation: Literal["none", "warning", "error"] = "error"
 ) -> pd.DataFrame:
@@ -94,11 +102,11 @@ def _permute_block(
     X_permuted = X.copy()
 
     # select the columns that belong to the chosen block
-    mask = X.columns.get_level_values(column_index_level) == column_level_category
+    mask = X.columns.get_level_values(column_level_groups) == column_level_category
     
     # manage case in which no column is selected
     if not mask.any():
-        message = "No columns have been selected based on 'column_index_level' and 'column_level_category'."
+        message = "No columns have been selected based on 'column_level_groups' and 'column_level_category'."
         if raise_on_empty_permutation == "error":
             raise ValueError(message)
         elif raise_on_empty_permutation == "warning":

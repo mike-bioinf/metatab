@@ -65,7 +65,7 @@ def test_that_compute_feature_sensitivity_map_works(create_multi_index_dataframe
     map = compute_feature_sensitivity_map(
         model=surrogate_pipeline,
         X=metadata,
-        column_index_level="group",
+        column_level_groups="group",
         n_permutations=2
     )
 

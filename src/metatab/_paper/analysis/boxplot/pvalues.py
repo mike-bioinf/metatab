@@ -105,8 +105,11 @@ def execute_test(
     b: np.ndarray, 
     test: Literal["Mann-Whitney", "t-test", "Wilcoxon"], 
     **test_params
-) -> float:
-    '''Execute a single test on a and b arrays. Returns the pvalue.'''
+) -> tuple[float, float]:
+    '''
+    Execute a single test on a and b arrays. 
+    Returns a tuple with pvalue and test-statistic.
+    '''
     if test == "t-test":
         test_func = ttest_ind
     elif test == "Mann-Whitney":
@@ -117,7 +120,7 @@ def execute_test(
         raise ValueError(f"test not supported: {test}")
 
     test_object = test_func(a, b, **test_params)
-    return test_object.pvalue
+    return test_object.pvalue, test_object.statistic
 
 
 

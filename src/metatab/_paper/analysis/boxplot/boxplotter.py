@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import seaborn as sns
+from collections import defaultdict
 from typing import Literal
 from matplotlib.axes import Axes
 from statannotations.Annotator import Annotator
@@ -52,10 +53,11 @@ class BoxPLotter():
         test: None | Literal["Mann-Whitney", "t-test", "Wilcoxon"] = None,
         test_params: None | dict = None,
         pairs_to_annotate: Literal["inner_x", "all"] | simple_pairs | complex_pairs = "inner_x",
-        pvalue_location: Literal["inside", "outside"] = "inside",
         pvalue_correction: None | Literal["inner_x", "all"] | simple_pairs | complex_pairs = None,
         pvalue_correction_method: Literal["bh", "by"] = "bh",
         alpha: float = 0.05,
+        draw_pvalues: bool = True,
+        pvalue_location: Literal["inside", "outside"] = "inside",
         hide_non_significant: bool = False,
         pvalue_thresholds: list[list[float, str]] = None
     ) -> tuple[Axes, pd.DataFrame | None]:
@@ -94,7 +96,7 @@ class BoxPLotter():
                 "mannwhitneyu", "ttest_ind" and "wilcoxon" scipy functions are used 
                 for "Mann-Whitney", "t-test" and "Wilcoxon" options, respectively.
                 The "Wilcoxon" option require that `paired_column` is set.
-                If None, the default, no testing is perfomed. 
+                If None, the default, no testing is perfomed.
 
             test_params (None | dict, optional):
                 Dict of parameters passed to "ttest_ind", "mannwhitneyu" and "wilcoxon" scipy functions.
@@ -107,11 +109,7 @@ class BoxPLotter():
                 - simple_pairs | complex_pairs, to specify directly for which comparisons to compute pvalues.
                 For the complex pairs one must specify before the x-category and then the inner level.
                 In other words the order to follow is (x_column, hue_column).
-                    
-            pvalue_location (Literal["inside", "outside"], optional):
-                Whether to annotate pvalues and relative bars inside or outside the plot.
-                Ignored when `test` is None.
-
+            
             pvalue_correction (None | Literal["inner_x", "all"] | simple_pairs | complex_pairs, optional):
                 How to perform multiple hypothesis correction:
                 - None, the default, no correction is done.
@@ -130,12 +128,22 @@ class BoxPLotter():
             alpha (float, optional):
                 Set the pvalue significance threshold. Defaults to 0.05.
 
+            draw_pvalues (bool, optional):
+                Wheter to draw pvalues on boxplot. 
+                If False and "test" is set, the function returns the dataframe with test info without plotting.
+            
+            pvalue_location (Literal["inside", "outside"], optional):
+                Whether to annotate pvalues and relative bars inside or outside the plot.
+                Ignored when `test` is None or `draw_pvalues` if False.
+
             hide_non_significant (bool, optional):
                 Whether to hide the non significant pvalues alpha-threhold-wise.
+                Ignored when `test` is None or `draw_pvalues` if False.
             
             pvalue_thresholds (list[list[float, str]], optional):
                 List of [number, string]. For the p_values < to {number} the string "< {string}" is used for annotations.
                 When None, the default, is set to [[alpha, str(alpha)]].
+                Ignored when `test` is None or `draw_pvalues` if False.
 
         Returns: 
             tuple[Axes,pd.DataFrame|None]: 
@@ -162,7 +170,7 @@ class BoxPLotter():
         )
 
         ax = sns.boxplot(**sns_boxplot_args)
-        df_pvalues = None
+        df_tests = None
 
         if test:
             self._check_ambiguous_test_scenario(hue_column, pairs_to_annotate, pvalue_correction)
@@ -173,8 +181,10 @@ class BoxPLotter():
                 else pairs_to_annotate
             
             stat_arrays_pairs = get_stat_arrays_from_pairs(df, pairs, grouping_cols, y_column, paired_column)
-            pvalues = np.array([execute_test(a, b, test, **test_params) for a, b in stat_arrays_pairs])        
-            
+            test_results = [execute_test(a, b, test, **test_params) for a, b in stat_arrays_pairs]      
+            pvalues = np.array([test_result[0] for test_result in test_results])
+            test_statistics = np.array([test_result[1] for test_result in test_results])
+
             corrected_pvalues, array_flag_corrections, array_group_correction = correct_pvalues(
                 pvalues, 
                 pairs, 
@@ -187,22 +197,27 @@ class BoxPLotter():
                 else "custom_pairs"
             
             correction_method = pvalue_correction_method if pvalue_correction else None
+            effect_size_stats = self._compute_effect_size_stats(stat_arrays_pairs, paired_column)
 
-            df_pvalues = self._build_df_pvalues(
+            df_tests = self._build_df_tests(
                 pairs=pairs, 
                 pvalues=pvalues, 
                 post_correction_pvalues=corrected_pvalues, 
                 correction_strategy=correction_strategy,
                 correction_flag=array_flag_corrections,
                 correction_group=array_group_correction,
-                correction_method=correction_method
+                correction_method=correction_method,
+                test_statistics=test_statistics,
+                dict_effect_size=effect_size_stats
             )
             
-            config_annotator = self._set_config_annotator(alpha, hide_non_significant, pvalue_thresholds)
-            annotator = Annotator(pairs=pairs, **sns_boxplot_args,)
-            ax, _ = annotator.configure(**config_annotator, loc=pvalue_location).set_pvalues_and_annotate(corrected_pvalues)
+            if draw_pvalues:
+                config_annotator = self._set_config_annotator(alpha, hide_non_significant, pvalue_thresholds)
+                annotator = Annotator(pairs=pairs, **sns_boxplot_args,)
+                ax, _ = annotator.configure(**config_annotator, loc=pvalue_location).set_pvalues_and_annotate(corrected_pvalues)
         
-        return ax, df_pvalues
+        return ax, df_tests
+
 
 
     @staticmethod
@@ -248,14 +263,40 @@ class BoxPLotter():
     
 
     @staticmethod
-    def _build_df_pvalues(
+    def _compute_effect_size_stats(
+        arrays: list[tuple[np.ndarray, np.ndarray]], 
+        paired_column: str | None
+    ) -> dict[str, list]:
+        '''
+        Compute statistics informing about the effect size and direction of comparison.
+        In detail, computes difference between medians and means of the array, 
+        plus mean and median of paired differences + ratio of 1 > 2 in paired scenario.        
+        '''
+        results = defaultdict(list)
+        for array_1, array_2 in arrays:
+            results["diff_mean_12"].append(np.nanmean(array_1) - np.nanmean(array_2))
+            results["diff_median_12"].append(np.nanmedian(array_1) - np.nanmedian(array_2))
+            if paired_column:
+                diff = array_1 - array_2
+                effective_size = (~(np.isnan(array_1) | np.isnan(array_2))).sum()
+                results["mean_diff_12"].append(np.nanmean(diff))
+                results["median_diff_12"].append(np.nanmedian(diff))
+                results["fraction_1_over_2"].append((array_1 > array_2).sum() / effective_size)
+                results["fraction_2_over_1"].append((array_2 > array_1).sum() / effective_size)
+        return results
+
+
+    @staticmethod
+    def _build_df_tests(
         pairs: simple_pairs | complex_pairs, 
-        pvalues: np.ndarray, 
+        pvalues: np.ndarray,
         post_correction_pvalues: np.ndarray,
         correction_flag: np.ndarray,
         correction_group: np.ndarray,
         correction_strategy: str | None,
-        correction_method: str | None
+        correction_method: str | None,
+        test_statistics: np.ndarray,
+        dict_effect_size: dict[str, list]
     ) -> pd.DataFrame:
         '''Builds and returns the dataframe with the pvalue information'''
         first_elements = [pair[0] for pair in pairs]
@@ -268,5 +309,7 @@ class BoxPLotter():
             "correction_flag": correction_flag,
             "correction_group": correction_group,
             "correction_strategy": correction_strategy,
-            "correction_method": correction_method
+            "correction_method": correction_method,
+            "test_statistic": test_statistics,
+            **dict_effect_size
         })

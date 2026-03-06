@@ -72,6 +72,8 @@ def _infer_k_factor_high(n_points: int) -> float:
     '''Infer the k factor on "n_points" using a less conservative approach.'''
     if n_points <= 0:
         raise ValueError("n_points must be positive.")
+    elif n_points == 1:
+        return 0
     elif n_points <= 5:
         k = 1.0
     elif n_points <= 10:
@@ -87,6 +89,8 @@ def _infer_k_factor_low(n_points: int) -> float:
     '''Infer the k factor on "n_points" using a more conservative approach.'''
     if n_points <= 0:
         raise ValueError("n_points must be positive.")
+    elif n_points == 1:
+        return 0
     elif n_points <=5:
         k = 0.5
     elif n_points <= 10:
