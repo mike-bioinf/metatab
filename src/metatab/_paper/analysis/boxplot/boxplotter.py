@@ -279,10 +279,14 @@ class BoxPLotter():
             if paired_column:
                 diff = array_1 - array_2
                 effective_size = (~(np.isnan(array_1) | np.isnan(array_2))).sum()
+                count_1_over_2 = (array_1 > array_2).sum()
+                count_2_over_1 = (array_2 > array_1).sum()
                 results["mean_diff_12"].append(np.nanmean(diff))
                 results["median_diff_12"].append(np.nanmedian(diff))
-                results["fraction_1_over_2"].append((array_1 > array_2).sum() / effective_size)
-                results["fraction_2_over_1"].append((array_2 > array_1).sum() / effective_size)
+                results["count_1_over_2"].append(count_1_over_2)
+                results["count_2_over_1"].append(count_2_over_1)
+                results["fraction_1_over_2"].append(count_1_over_2/ effective_size)
+                results["fraction_2_over_1"].append(count_2_over_1 / effective_size)
         return results
 
 
