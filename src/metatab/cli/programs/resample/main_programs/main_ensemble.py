@@ -8,7 +8,7 @@ from metatab.metatab_utils.data_loader import DataLoader
 from metatab.metatab_utils.prediction.dataframe import PredictionDataframe
 from metatab.estimators.utils.pick import pick_estimator_class
 from metatab.estimators.estimators import EnsembledEstimator
-from metatab.estimators.utils.general import check_meta_tuning_options
+from metatab.metatab_utils.deprecated import check_meta_tuning_options
 from metatab.metalearning.load import query_surrogate_framework
 
 from metatab.cli.programs.resample.helper import (

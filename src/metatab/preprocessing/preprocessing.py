@@ -6,21 +6,19 @@ from sklearn.feature_selection import VarianceThreshold
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 from metatab.preprocessing.density_selector import DensityFeatureSelector
-from metatab.preprocessing.utils import get_estimator_default_preprocessing
 
 if TYPE_CHECKING:
-    from metatab.estimators.utils.types import Classifier, EstimatorType
-    from metatab.preprocessing.types import PreprocessingStrategy
+    from metatab.utils.types import Classifier
+    from metatab.preprocessing.types import ResolvedPreprocessingStrategy
 
 
 
 def create_classifier_pipeline(
     *,
-    preprocessing: PreprocessingStrategy,
+    preprocessing: ResolvedPreprocessingStrategy,
     density_feature_selector_strategy: Literal["exact", "oversample", "undersample"],
     classifier: Classifier | None = None,
     classifier_params: dict | None = None,
-    type_estimator: EstimatorType | None = None
 ) -> Pipeline:
     '''
     Creates the pipeline for each preprocessing strategy.
@@ -29,13 +27,12 @@ def create_classifier_pipeline(
     The functions always returns a pipeline even when composed by a single estimator.
 
     Parameters:
-        preprocessing (PreprocessingStrategy): 
+        preprocessing (ResolvedPreprocessingStrategy): 
             Preprocessing strategy to follow. Supported values:
-            - "no": No preprocessing, returns bare classifier
+            - "no": No preprocessing
             - "base": VarianceThreshold only
             - "pca": VarianceThreshold + StandardScaler + PCA
             - "density_filter": VarianceThreshold + DensityFeatureSelector
-            - "estimator_default": Automatically selects preprocessing based on type_estimator
         
         density_feature_selector_strategy (Literal["exact", "oversample", "undersample"]):
             Type of density selection to follow when `preprocessing` equal "density_filter".
@@ -55,27 +52,14 @@ def create_classifier_pipeline(
         Pipeline: The pipeline object.
     '''
     if preprocessing == "no" and classifier is None:
-        raise ValueError(
-            "Classifier must be specified with 'no' preprocessing."
-        )
+        raise ValueError("Classifier must be specified with 'no' preprocessing.")
     
     if classifier is not None and classifier_params is None:
-        raise ValueError(
-            "'classifier_params' must be specified when 'classifier' is specified."
-        )
+        raise ValueError("'classifier_params' must be specified when 'classifier' is specified.")
     
     if classifier_params is not None and classifier is None:
-        raise ValueError(
-            "''classifier_params' is specified but 'classifier' is None."
-        )
+        raise ValueError("''classifier_params' is specified but 'classifier' is None.")
     
-    if preprocessing == "estimator_default":
-        if type_estimator is None:
-            raise ValueError(
-                "'type_estimator' must be specified with 'estimator_default' preprocessing"
-            )
-        preprocessing = get_estimator_default_preprocessing(type_estimator)
-
     if preprocessing == "no":
         return make_pipeline(classifier(**classifier_params))
     elif preprocessing == "base":

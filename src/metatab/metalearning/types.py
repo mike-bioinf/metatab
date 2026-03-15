@@ -8,14 +8,12 @@ from metatab.metalearning.utils import  (
 )
 
 
-
 MetaStrategy = Literal[
     "best",
     "random_from_best",
     "uniform_from_best",
     "random_uniform_from_best"
 ]
-
 
 MetaStrategyParams: TypeAlias = Union[
     BestMetaStrategyParams,

@@ -1,37 +1,18 @@
-import numpy as np
+import optuna
+import warnings
+from typing import Callable
 from sklearn.utils.validation import check_is_fitted
-from hyperopt.pyll.stochastic import sample
-from hyperopt import rand, fmin
 
 
-
-class HyperoptRandomSampler:
+class OptunaRandomSampler:
     '''
-    Sample randomly from a hyperopt-compatible space.
-
-    Parameters:
-        follow_hyperopt_fmin (bool, optional):
-            Whether to sample "following" the `fmin` hyperopt utility.
-            Adds overhead but is quite fast in practice.
-            If False the sampling is done via the `sample` utility which
-            return different results even when seeded with the same value.
+    Wrapper of optuna RandomSampler used to get the list of sampled points.
     '''
-    def __init__(self,follow_hyperopt_fmin: bool = True):
-        self.follow_hyperopt_fmin=follow_hyperopt_fmin
-
-
-    def fit(self, space: dict, seed: int) -> "HyperoptRandomSampler":
-        '''
-        Set the space and seed specifications.
-        Parameters:
-            space (dict): Hyperopt-compatible space.
-            seed (int): Seed used to control the randomness in the sampling procedure.
-        '''
-        self.space = space
+    def fit(self, sampler_function: Callable[[optuna.Trial], dict], seed: int) -> "OptunaRandomSampler":
+        self.sampler_function = sampler_function
         self.seed = seed
         self.is_fitted_ = True
         return self
-    
 
     def sample_points(self, n_points: int) -> list[dict]:
         '''
@@ -39,25 +20,21 @@ class HyperoptRandomSampler:
         Returns the list of sampled points.
         '''
         check_is_fitted(self, "is_fitted_")
-        rng = np.random.default_rng(self.seed)
+        optuna.logging.set_verbosity(optuna.logging.WARNING) # disable logs
+        study = optuna.create_study(sampler=optuna.samplers.RandomSampler(self.seed))
 
-        if self.follow_hyperopt_fmin:
-            points = []
-
-            def mock_eval_func(point):
-                points.append(point)
+        with warnings.catch_warnings():
+            warnings.filterwarnings(
+                action="ignore", 
+                category=UserWarning, 
+                message="Choices for a categorical distribution should be.*"
+            )
+            
+            def mock_objective(trial): 
+                # we trigger the trial sampling
+                self.sampler_function(trial)
                 return 0
             
-            _ = fmin(
-                fn=mock_eval_func,
-                space=self.space,
-                algo=rand.suggest,
-                max_evals=n_points,
-                rstate=rng,
-                verbose=False
-            )
+            study.optimize(mock_objective, n_trials=n_points)
 
-            return points
-        
-        else:
-            return [sample(self.space, rng) for _ in range(n_points)]
+        return [self.sampler_function(t) for t in study.trials]

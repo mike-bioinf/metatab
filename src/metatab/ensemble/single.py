@@ -10,26 +10,26 @@ import numpy as np
 import pandas as pd
 from copy import deepcopy
 from pathlib import Path
-from typing import Literal, TYPE_CHECKING
+from typing import Literal, TYPE_CHECKING, Callable
 from functools import partial
 from sklearn.utils.validation import check_is_fitted
-from metatab.metatab_utils.exceptions import TimiLimitError
-from metatab.estimators.utils.fit import fit_with_early_stop_on_validation_set, set_params_into_clf
-from metatab.hp_search.point_corrector import PointCorrector
+from metatab.utils.exceptions import TimiLimitError
+from metatab.utils.core import fit_with_early_stop_on_validation_set, set_params_into_clf
 from metatab.metalearning.acquisition_funcs import compute_upper_confidence_bound
-from metatab.metalearning.utils import check_meta_strategy, check_meta_strategy_params, get_estimator_n_candidate_points
-from metatab.metalearning.sampler import HyperoptRandomSampler
+from metatab.metalearning.utils import get_estimator_n_candidate_points
+from metatab.metalearning.sampler import OptunaRandomSampler
 from metatab.metalearning.metafeatures import CustomMFE
 from metatab.metalearning.metadata_evaluator import MetadataEvaluator
 from metatab.metalearning.load import query_surrogate_framework
-from metatab.metatab_utils.general import ensure_or_create
+from metatab.utils.general import ensure_or_create
+from metatab.api.metaconfig import MetaConfig
 
 if TYPE_CHECKING:
+    from optuna.trial import Trial
     from sklearn.pipeline import Pipeline
-    from metatab.estimators.utils.types import TunableEstimatorType
+    from metatab.utils.types import TunableEstimatorType, XType, YType
     from metatab.preprocessing.types import ResolvedPreprocessingStrategy
     from metatab.metalearning.types import MetaStrategy, MetaStrategyParams
-    from metatab.metatab_utils.types import XType, YType
 
 
 
@@ -71,8 +71,8 @@ class EnsembleEstimator:
             Type of preprocessing used for the pipe object.
             Info needed in meta-optimization (`meta` algo).
 
-        params_distributions (dict): 
-            Classifier search space from which the hps configuration are taken.
+        sampler_function (Callable[[Trail], float]): 
+            Optuna sampling function that carries the search space.
 
         fit_classifier_kwargs (None | dict, optional):
             A dict unpackaged in the classifier fit call.
@@ -162,9 +162,6 @@ class EnsembleEstimator:
         successful_hps_confs_ (list[dict]): List of the hps configurations of the successfull members.
         failed_hps_confs_ (list[dict]): List of the hps configurations of the failed members. 
         df_members_ (pd.DataFrame): DataFrame with info about the members fit process.
-        is_cleaned_ (bool): 
-            Flag informing whether the ensemble models have been deleted from disk using the
-            "delete_models_from_disk" method.
     '''
     def __init__(
         self,
@@ -175,15 +172,12 @@ class EnsembleEstimator:
         pipe: Pipeline,
         type_estimator: TunableEstimatorType,
         preprocessing: ResolvedPreprocessingStrategy,
-        params_distributions: dict,
+        sampler_function: Callable[[Trial], float],
         early_stop_on_validation_set: bool, 
         eval_set_parameter: str = "eval_set",
         validation_set_size: float = 0.3,
         fit_classifier_kwargs: None | dict = None,
-        meta_surrogate_model: None | str | Path = None,
-        meta_strategy: MetaStrategy = "random_uniform_from_best",
-        meta_strategy_params: None | MetaStrategyParams = None,
-        meta_seed: int = 42,
+        meta_config: None | MetaConfig = None, ##refactor adapt class on this
         meta_features: None | dict = None,
         meta_candidate_points: None | list[dict] = None,
         raise_error_fit_member: bool = False,
@@ -199,15 +193,12 @@ class EnsembleEstimator:
         self.pipe=pipe
         self.type_estimator=type_estimator
         self.preprocessing=preprocessing
-        self.params_distributions=params_distributions
+        self.sampler_function=sampler_function
         self.early_stop_on_validation_set=early_stop_on_validation_set
         self.eval_set_parameter=eval_set_parameter
         self.validation_set_size=validation_set_size
         self.fit_classifier_kwargs=fit_classifier_kwargs
-        self.meta_surrogate_model=meta_surrogate_model
-        self.meta_strategy=meta_strategy
-        self.meta_strategy_params=meta_strategy_params
-        self.meta_seed=meta_seed
+        self.meta_config = meta_config
         self.meta_features=meta_features
         self.meta_candidate_points=meta_candidate_points
         self.raise_error_fit_member=raise_error_fit_member
@@ -219,14 +210,6 @@ class EnsembleEstimator:
 
     def fit(self, X: XType, y: YType) -> "EnsembleEstimator":
         start_time = time.time()
-
-        if self.algo not in ["random", "meta"]:
-            raise ValueError("algo must be equal to 'random' or 'meta'.")
-
-        if self.algo == "meta":
-            check_meta_strategy(self.meta_strategy)
-            check_meta_strategy_params(self.meta_strategy, self.meta_strategy_params, safe_none_params=True)
-        
         logger = self._get_logger()
         logger.info(f"Starting building process of '{self.name}' ensemble.")
 
@@ -248,7 +231,8 @@ class EnsembleEstimator:
         self.failed_hps_confs_ = []
         self.successful_hps_confs_ = []
         self._recap_members: list[dict] = []
-        self.is_cleaned_ = False
+        self._is_cleaned = False
+        self._has_completed = False
 
         for hp_conf, member_name in zip(hps_confs, member_names):
             try:
@@ -282,7 +266,6 @@ class EnsembleEstimator:
                     pickle.dump(pipe, f)
 
                 logger.debug(f"'{member_name}' member saved on disk.")
-                
                 # the model is considered successful if fitted AND saved on disk
                 self.successful_members_.append(member_name)
                 self.successful_hps_confs_.append(hp_conf)
@@ -320,6 +303,7 @@ class EnsembleEstimator:
         
         self.df_members_ = pd.DataFrame(self._recap_members)
         self.fit_time_ = time.time() - start_time
+        self._has_completed = True
         
         logger.info(
             f"Ensemble constructed in {round(self.fit_time_ / 60, 2)} minutes" + 
@@ -367,21 +351,20 @@ class EnsembleEstimator:
         return predictions
 
 
-    # We want only this method to work when we raise errors for single
-    # member fails and a fail is encountered for the second to last model.
     def delete_models_from_disk(self) -> None:
         '''
         Delete the ensemble models from disk.
-        Works also for partially fitted ensemble, i.e. ensembles whose fit 
-        process has been stopped before completion for single model fails.
+        Works also on partally fitted ensemble, 
+        i.e ensembles whose fit process has not completed.
         '''
+        # check on succesful members to allow functionality on arrested ensemble 
         check_is_fitted(self, "successful_members_")
 
-        if self.is_cleaned_:
+        if self._is_cleaned:
             return None
         
         if hasattr(self, "is_void_") and self.is_void_:
-            self.is_cleaned_ = True
+            self._is_cleaned = True
             warnings.warn("The ensemble is void. No model to delete.")
             return None
 
@@ -389,15 +372,24 @@ class EnsembleEstimator:
             file_model = self._save_path / f"{member}.pkl"
             file_model.unlink(missing_ok=True)
 
-        self.is_cleaned_ = True
-        
+        self._is_cleaned = True
+
+
+    def collect_fit_info(self) -> dict:
+        self._check_completed_ensemble()
+        return {
+            "is_void_": self.is_void_,
+            "fit_time_": self.fit_time_,
+            "successful_members_": self.successful_members_, 
+            "failed_members_": self.failed_members_,
+            "successful_hps_confs_": self.successful_hps_confs_,
+            "failed_hps_confs_": self.failed_hps_confs_,
+            "df_members_": self.df_members_
+        }
+
 
     def _check_on_predict_calls(self) -> None:
-        # we perform the fitted check on "fit_time_" since is defined at the end of the fit call. 
-        # This means that "partially fitted" ensemble does not have this attribute. 
-        # We do not want to predict with partially fitted ensemble since 
-        # one should allow for failings if this behaviour is desired.
-        check_is_fitted(self, "fit_time_")
+        self._check_completed_ensemble()
         self._check_void_ensemble()
         self._check_cleaned_ensemble()
 
@@ -408,9 +400,14 @@ class EnsembleEstimator:
     
 
     def _check_cleaned_ensemble(self) -> None:
-        if self.is_cleaned_:
+        if self._is_cleaned:
             raise ValueError("The ensemble models have been deleted.")
 
+
+    def _check_completed_ensemble(self) -> None:
+        if not self._has_completed:
+            raise ValueError("The ensemble is incomplete, i.e. its building process was arrested.")
+        
 
     @staticmethod
     def _try_load_model(path: str | Path) -> Pipeline:
@@ -440,15 +437,15 @@ class EnsembleEstimator:
         
 
     def _get_hps_configurations(self, X: XType, y: YType) -> list[dict]:
-        sampler = HyperoptRandomSampler()
-        point_corrector = PointCorrector()
+        sampler = OptunaRandomSampler()
         mfe = CustomMFE()
         
         if self.algo == "random":
-            sampler.fit(self.params_distributions, seed=self.seed)    
+            sampler.fit(self.sampler_function, seed=self.seed)    
             points = sampler.sample_points(self.n_members)
 
         elif self.algo == "meta":
+            ## refactor can we simplify this along the searchcv
             if self.meta_features is None:
                 metafeatures, _ = mfe.fit(X, y).extract()
             else:
@@ -461,7 +458,7 @@ class EnsembleEstimator:
                     if self.meta_strategy_params is None \
                     else self.meta_strategy_params.n_candidate_points
                 
-                sampler.fit(self.params_distributions, seed=self.meta_seed)
+                sampler.fit(self.sampler_function, seed=self.meta_seed)
                 candidate_points = sampler.sample_points(n_candidate_points)
             else:
                 candidate_points = self.meta_candidate_points
@@ -530,13 +527,5 @@ class EnsembleEstimator:
                     step_size=step_size,
                     seed=self.seed if self.meta_strategy_params is None else self.meta_strategy_params.seed
                 )
-
-        return [
-            point_corrector.correct_point(
-                point, 
-                apply_hypeopt_corrections=True, 
-                estimator=self.type_estimator,
-                estimator_corrections="all"
-            )
-            for point in points
-        ]
+        
+        return points

@@ -6,7 +6,9 @@ from copy import deepcopy
 from typing import TYPE_CHECKING, Literal
 from sklearn.model_selection import RepeatedStratifiedKFold
 from sklearn.metrics import log_loss
-from metatab.estimators.utils.fit import fit_with_early_stop_on_validation_set, set_params_into_clf
+from metatab.utils.core import fit_with_early_stop_on_validation_set, set_params_into_clf
+from metatab.utils.general import add_broadcasted_objects_as_column, ensure_or_create
+from metatab.utils.exceptions import DFSearchBuildingError
 
 if TYPE_CHECKING:
     from sklearn.pipeline import Pipeline
@@ -84,7 +86,8 @@ class CrossValidator:
         y: np.ndarray,
         params: dict, 
         agg: Literal["mean", "sum"],
-        collect_info: bool,
+        build_df_cv: bool,
+        params_as_object_in_df_cv: list[str] | None
     ) -> tuple[float, pd.DataFrame|None]:
         '''
         Fit the cv procedure on the instance data.
@@ -94,12 +97,15 @@ class CrossValidator:
             y (np.ndarray): y data.
             params (dict): Dict of classifier parameters. They must NOT follow the "pipeline format".
             agg (Literal["mean", "sum"]): How to aggregate the cv round performances.
-            collect_info (bool): Whether to collect and return the cv info as dataframe.
+            build_df_cv (bool): Whether to collect and return the cv info as dataframe.
+            params_as_object_in_df_cv (list[str] | None): 
+                Parameters to be inserted as object dtyped columns in the df_cv. 
+                Ignored when 'build_df_cv' is False.
 
         Returns:
             tuple[float,pd.DataFrame|None]:
             A tuple of the aggregated cv performances and the collected cv info. 
-            The second term is None if `collect_info` is False.
+            The second term is None if `build_df_cv` is False.
         '''
         skf = RepeatedStratifiedKFold(
             n_splits=self.n_folds, 
@@ -120,12 +126,10 @@ class CrossValidator:
             # related to fitting multiple times the same instance.
             # (for example for catboost is not possible to set the parameters on a fitted instance)
             pipe = deepcopy(self.pipe)
-            set_params_into_clf(pipe, params)
-
             # we overwrite the classifier seed in order to maximize model entropy inside cv, 
             # while assuring uniformity between different cv runs.
-            round_cv_seed = {self.clf_random_state_parameter: int(rng.integers(0, 2**32))}
-            set_params_into_clf(pipe, round_cv_seed, set_tabpfn_inference_config=False)
+            params = {**params, self.clf_random_state_parameter: int(rng.integers(0, 2**32))}
+            set_params_into_clf(pipe, params, set_tabpfn_inference_config=True, finalize_tabpfn_model_path=True)
             
             X_train, y_train = X[train_idx, :], y[train_idx]
             X_test, y_test = X[test_idx, :], y[test_idx]
@@ -146,13 +150,30 @@ class CrossValidator:
             pred_proba = pipe.predict_proba(X_test)
             loss = self._compute_loss_score(pred_proba, y_test)
             cv_losses.append(loss)
-            if collect_info: cv_results.append({"repeat": repeat, "fold": fold, "loss": loss})
+            if build_df_cv: cv_results.append({"repeat": repeat, "fold": fold, "loss": loss})
 
         array_cv_losses = np.array(cv_losses)
         agg_loss = np.mean(array_cv_losses) if agg == "mean" else np.sum(array_cv_losses)
         
-        if collect_info:
-            return (agg_loss, pd.DataFrame(cv_results))
+        if build_df_cv:
+            try:
+                df_cv = add_broadcasted_objects_as_column(
+                    df=pd.DataFrame(cv_results),
+                    dictionary=params,
+                    convert_bool_to_str=False,
+                    convert_none_to_str=False,
+                    force_object_datatype=ensure_or_create(params_as_object_in_df_cv, list),
+                    check_matching_keys_cols=True,
+                    check_non_builtin_types=True,
+                    copy=False
+                )
+                    
+            except Exception as e:
+                raise DFSearchBuildingError(
+                    f"Encountered the following error during df_search building process: {e}"
+                )
+
+            return (agg_loss, df_cv)
         else:
             return (agg_loss, None)
         

@@ -3,8 +3,8 @@ import numpy as np
 from typing import Iterable, Any
 from sklearn.utils.validation import check_is_fitted
 from pymfe.mfe import MFE
-from metatab.metatab_utils.general import ensure_or_create, enlist
-from metatab.metatab_utils.types import XType, YType
+from metatab.utils.general import ensure_or_create, enlist
+from metatab.utils.types import XType, YType
 
 
 

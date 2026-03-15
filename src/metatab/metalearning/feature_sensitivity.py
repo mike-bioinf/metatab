@@ -4,7 +4,7 @@ import warnings
 import numpy as np
 import pandas as pd
 from typing import TYPE_CHECKING, Literal
-from metatab.metatab_utils.general import select_level_from_columns, ensure_or_create
+from metatab.utils.general import select_level_from_columns, ensure_or_create
 
 if TYPE_CHECKING:
     from sklearn.pipeline import Pipeline

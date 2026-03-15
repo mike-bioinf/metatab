@@ -34,12 +34,8 @@ from sklearn.preprocessing import OrdinalEncoder, OneHotEncoder
 from sklearn.feature_selection import VarianceThreshold
 from sklearn.compose import ColumnTransformer
 from metatab.metalearning.encode.transformers import NanToNone, ColToStr, InfToNan
-from metatab.estimators.utils.types import TunableEstimatorType
-
-from metatab.hp_search.tabpfn_search_space import (
-    enumerate_preprocess_transforms,
-    TABPFN_CHECKPOINTS
-)
+from metatab.classifiers.tabpfn import enumerate_preprocess_transforms, TABPFN_CHECKPOINTS
+from metatab.utils.types import TunableEstimatorType
 
 
 
@@ -60,7 +56,7 @@ PREPROCESSING_COLUMN_TRANSFORMER = (
     "preprocessing_column", 
     OneHotEncoder(
         categories=[["no", "base", "pca", "density_filter"]], 
-        handle_unknown="ignore",  # to maintain model functionality when we add more preprocessig options
+        handle_unknown="ignore", # to maintain model functionality when we add more preprocessig options
         sparse_output=False
     ),
     ["preprocessing"]
@@ -90,6 +86,11 @@ HPS_ENCODING_SCHEME_RANDOM_FOREST = [
                     sparse_output=False
                 ), 
                 ["max_features"]
+            ),
+            (
+                "ordinal",
+                OrdinalEncoder(categories=[["gini", "entropy"]]),
+                ["criterion"]
             ),
             PREPROCESSING_COLUMN_TRANSFORMER
         ],
@@ -144,8 +145,8 @@ HPS_ENCODING_SCHEME_TABPFN = [
                 "onehot",
                 OneHotEncoder(
                     categories=[
-                        # we have the lists as tuple string representation in the metadata due to hyperopt
-                        [str(tuple(list_of_dicts)) for list_of_dicts in enumerate_preprocess_transforms()],
+                        # we have the lists string representation in metadata
+                        [str(list_of_dicts) for list_of_dicts in enumerate_preprocess_transforms()],
                         ["None", "7.0", "9.0", "12.0"],
                         TABPFN_CHECKPOINTS
                     ],
@@ -159,8 +160,8 @@ HPS_ENCODING_SCHEME_TABPFN = [
             ),
             (
                 "binary",
-                OrdinalEncoder(categories=[["0.99", "None"], ["no"]]),
-                ["inference_config__SUBSAMPLE_SAMPLES", "inference_config__POLYNOMIAL_FEATURES"]
+                OrdinalEncoder(categories=[["0.99", "None"]]),
+                ["inference_config__SUBSAMPLE_SAMPLES"]
             ),
             PREPROCESSING_COLUMN_TRANSFORMER
         ],
@@ -244,13 +245,12 @@ HPS_ENCODING_SCHEME_REALMLP = [
                 "ordinal", 
                 OrdinalEncoder(
                     categories=[
-                        ["rectangular"], 
                         ["256", "auto"],
                         # tuple string represenation since the metadata is not hyperopt corrected
                         ["()", "('median_center', 'robust_scale', 'smooth_clip')"]
                     ]
                 ),
-                ["hidden_sizes", "batch_size", "tfms"]
+                ["batch_size", "tfms"]
             ),
             PREPROCESSING_COLUMN_TRANSFORMER
         ],
@@ -270,17 +270,15 @@ HPS_ENCODING_SCHEME_TABM = [
                 OrdinalEncoder(
                     categories=[
                         ["tabm", "tabm-mini"],
-                        ["256", "auto"],
-                        ["pwl"]
+                        ["256", "auto"]
                     ]
                 ),
-                ["arch_type", "batch_size", "num_emb_type"]
+                ["arch_type", "batch_size"]
             ),
             (
                 "onehot",
                 OneHotEncoder(
-                    # tuple string represenation since the metadata is not hyperopt corrected
-                    categories=[["()", "('quantile_tabr',)", "('median_center', 'robust_scale', 'smooth_clip')"]],
+                    categories=[[str(l) for l in [[], ["quantile_tabr"], ["median_center", "robust_scale", "smooth_clip"]]]],
                     sparse_output=False
                 ),
                 ["tfms"]

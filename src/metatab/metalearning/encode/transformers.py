@@ -4,8 +4,8 @@ from copy import deepcopy
 from typing import Any
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.utils.validation import check_is_fitted
-from metatab.metatab_utils.general import enlist
-from metatab.estimators.utils.general import check_predict_features
+from metatab.utils.general import enlist
+from metatab.utils.core import check_predict_features
 
 
 

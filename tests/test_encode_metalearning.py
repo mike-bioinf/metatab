@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 from pathlib import Path
 from sklearn.pipeline import make_pipeline
-from metatab.estimators.utils.types import TunableEstimatorType
+from metatab.metatab_utils.types import TunableEstimatorType
 from metatab.metalearning.encode.encode import get_encoding_scheme
 from metatab.metalearning.encode.transformers import NanToNone, ColToStr, InfToNan
 from metatab.preprocessing.types import PreprocessingStrategy

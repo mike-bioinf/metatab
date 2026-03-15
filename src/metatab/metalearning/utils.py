@@ -2,11 +2,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 from dataclasses import dataclass
-from metatab.metalearning.constants import METASTRATEGIES
 
 if TYPE_CHECKING:
     from metatab.metalearning.types import MetaStrategy, MetaStrategyParams
-    from metatab.estimators.utils.types import TunableEstimatorType
+    from metatab.utils.types import TunableEstimatorType
 
 
 
@@ -65,8 +64,9 @@ class RandomUniformFromBestMetaStrategyParams:
 
 
 def check_meta_strategy(meta_strategy: str) -> None:
-    if meta_strategy not in METASTRATEGIES:
-        raise ValueError(f"meta_strategy must be one of: {METASTRATEGIES}")
+    meta_strategies = ["best", "random_from_best", "uniform_from_best","random_uniform_from_best"]
+    if meta_strategy not in meta_strategies:
+        raise ValueError(f"meta_strategy must be one of: {meta_strategies}")
 
 
 def check_meta_strategy_params(

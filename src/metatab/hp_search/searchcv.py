@@ -1,35 +1,33 @@
 from __future__ import annotations
 
 import time
+import warnings
 import joblib
+import optuna
 import numpy as np
 import pandas as pd
 from pathlib import Path
 from copy import deepcopy
 from functools import partial
-from typing import Literal, TYPE_CHECKING
+from typing import Literal, TYPE_CHECKING, Callable
 from sklearn.pipeline import Pipeline
-from hyperopt import STATUS_OK, STATUS_FAIL, tpe, rand, fmin, space_eval
-from hyperopt.pyll.stochastic import sample
-from metatab.estimators.utils.fit import fit_with_early_stop_on_validation_set, set_params_into_clf
-from metatab.estimators.params import HPS_MIXED_TYPED
+from optuna.samplers import RandomSampler, TPESampler
+from metatab.utils.core import fit_with_early_stop_on_validation_set, set_params_into_clf
+from metatab.utils.exceptions import DFSearchBuildingError
 from metatab.metalearning.metafeatures import CustomMFE
 from metatab.metalearning.load import query_surrogate_framework
 from metatab.metalearning.acquisition_funcs import compute_upper_confidence_bound
-from metatab.metalearning.sampler import HyperoptRandomSampler
+from metatab.metalearning.sampler import OptunaRandomSampler
 from metatab.metalearning.metadata_generator import MetadataGenerator
 from metatab.metalearning.metadata_evaluator import MetadataEvaluator
-from metatab.metalearning.utils import check_meta_strategy, check_meta_strategy_params, get_estimator_n_candidate_points
-from metatab.metatab_utils.general import add_broadcasted_objects_as_column
-from metatab.hp_search.point_corrector import PointCorrector
+from metatab.metalearning.utils import get_estimator_n_candidate_points
 from metatab.hp_search.cv import CrossValidator
 from metatab.hp_search.config import ConfigSearchCV
 
 if TYPE_CHECKING:
     from metatab.preprocessing.types import ResolvedPreprocessingStrategy
-    from metatab.estimators.utils.types import Classifier, TunableEstimatorType
+    from metatab.utils.types import TunableEstimatorType, XType, YType
     from metatab.metalearning.types import MetaStrategy, MetaStrategyParams
-    from metatab.metatab_utils.types import XType, YType
 
 
 
@@ -59,15 +57,20 @@ class SearchCV:
             Type of preprocessing used for the pipe object.
             Info needed in meta-optimization (`meta` algo).
         
-        algo (Literal["random", "tpe", "meta"]): Searching algorithm to use.
+        algo (Literal["random", "tpe", "meta"]): 
+            Searching algorithm to use.
         
-        params_distributions (dict): Search space.
+        sampler_function (Callable[[optuna.Trial], dict]):
+            Optuna sampler function that carries the search space.
 
-        n_iter (int): Number of search iterations.
+        n_iter (int): 
+            Number of search iterations.
         
-        n_cv_folds (int): Number of cv folds.
+        n_cv_folds (int): 
+            Number of cv folds.
 
-        n_cv_repeats (int): Number of cv repeats.
+        n_cv_repeats (int): 
+            Number of cv repeats.
         
         seed (int): 
             Seed for reproducibility.
@@ -136,7 +139,11 @@ class SearchCV:
             If False, the required information is not stored.
             This step can be indeed memory and time consuming.
             If None, the parameter is set via the global `ConfigSearchCV` configuration class.
-            Forced to False if `n_iter` equal 1. 
+            Forced to False if `n_iter` equal 1.
+
+        params_as_object_columns_in_df_search (None | list[str], optional):
+            The params that must be inserted in the df_search as object dtype columns.
+            Ignored when `build_df_search` is False.
 
         refit_with_best_hps (None | bool, optional):
             Whether to refit the classifier with the best hps from the search.
@@ -176,7 +183,7 @@ class SearchCV:
         type_estimator: TunableEstimatorType,
         preprocessing: ResolvedPreprocessingStrategy,
         algo: Literal["random", "tpe", "meta"],
-        params_distributions: dict,
+        sampler_function: Callable[[optuna.Trial], dict],
         n_iter: int,
         n_cv_folds: int,
         n_cv_repeats: int,
@@ -193,13 +200,14 @@ class SearchCV:
         meta_seed: int = 42,
         raise_error_during_search: None | bool = None,
         build_df_search: None | bool = None,
+        params_as_object_columns_in_df_search: list[str] | None = None,
         refit_with_best_hps: None | bool = None
     ):
         self.pipe=pipe
         self.type_estimator=type_estimator
         self.preprocessing=preprocessing
         self.algo=algo
-        self.params_distributions=params_distributions
+        self.sampler_function=sampler_function
         self.random_state_parameter=random_state_parameter
         self.n_iter=n_iter
         self.n_cv_repeats=n_cv_repeats
@@ -214,7 +222,8 @@ class SearchCV:
         self.meta_strategy=meta_strategy
         self.meta_strategy_params=meta_strategy_params
         self.meta_seed=meta_seed
-        
+        self.params_as_object_columns_in_df_search = params_as_object_columns_in_df_search
+
         self.cross_validator=CrossValidator(
             pipe=pipe,
             clf_random_state_parameter=random_state_parameter,
@@ -239,11 +248,8 @@ class SearchCV:
         '''Performs HPO. Returns the instance. '''
         self._X = X if isinstance(X, np.ndarray) else X.to_numpy()
         self._y = y if isinstance(y, np.ndarray) else y.to_numpy()
-
-        self._point_corrector = PointCorrector()
-        self._set_point_to_model_corrections()
         
-        self._dfs_info_iter: list[pd.DataFrame] = []
+        self._dfs_cv_iter: list[pd.DataFrame] = []
         self.search_losses_: list[float] = []
 
         # with n_iter equal 1 we skip the point evaluation
@@ -255,8 +261,6 @@ class SearchCV:
             self.build_df_search = False
 
         if self.algo == "meta":
-            check_meta_strategy(self.meta_strategy)
-            check_meta_strategy_params(self.meta_strategy, self.meta_strategy_params, safe_none_params=True)
             self._fit_with_meta_points()
         
         elif self.algo in ["random", "tpe"]:
@@ -304,15 +308,14 @@ class SearchCV:
             else self.meta_strategy_params.n_candidate_points
         
         meta_generator = MetadataGenerator(
-            sampler=HyperoptRandomSampler(),
-            point_corrector=PointCorrector(),
+            sampler=OptunaRandomSampler(),
             mfe=CustomMFE(),
         )
 
         meta_generator.fit(
             X=self._X,
             y=self._y,
-            hp_space=self.params_distributions,
+            sampler_function=self.sampler_function,
             seed=self.meta_seed 
         )
 
@@ -387,24 +390,18 @@ class SearchCV:
 
         # we do not evaluate the single point since is the best by definition
         if len(points) == 1:
-            self.best_params_ = self._point_corrector.correct_point(
-                points[0],
-                **self._point_to_model_corrections
-            )
+            self.best_params_ = points[0]
             return None
 
         for point in points:
-            _ = self._fit_point(point, returns_type="simple")
+            _ = self._fit_point(point)
 
         losses = np.array(self.search_losses_)
 
         if np.isnan(losses).all():
             raise ValueError("All search iterations have failed.")
         
-        self.best_params_ = self._point_corrector.correct_point(
-            points[np.nanargmin(losses)],
-            **self._point_to_model_corrections
-        )
+        self.best_params_ = points[np.nanargmin(losses)]
 
 
     
@@ -413,151 +410,78 @@ class SearchCV:
         Optimize HPs with the random or tpe algo.
         Set the `best_params_` attribute.
         '''
-        # with n_iter to 1 the sampling is always random 
-        # and the drawn point is the best by definition
-        if self.n_iter == 1:
-            self.best_params_ = self._point_corrector.correct_point(
-                point=sample(self.params_distributions, np.random.default_rng(self.seed)),
-                **self._point_to_model_corrections
-            )
-            return None
+        # ADDFEATURE: add logg capabilities to searchcv and time_limit.
+        # disable optuna logs
+        optuna.logging.set_verbosity(optuna.logging.WARNING)
 
         if self.algo == "random":
-            algo_fn = rand.suggest
-        elif self.algo == "tpe":
-            # we use hyperopt defaults
-            algo_fn = partial(
-                tpe.suggest,
-                n_startup_jobs=20,  # number of random init points
-                n_EI_candidates=24,  # number of candidate points from which select the most promising at each iteration
-                gamma=0.25 # top fraction of hps-configurations to use as good
-            )
+            optuna_sampler = RandomSampler(seed=self.seed)
         else:
-            raise ValueError("Unsupported optimization algorithm.")
+            optuna_sampler = TPESampler(
+                n_startup_trials=20, # number of random init points, we double the default of 10
+                seed=self.seed,
+            )
 
-        fit_point_fn = partial(self._fit_point, returns_type="hyperopt")
+        if self.n_iter == 1:
+            # mock objective
+            def objective(trial):
+                self.sampler_function(trial)
+                return 0
+        else:
+            def objective(trial):
+                params = self.sampler_function(trial)
+                return self._fit_point(params)
+            
+        with warnings.catch_warnings():
+            warnings.filterwarnings(
+                action="ignore", 
+                category=UserWarning, 
+                message="Choices for a categorical distribution should be.*"
+            )
+            # we have only the logloss as metric so we minimize
+            study = optuna.create_study(sampler=optuna_sampler, direction="minimize")
+            study.optimize(func=objective, n_trials=self.n_iter, n_jobs=1)
 
-        best = fmin(
-            fn=fit_point_fn,
-            space=self.params_distributions,
-            algo=algo_fn,
-            max_evals=self.n_iter,
-            trials=None,
-            rstate=np.random.default_rng(self.seed),
-            verbose=False
-        )
-
-        # hyperopt tracks the uncorrected params
-        self.best_params_ = self._point_corrector.correct_point(
-            space_eval(self.params_distributions, best),
-            **self._point_to_model_corrections
-        )
+        if not any([t.state == optuna.trial.TrialState.COMPLETE for t in study.trials]):
+            raise ValueError("All iterations have failed.")
+        
+        # this resolve conditional logic returning a classifier-compatible point
+        self.best_params_ = self.sampler_function(study.best_trial)
 
 
 
-    def _fit_point(
-        self, 
-        params: dict,
-        returns_type: Literal["hyperopt", "simple"]
-    ) -> dict | float:
+    def _fit_point(self, params: dict) -> float:
         '''
-        Fit using the input tune space point.
-
-        Parameters:
-            params (dict): 
-                Dict of hps to use (tune space point). Must be not corrected.
-            returns_type (Literal["hyperopt", "simple"]):
-                Whether returns a hyperopt compatible result or a simpler one.
-                In the first case the function returns a dict with hyperopt
-                compatible info, in the second only the loss.
+        Fit model using the input params and cv.
+        Returns the cv loss.
         '''
         try:
-            params_to_model = self._point_corrector.correct_point(
-                params, 
-                **self._point_to_model_corrections
-            )
-
-            loss, df_cv_info = self.cross_validator.fit(
+            loss, df_cv_iter = self.cross_validator.fit(
                 X=self._X, 
                 y=self._y,
-                params=params_to_model,
+                params=params,
                 agg="mean",
-                collect_info=self.build_df_search
+                build_df_cv=self.build_df_search,
+                params_as_object_in_df_cv=self.params_as_object_columns_in_df_search
             )
-
-            # The code should not fail a single time from here, 
-            # but if it happens then we have external bug/problems 
-            # that can be confused with failed optimization iteration.
-            # We don't tolerate these errors since external to the optimization procedure.
-            try:
-                if self.build_df_search:
-                    # this is to avoid edge behaviour when these dfs are concatenated with pd.concat: 
-                    # - block value coercion.
-                    # - block warning for concatenating full na columns.
-                    df_cv_info = add_broadcasted_objects_as_column(
-                        df=df_cv_info,
-                        dictionary=params, # we add the original not corrected point
-                        convert_bool_to_str=False,
-                        convert_none_to_str=False,
-                        force_object_datatype=HPS_MIXED_TYPED,
-                        check_matching_keys_cols=True,
-                        check_non_builtin_types=True,
-                        copy=False
-                    )
-                    
-                    self._dfs_info_iter.append(df_cv_info)
-                    
-            except Exception as e:
-                raise ValueError(
-                    f"Encountered the following error during df_search building process: {e}"
-                )
-
-            # this line must be placed after the df_search building code
+            self._dfs_cv_iter.append(df_cv_iter)
             self.search_losses_.append(loss)
-
-            if returns_type == "hyperopt":
-                return {"loss": loss, "status": STATUS_OK}
-            else:
-                return loss
-        
+            return loss
+            
         except Exception as e:
-            # we re-raise the error if not tollerated
-            if self.raise_error_during_search:
+            # we re-raise the error if not tollerated or comes from the df_search bulding process
+            if self.raise_error_during_search or isinstance(e, DFSearchBuildingError):
                 raise ValueError(
                     f"The following error is encountered during the search: {e}"
                 )
-
             # we enforce "search_losses_" to be of length n_iter
             self.search_losses_.append(np.nan)
+            return np.nan
             
-            if returns_type == "hyperopt":
-                return {
-                    "loss": np.nan, 
-                    "status": STATUS_FAIL,
-                    "exception": str(e)
-                }
-            else:
-                return np.nan
-
-
-
-    def _set_point_to_model_corrections(self) -> None:
-        '''Sets the instructions that the PointCollector must follow for each estimator'''
-        if self.type_estimator == "tabpfn":
-            self._point_to_model_corrections = {
-                "apply_hypeopt_corrections": True,
-                "estimator": "tabpfn",
-                "estimator_corrections": "all"
-            }
-        else:
-            self._point_to_model_corrections = {
-                "apply_hypeopt_corrections": True
-            }
-
 
 
     def _build_df_search(self) -> pd.DataFrame:    
         # add search iter column and concat
-        for i in range(len(self._dfs_info_iter)):
-            self._dfs_info_iter[i]["search_iter"] = i
-        return pd.concat(self._dfs_info_iter, axis=0, ignore_index=True)
+        for i in range(len(self._dfs_cv_iter)):
+            self._dfs_cv_iter[i]["search_iter"] = i
+        return pd.concat(self._dfs_cv_iter, axis=0, ignore_index=True)

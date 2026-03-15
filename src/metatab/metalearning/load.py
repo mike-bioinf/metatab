@@ -12,7 +12,7 @@ from huggingface_hub import hf_hub_download, try_to_load_from_cache
 
 if TYPE_CHECKING:
     from sklearn.pipeline import Pipeline
-    from metatab.estimators.utils.types import TunableEstimatorType
+    from metatab.utils.types import TunableEstimatorType
 
 
 

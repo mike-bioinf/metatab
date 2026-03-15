@@ -2,7 +2,7 @@ import numpy as np
 from sklearn.base import BaseEstimator, RegressorMixin
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.utils.validation import check_is_fitted
-from metatab.metatab_utils.types import XType, YType
+from metatab.utils.types import XType, YType
 
 
 

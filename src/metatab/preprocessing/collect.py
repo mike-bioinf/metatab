@@ -1,19 +1,18 @@
 from __future__ import annotations
 
 from typing import Literal, TYPE_CHECKING
-from metatab.preprocessing.utils import resolve_preprocessing_info
 
 if TYPE_CHECKING:
     from sklearn.pipeline import Pipeline
     from sklearn.decomposition import PCA
     from metatab.preprocessing import DensityFeatureSelector  
-    from metatab.preprocessing.types import PreprocessingStrategy
+    from metatab.preprocessing.types import ResolvedPreprocessingStrategy
 
 
 
 def collect_fit_preprocessing_info(
     pipe: Pipeline,
-    preprocessing: PreprocessingStrategy,
+    preprocessing: ResolvedPreprocessingStrategy,
     return_on_no_preprocessing: Literal["empty_dict", "error"] = "empty_dict",
     wrap_into_list: bool = True
 ) -> dict:
@@ -23,7 +22,7 @@ def collect_fit_preprocessing_info(
     Parameters:
         pipe (Pipeline): Fitted pipeline.
 
-        preprocessing (PreprocessingStrategy): 
+        preprocessing (ResolvedPreprocessingStrategy): 
             Type of preprocessing used for the pipe object.
         
         return_on_no_preprocessing (Literal["empty_dict", "error"]):
@@ -47,8 +46,6 @@ def collect_fit_preprocessing_info(
             raise ValueError("Shallow pipeline in input. No preprocessing is done.")
         else:
             raise ValueError("Unsupported value for 'return_on_classifier' parameter.")
-    
-    preprocessing = resolve_preprocessing_info(preprocessing)
 
     # from here we deal with a deep pipeline
     if preprocessing == "pca":

@@ -4,7 +4,7 @@ from typing import Literal, Any
 from sklearn.base import BaseEstimator
 from sklearn.feature_selection import SelectorMixin
 from sklearn.utils.validation import check_array, check_is_fitted
-from metatab.metatab_utils.types import XType
+from metatab.utils.types import XType
 
 
 

@@ -11,7 +11,7 @@ from sklearn.preprocessing import LabelEncoder
 from autogluon.tabular import TabularPredictor
 from metatab.metatab_utils.data_loader import DataLoader
 from metatab.metatab_utils.general import create_unique_column_name
-from metatab.estimators.utils.general import check_meta_tuning_options
+from metatab.metatab_utils.deprecated import check_meta_tuning_options
 from metatab.estimators.utils.pick import pick_estimator_class
 from metatab.estimators.estimators import Estimator
 from metatab.ensemble.family import FamilyEnsembleEstimator

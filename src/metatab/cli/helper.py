@@ -8,7 +8,7 @@ from textwrap import dedent
 from typing import Literal, TYPE_CHECKING
 import numpy as np
 from metatab.estimators.params.utils import pick_estimator_tune_space
-from metatab.estimators.utils.constants import EARLY_STOPPED_ESTIMATORS
+from metatab.metatab_utils.constants import EARLY_STOPPED_ESTIMATORS
 from metatab.metalearning.load import query_surrogate_framework
 from metatab.ensemble.configuration import CollectionUserEnsembleConfiguration
 

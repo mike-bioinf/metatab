@@ -2,39 +2,29 @@ from __future__ import annotations
 
 import warnings
 import pandas as pd
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable
 from sklearn.utils.validation import check_is_fitted
-from metatab.metatab_utils.general import ensure_or_create
+from metatab.utils.general import ensure_or_create
 
 if TYPE_CHECKING:
-    from metatab.metalearning.sampler import HyperoptRandomSampler
+    from metatab.metalearning.sampler import OptunaRandomSampler
     from metatab.metalearning.metafeatures import CustomMFE
-    from metatab.hp_search.point_corrector import PointCorrector
-    from metatab.metatab_utils.types import XType, YType
+    from metatab.utils.types import XType, YType
 
 
 
 class MetadataGenerator():
     '''
-    Class that manages the hp sampler, point corrector and metafeature extractor
-    to generate metadata from a hp space and some data from which extract metafeatures.
+    Class that manages the hp sampler and metafeature extractor to generate metadata.
 
     Parameters:
-        sampler (HyperoptRandomSampler):
+        sampler (OptunaRandomSampler):
             Sampler that allows to sample hp points from a space.
-        point_corrector (PointCorrector):
-            Corrector of the sampled points.
         mfe (CustomMFE):
             CustomMFE to extract data metafeatures.
     '''
-    def __init__(
-        self,
-        sampler: HyperoptRandomSampler,
-        point_corrector: PointCorrector,
-        mfe: CustomMFE,
-    ):
+    def __init__(self, sampler: OptunaRandomSampler, mfe: CustomMFE,):
         self.sampler=sampler
-        self.point_corrector=point_corrector
         self.mfe=mfe
 
     
@@ -42,17 +32,16 @@ class MetadataGenerator():
         self, 
         X: XType, 
         y: YType, 
-        hp_space: dict,
+        sampler_function: Callable,
         seed: int
     ) -> "MetadataGenerator":
         '''
-        Initialize the generator with the data, hyperparameter space, and random seed.
-        The provided `hp_space` must be compatible with the assigned sampler.
+        Initialize the generator with the data, sampler function (hp space), and random seed.
 
         Parameters:
             X (XType): Feature matrix.
             y (YType): Target vector.
-            hp_space (dict): Hyperparameter space.
+            sampler_function (Callable): Optuna sampler function carrying the search space.
             seed (int): Random seed controlling candidate sampling.
 
         Returns:
@@ -60,7 +49,7 @@ class MetadataGenerator():
         '''
         self.X=X
         self.y=y
-        self.hp_space=hp_space
+        self.sampler_function=sampler_function
         self.seed=seed
         self.is_fitted_=True
         return self
@@ -69,7 +58,6 @@ class MetadataGenerator():
     def generate(
         self,
         n_points: int,
-        point_corrector_kwargs: None | dict = None,
         mfe_fit_kwargs: None | dict = None,
         mfe_extract_kwargs: None | dict = None,
         set_metagroups_in_index: bool = False
@@ -80,9 +68,6 @@ class MetadataGenerator():
         Parameters:
             n_points (int): 
                 Number of points to draw from the hp space.
-            
-            point_corrector_kwargs (None | dict, optional):
-                Kwargs to pass to the PointCorrector `correct_point` method.
 
             mfe_fit_kwargs (None | dict, optional):
                 Kwargs to pass to the mfe `fit` method.
@@ -106,13 +91,12 @@ class MetadataGenerator():
             that the first row is built upon the first point in the list and so on.
         '''
         check_is_fitted(self, "is_fitted_")
-        point_corrector_kwargs = ensure_or_create(point_corrector_kwargs, dict)
         mfe_fit_kwargs = ensure_or_create(mfe_fit_kwargs, dict)
         mfe_extract_kwargs = ensure_or_create(mfe_extract_kwargs, dict)
 
         candidate_points = [
-            self.point_corrector.correct_point(sample, **point_corrector_kwargs)
-            for sample in self.sampler.fit(self.hp_space, self.seed).sample_points(n_points)
+            sample 
+            for sample in self.sampler.fit(self.sampler_function, self.seed).sample_points(n_points)
         ]
         
         df_candidate_points = pd.DataFrame(candidate_points)
