@@ -20,17 +20,16 @@ from metatab.utils.api import (
 if TYPE_CHECKING:
     from metatab.preprocessing.types import PreprocessingStrategy
     from metatab.utils.types import XType, YType
-    from metatab.utils.types import TunableEstimatorType
+    from metatab.utils.types import TunableClassifierType
 
 
 
 class TuneClassifier(ClassifierMixin, BaseEstimator):
     '''
-    Class to tune a classifier using a cross-validation strategy.
+    Tune a classifier using a cross-validation strategy.
 
     Parameters:
-
-        type_classifier (TunableEstimatorType):
+        type_classifier (TunableClassifierType):
             Classifier to optimize.
 
         tune_algo (Literal["random", "tpe", "meta"]):
@@ -105,7 +104,7 @@ class TuneClassifier(ClassifierMixin, BaseEstimator):
     '''
     def __init__(
         self,
-        type_classifier: TunableEstimatorType, ##refactor type
+        type_classifier: TunableClassifierType,
         tune_algo: Literal["tpe", "random", "meta"],
         n_iter: int = 1,
         n_cv_repeats: int = 1,
@@ -139,7 +138,7 @@ class TuneClassifier(ClassifierMixin, BaseEstimator):
         validation_set_size: None | float = None
     ) -> "TuneClassifier":
         '''
-        Tune the classifier.
+        Tune on training data.
         
         Parameters:
             X (XType): 

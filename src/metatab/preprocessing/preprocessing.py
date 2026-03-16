@@ -45,9 +45,6 @@ def create_classifier_pipeline(
             Paramaters used to instatiate the classifier.
             Can be None when `classifier` is None, otherwise must be specified.
 
-        type_estimator (EstimatorType | None, optional):
-            String estimator type required when `preprocessing` is "estimator_default". 
-
     Returns:
         Pipeline: The pipeline object.
     '''

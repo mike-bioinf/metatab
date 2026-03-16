@@ -5,11 +5,11 @@ from dataclasses import dataclass
 
 if TYPE_CHECKING:
     from metatab.metalearning.types import MetaStrategy, MetaStrategyParams
-    from metatab.utils.types import TunableEstimatorType
+    from metatab.utils.types import TunableClassifierType
 
 
 
-def get_estimator_n_candidate_points(type_estimator: TunableEstimatorType) -> int:
+def get_estimator_n_candidate_points(type_estimator: TunableClassifierType) -> int:
     '''Get the default number of meta candidate points for each estimator'''
     # for now every estimator uses 1500 points
     return 1500

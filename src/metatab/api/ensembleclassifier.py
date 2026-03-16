@@ -21,7 +21,7 @@ from metatab.utils.api import (
 if TYPE_CHECKING:
     from metatab.preprocessing.types import PreprocessingStrategy
     from metatab.utils.types import XType, YType
-    from metatab.utils.types import TunableEstimatorType
+    from metatab.utils.types import TunableClassifierType
 
 
 
@@ -29,7 +29,7 @@ class EnsembleClassifier(ClassifierMixin, BaseEstimator):
     def __init__(
         self,
         save_path: str | Path,
-        type_classifier: TunableEstimatorType,
+        type_classifier: TunableClassifierType,
         name: str = "ens",
         ensemble_algo = Literal["random", "meta"],
         n_members: int = 16,
@@ -47,14 +47,13 @@ class EnsembleClassifier(ClassifierMixin, BaseEstimator):
         Ensemble a classifier.
 
         Parameters:
-
             save_path (str | Path):
                 Folder where ensemble members are saved. 
                 Members are serialized with pickle and named using the ensemble name plus a number. 
                 The folder is created when not existent.
             
-            type_classifier (TunableEstimatorType):
-                Classifier for which build the ensemble.
+            type_classifier (TunableClassifierType):
+                Classifier to ensemble.
 
             name (str, optional): 
                 Name of the ensemble, used as a prefix for member filenames.

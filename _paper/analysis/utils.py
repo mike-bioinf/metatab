@@ -3,7 +3,7 @@ import pandas as pd
 import warnings
 from ast import literal_eval
 from typing import Any, Callable, Literal
-from metatab.utils.types import EstimatorType
+from metatab.utils.types import DefaultClassifierType
 from metatab.utils.constants import GBDT_ESTIMATORS
 
 
@@ -162,12 +162,12 @@ def filter_hpo(
     return df_hpo.loc[mask, :]
 
 
-def is_gbdt_estimator(estimator: EstimatorType, invert: bool = False) -> bool:
+def is_gbdt_estimator(estimator: DefaultClassifierType, invert: bool = False) -> bool:
     '''
     Utility to infer whether the estimator belongs to the gbdt family based on its "str type"
 
     Parameters:
-        estimator (EstimatorType): Estimator "str type".
+        estimator (DefaultClassifierType): Estimator "str type".
         invert (bool, optional): Whether to invert the check.
     
     Returns:

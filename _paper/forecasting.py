@@ -34,7 +34,7 @@ from metatab.metalearning.utils import RandomUniformFromBestMetaStrategyParams, 
 from metatab.utils.constants import EARLY_STOPPED_ESTIMATORS
 from metatab.cli.programs.resample.helper import populate_dict_lists_
 from metatab.utils.prediction.dataframe import PredictionDataframe
-from metatab.utils.types import EstimatorType
+from metatab.utils.types import DefaultClassifierType
 
 
 
@@ -62,7 +62,7 @@ def parse_args(args):
 
 
 def build_estimator_configuration(
-    estimator: EstimatorType,
+    estimator: DefaultClassifierType,
     estimator_mode: Literal["default", "tune", "ensemble", "metatune", "metaensemble"],
     surrogate_model: None | str,
     output_path: Path

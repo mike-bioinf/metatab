@@ -27,7 +27,7 @@ from metatab.api.metaconfig import MetaConfig
 if TYPE_CHECKING:
     from optuna.trial import Trial
     from sklearn.pipeline import Pipeline
-    from metatab.utils.types import TunableEstimatorType, XType, YType
+    from metatab.utils.types import TunableClassifierType, XType, YType
     from metatab.preprocessing.types import ResolvedPreprocessingStrategy
     from metatab.metalearning.types import MetaStrategy, MetaStrategyParams
 
@@ -63,7 +63,7 @@ class EnsembleEstimator:
         pipe (Pipeline):
             Pipeline object headed with a classifier.
         
-        type_estimator (TunableEstimatorType):
+        type_estimator (TunableClassifierType):
             String estimator type. 
             Info needed in meta-optimization (`meta` algo).
             
@@ -170,7 +170,7 @@ class EnsembleEstimator:
         n_members: int,
         save_path: str | Path,
         pipe: Pipeline,
-        type_estimator: TunableEstimatorType,
+        type_estimator: TunableClassifierType,
         preprocessing: ResolvedPreprocessingStrategy,
         sampler_function: Callable[[Trial], float],
         early_stop_on_validation_set: bool, 

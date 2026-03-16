@@ -18,13 +18,37 @@ from metatab.utils.api import (
 if TYPE_CHECKING:
     import numpy as np
     from metatab.preprocessing.types import PreprocessingStrategy
-    from metatab.utils.types import XType, YType, DefaultClassifierType ## refactor add type
+    from metatab.utils.types import XType, YType, DefaultClassifierType
 
 
 
 class DefaultClassifier(ClassifierMixin, BaseEstimator):
     '''
-    Refactor: add documenatation for parameters
+    Run a classifier with the pre-defined default configuration.
+
+    Parameters:
+        type_classifier (DefaultClassifierType):
+            Classifier to run.
+
+        preprocessing (PreprocessingStrategy, optional):
+            Preprocessing strategy to apply.
+        
+        seed (int, optional):
+            Random seed controlling classifer randomness.
+            Ignored by classifiers that do not allow to set this (AutoGluon)
+
+        n_threads (int, optional):
+            Number of threads used to parallelize classifier fitting.
+
+        device (Literal["cpu", "cuda", "auto"], optional):
+            Device to fit the model(s) on.
+            - "cpu" or "cuda" explicitly selects the device.
+            - "auto" falls on "cuda" if available and supported by the classifier; otherwise "cpu".
+
+    ## Attributes:
+
+        classes_ (np.ndarray): 
+            The array of class labels learnt at fit time.
     '''
     def __init__(
         self,
@@ -46,7 +70,26 @@ class DefaultClassifier(ClassifierMixin, BaseEstimator):
         X: XType,
         y: YType,
         validation_set_size: float | None = None
-    ):
+    ) -> "DefaultClassifier":
+        '''
+        Fit on training data.
+        
+        Parameters:
+            X (XType): 
+                Data to fit.
+            
+            y (Ytype): 
+                Data labels to fit.
+            
+            validation_set_size (None | float, optional): 
+                Size of the validation set.
+                Must be provided only for classifiers that use the validation set in the fit process.
+                An error is raised when it is provided and the classifier does not support it,
+                or when it is not provided and the classifier needs it.
+        
+        Returns:
+            self
+        '''
         check_X_y(X, y, dtype=None, ensure_all_finite=False)
         classifier_spec = get_classifier_specs_from_registry(self.type_classifier)
 
@@ -90,10 +133,28 @@ class DefaultClassifier(ClassifierMixin, BaseEstimator):
     
 
     def predict(self, X: XType) -> np.ndarray:
+        '''
+        Predict class for X.
+
+        Parameters:
+            X (XType): Input samples.
+
+        Returns:
+            np.ndarray: The predicted classes.
+        '''
         check_is_fitted(self, "estimator_")
         return self.estimator_.predict(X)
         
 
     def predict_proba(self, X: XType) -> np.ndarray:
+        '''
+        Predict class probabilities for X.
+
+        Parameters:
+            X (XType): Input samples.
+        
+        Returns:
+            np.ndarray: The class probabilities of the input samples.
+        '''
         check_is_fitted(self, "estimator_")
         return self.estimator_.predict_proba(X)

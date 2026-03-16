@@ -5,6 +5,7 @@ from autogluon.tabular import TabularPredictor
 from metatab.utils.types import XType, YType
 
 
+
 class AutoGluonClassifier:
     def __init__(
         self,
@@ -83,11 +84,15 @@ class AutoGluonClassifier:
 class AutoGluonSpec:
     classifier_class = AutoGluonClassifier
     early_stop_on_validation_set = False
-    random_state_parameter = "random_state"
-    n_threads_parameter = "n_jobs"
+    random_state_parameter = None
+    n_threads_parameter = "num_cpus"
     device_parameter = None
-    main_device = "cpu"
-    supported_devices = ["cpu", "gpu"]
+    main_device = "cuda"
+    supported_devices = ["cpu", "cuda"]
     default_preprocessing = "density_filter"
-    default_params = {}
+    default_params = {
+        "eval_metric": "log_loss",
+        "presets": "extreme_quality",
+        "time_limit": 7200, # 2 hours
+    }
     callbacks_on_params = None

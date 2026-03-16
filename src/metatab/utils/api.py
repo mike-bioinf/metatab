@@ -11,9 +11,8 @@ from metatab.utils.exceptions import DeviceError
 from metatab.utils.general import ensure_or_create
 
 if TYPE_CHECKING:
-    import numpy as np
     from metatab.preprocessing.types import ResolvedPreprocessingStrategy
-    from metatab.utils.types import Classifier, EstimatorType
+    from metatab.utils.types import Classifier, DefaultClassifierType
     from metatab.utils.types import XType, YType
     from sklearn.pipeline import Pipeline
     from metatab.classifiers.registry import ClassifierSpec
@@ -87,7 +86,7 @@ def encode_y(X: XType, y: YType) -> tuple[LabelEncoder, YType]:
 def check_validation_set_classifier_combination(
     validation_set: None | float | tuple[XType, YType],
     classifier_spec: ClassifierSpec,
-    type_classifier: EstimatorType
+    type_classifier: DefaultClassifierType
 ) -> None:
     '''
     Check whether the classifier needs or refuses the validation set info.
@@ -156,7 +155,7 @@ def check_validation_set(validation_set: float | None) -> None:
 def handle_device(
     input_device: str, 
     classifier_spec: ClassifierSpec,
-    type_classifier: EstimatorType
+    type_classifier: DefaultClassifierType
 ) -> Literal["cpu", "cuda"]:
     '''
     Check and resolve the device info.
@@ -166,13 +165,18 @@ def handle_device(
 
     if input_device not in clf_supported_devices:
         raise DeviceError(f"'{type_classifier}' supports: '{clf_supported_devices}'. Actually '{input_device}'.")
-    
-    resolved_device = classifier_spec.main_device if input_device == "auto" else input_device
+     
+    # resolve "auto"
+    if input_device == "auto":
+        if classifier_spec.main_device == "cuda" and torch.cuda.is_available():
+            input_device = "cuda"
+        elif "cpu" in classifier_spec.supported_devices:
+            input_device = "cpu"
+        else:
+            input_device = classifier_spec.supported_devices[0] # fallback to first supported
 
-    if resolved_device == "cuda":
-        if "cuda" not in clf_supported_devices:
-            raise DeviceError(f"'{type_classifier}' does not support cuda.")
-        if not torch.cuda.is_available():
-            raise DeviceError("cuda is requested but not available.")
+    # validate resolved device
+    if input_device == "cuda" and not torch.cuda.is_available():
+        raise DeviceError("cuda is requested but not available.")
 
-    return resolved_device
+    return input_device

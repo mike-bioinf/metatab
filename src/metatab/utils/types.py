@@ -12,8 +12,10 @@ from tabpfn import TabPFNClassifier
 from catboost import CatBoostClassifier
 
 if TYPE_CHECKING:
-    from metatab.estimators.estimators.realmlp import RealMLPClassifier
-    from metatab.estimators.estimators.tabm import TabMClassifier
+    from metatab.classifiers.realmlp import RealMLPClassifier
+    from metatab.classifiers.tabm import TabMClassifier
+    from metatab.classifiers.autogluon import AutoGluonClassifier
+
 
 
 Classifier: TypeAlias = Union[
@@ -24,18 +26,12 @@ Classifier: TypeAlias = Union[
     LGBMClassifier,
     TabPFNClassifier,
     "RealMLPClassifier",
-    "TabMClassifier"
+    "TabMClassifier",
+    "AutoGluonClassifier"
 ]
 
 
-GBDTClassifier: TypeAlias = Union[
-    XGBClassifier,
-    CatBoostClassifier,
-    LGBMClassifier
-]
-
-##refactor: estimator_type is confusing maybe better classifier something?? 
-TunableEstimatorType = Literal[
+TunableClassifierType = Literal[
     "random_forest",
     "extra_trees",
     "xgb",
@@ -50,38 +46,7 @@ TunableEstimatorType = Literal[
 ]
 
 
-EsEstimatorType: Literal[
-    "es_lgbm",
-    "es_xgb",
-    "es_catboost",
-    "realmlp",
-    "tabm"
-]
-
-
-GBDTEstimatorType = Literal[
-    "xgb",
-    "es_xgb",
-    "lgbm",
-    "es_lgbm",
-    "catboost",
-    "es_catboost"
-]
-
-
-TreeEstimatorType = Literal[
-    "random_forest",
-    "extra_trees",
-    "xgb",
-    "es_xgb",
-    "lgbm",
-    "es_lgbm",
-    "catboost",
-    "es_catboost"
-]
-
-
-EstimatorType = Literal[
+DefaultClassifierType = Literal[
     "random_forest",
     "extra_trees",
     "xgb",
@@ -92,7 +57,8 @@ EstimatorType = Literal[
     "es_catboost",
     "tabpfn",
     "realmlp",
-    "tabm"
+    "tabm",
+    "autogluon"
 ]
 
 
@@ -100,6 +66,7 @@ XType: TypeAlias = Union[
     pd.DataFrame,
     np.ndarray
 ]
+
 
 YType: TypeAlias = Union[
     pd.Series,

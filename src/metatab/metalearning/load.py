@@ -12,11 +12,11 @@ from huggingface_hub import hf_hub_download, try_to_load_from_cache
 
 if TYPE_CHECKING:
     from sklearn.pipeline import Pipeline
-    from metatab.utils.types import TunableEstimatorType
+    from metatab.utils.types import TunableClassifierType
 
 
 
-def download_surrogate_framework(type_estimator: TunableEstimatorType) -> str:
+def download_surrogate_framework(type_estimator: TunableClassifierType) -> str:
     '''
     Download the surrogate model/framework for the input estimator 
     from the hugging face repo in the user hf cache directory.
@@ -82,6 +82,6 @@ def resolve_surrogate_models_folder() -> str:
 
 
 
-def query_surrogate_framework(type_estimator: TunableEstimatorType) -> Pipeline:
+def query_surrogate_framework(type_estimator: TunableClassifierType) -> Pipeline:
     '''Retrieve the fitted surrogate framework for the input type_estimator'''
     return joblib.load(download_surrogate_framework(type_estimator))

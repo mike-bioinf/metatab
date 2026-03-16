@@ -1,5 +1,5 @@
 from typing import Union, TypeAlias
-from metatab.utils.types import EstimatorType 
+from metatab.utils.types import DefaultClassifierType 
 from metatab.classifiers.extra_trees import ExtraTreeSpec
 from metatab.classifiers.random_forest import RandomForestSpec
 from metatab.classifiers.catboost import CatBoostSpec, EsCatBoostSpec
@@ -8,6 +8,7 @@ from metatab.classifiers.xgboost import XGBSpec, EsXGBSpec
 from metatab.classifiers.tabpfn import TabPFNSpec
 from metatab.classifiers.tabm import TabMSpec
 from metatab.classifiers.realmlp import RealMLPSpec
+from metatab.classifiers.autogluon import AutoGluonSpec
 
 
 ClassifierSpec: TypeAlias = Union[
@@ -21,7 +22,8 @@ ClassifierSpec: TypeAlias = Union[
     EsLGBMSpec,
     TabPFNSpec,
     TabMSpec,
-    RealMLPSpec
+    RealMLPSpec,
+    AutoGluonSpec
 ]
 
 
@@ -36,11 +38,12 @@ CLASSIFIER_SPECS_REGISTRY = {
     "es_lgbm": EsLGBMSpec,
     "tabpfn": TabPFNSpec,
     "tabm": TabMSpec,
-    "realmlp": RealMLPSpec
+    "realmlp": RealMLPSpec,
+    "autogluon": AutoGluonSpec
 }
 
 
-def get_classifier_specs_from_registry(type_classifier: EstimatorType) -> ClassifierSpec:
+def get_classifier_specs_from_registry(type_classifier: DefaultClassifierType) -> ClassifierSpec:
     '''
     Retrieve the ClassifierSpec class of the input classifier.
     Raise an error when `type_classifier` is not present in the registry.

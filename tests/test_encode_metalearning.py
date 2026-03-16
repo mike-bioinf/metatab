@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 from pathlib import Path
 from sklearn.pipeline import make_pipeline
-from metatab.metatab_utils.types import TunableEstimatorType
+from metatab.utils.types import TunableClassifierType
 from metatab.metalearning.encode.encode import get_encoding_scheme
 from metatab.metalearning.encode.transformers import NanToNone, ColToStr, InfToNan
 from metatab.preprocessing.types import PreprocessingStrategy
@@ -12,7 +12,7 @@ from metatab.preprocessing.types import PreprocessingStrategy
 
 
 def load_metadata(
-    estimator: TunableEstimatorType,
+    estimator: TunableClassifierType,
     preprocessing: PreprocessingStrategy = "base"
 ) -> pd.DataFrame:
     df = pd.read_csv(Path(__file__).parent / "data/metadata" / f"{estimator}.txt", sep="\t")

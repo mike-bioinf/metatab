@@ -62,6 +62,7 @@ class EsCatBoostSpec(_BaseCatBoostSpec):
     early_stop_on_validation_set = True
     default_params = {
         "n_estimators": 10000,
+        "early_stopping_rounds": 100,
         "od_type": "Iter", # classical early stop on validation set
         "eval_metric": "logloss_to_adjust",
         "use_best_model": True, # select early stopped ensemble
@@ -70,6 +71,7 @@ class EsCatBoostSpec(_BaseCatBoostSpec):
     }
     fixed_params = {
         "n_estimators": 10000,
+        "early_stopping_rounds": 100,
         "boosting_type": "Plain",
         "eval_metric": "logloss_to_adjust",
         "od_type": "Iter",

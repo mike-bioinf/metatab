@@ -56,11 +56,13 @@ class EsXGBSpec(_BaseXGBSpec):
     default_params = {
         "n_estimators": 10000, # high number for early stop
         "eval_metric": "logloss_to_adjust",
+        "early_stopping_rounds": 100,
         "verbosity": 0,
     }
     fixed_params = {
-        "n_estimators": 10000, # high number for early stop
+        "n_estimators": 10000,
         "eval_metric": "logloss_to_adjust",
+        "early_stopping_rounds": 100,
         "verbosity": 0,
     }
     callbacks_on_params = [

@@ -64,13 +64,15 @@ class EsLGBMSpec(_BaseLGBMSpec):
     default_params = {
         "n_estimators": 10000, # high number for early stop
         "metric": "logloss_to_adjust",
+        "early_stopping_rounds": 100,
         "min_child_samples": 1,
         "verbose": -1,
         "deterministic": True,
         "force_col_wise": True
     }
     fixed_params = {
-        "n_estimators": 10000, # high number for early stop
+        "n_estimators": 10000,
+        "early_stopping_rounds": 100,
         "boosting_type": "gbdt", 
         "max_depth": -1,
         "data_sample_strategy": "bagging",

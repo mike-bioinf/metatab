@@ -35,7 +35,7 @@ from sklearn.feature_selection import VarianceThreshold
 from sklearn.compose import ColumnTransformer
 from metatab.metalearning.encode.transformers import NanToNone, ColToStr, InfToNan
 from metatab.classifiers.tabpfn import enumerate_preprocess_transforms, TABPFN_CHECKPOINTS
-from metatab.utils.types import TunableEstimatorType
+from metatab.utils.types import TunableClassifierType
 
 
 
@@ -309,7 +309,7 @@ HPS_ENCODING_SCHEME = {
 }
 
 
-def get_encoding_scheme(estimator: TunableEstimatorType) -> list:
+def get_encoding_scheme(estimator: TunableClassifierType) -> list:
     '''
     Get a deepcopy of the encoding scheme of the HP feature space designed for the input estimator.
     The encoding scheme consists in a ordered list of sklearn transformers to insert in a Pipeline object.

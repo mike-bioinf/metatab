@@ -26,7 +26,7 @@ from metatab.hp_search.config import ConfigSearchCV
 
 if TYPE_CHECKING:
     from metatab.preprocessing.types import ResolvedPreprocessingStrategy
-    from metatab.utils.types import TunableEstimatorType, XType, YType
+    from metatab.utils.types import TunableClassifierType, XType, YType
     from metatab.metalearning.types import MetaStrategy, MetaStrategyParams
 
 
@@ -49,7 +49,7 @@ class SearchCV:
         pipe (Pipeline):
             Pipeline object headed by a classifier which hps have to be optimized.
         
-        type_estimator (TunableEstimatorType):
+        type_estimator (TunableClassifierType):
             String estimator type of the classifier head. 
             Info needed in meta-optimization (`meta` algo).
             
@@ -180,7 +180,7 @@ class SearchCV:
         self,
         *,
         pipe: Pipeline,
-        type_estimator: TunableEstimatorType,
+        type_estimator: TunableClassifierType,
         preprocessing: ResolvedPreprocessingStrategy,
         algo: Literal["random", "tpe", "meta"],
         sampler_function: Callable[[optuna.Trial], dict],
