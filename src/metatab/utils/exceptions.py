@@ -5,7 +5,7 @@ class DeviceError(Exception):
     pass
 
 
-class TimiLimitError(Exception):
+class TimeLimitError(Exception):
     '''
     Error used to indicate time limit violations.
     '''

@@ -4,11 +4,11 @@ from typing import Callable
 from sklearn.utils.validation import check_is_fitted
 
 
-class OptunaRandomSampler:
+class WrapperRandomSampler:
     '''
     Wrapper of optuna RandomSampler used to get the list of sampled points.
     '''
-    def fit(self, sampler_function: Callable[[optuna.Trial], dict], seed: int) -> "OptunaRandomSampler":
+    def fit(self, sampler_function: Callable[[optuna.Trial], dict], seed: int) -> "WrapperRandomSampler":
         self.sampler_function = sampler_function
         self.seed = seed
         self.is_fitted_ = True

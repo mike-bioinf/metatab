@@ -5,7 +5,6 @@ import time
 import warnings
 import joblib
 import pickle
-import logging
 import numpy as np
 import pandas as pd
 from copy import deepcopy
@@ -13,16 +12,19 @@ from pathlib import Path
 from typing import Literal, TYPE_CHECKING, Callable
 from functools import partial
 from sklearn.utils.validation import check_is_fitted
-from metatab.utils.exceptions import TimiLimitError
+from sklearn.model_selection import RepeatedStratifiedKFold
+from metatab.utils.exceptions import TimeLimitError
 from metatab.utils.core import fit_with_early_stop_on_validation_set, set_params_into_clf
+from metatab.utils.general import ensure_or_create
+from metatab.utils.logging import create_logger
 from metatab.metalearning.acquisition_funcs import compute_upper_confidence_bound
 from metatab.metalearning.utils import get_estimator_n_candidate_points
-from metatab.metalearning.sampler import OptunaRandomSampler
+from metatab.metalearning.sampler import WrapperRandomSampler
 from metatab.metalearning.metafeatures import CustomMFE
 from metatab.metalearning.metadata_evaluator import MetadataEvaluator
 from metatab.metalearning.load import query_surrogate_framework
-from metatab.utils.general import ensure_or_create
 from metatab.api.metaconfig import MetaConfig
+from metatab.ensemble.utils import BagCV
 
 if TYPE_CHECKING:
     from optuna.trial import Trial
@@ -54,11 +56,10 @@ class EnsembleEstimator:
             Number of ensemble members.
             In other terms the number of hps configuration to derive.
 
-        save_path (str | Path):
+        save_path (None | str | Path):
             Path of the folder where the ensemble members are saved.
-            These will be serialized with the pickle module in files
-            named after the members (name ensemble + number member).
-            Note that the folder is created if not existent.
+            The folder is created when not existent.
+            If None the models are kept in memory.
 
         pipe (Pipeline):
             Pipeline object headed with a classifier.
@@ -168,23 +169,25 @@ class EnsembleEstimator:
         name: str,
         algo: Literal["random", "meta"],
         n_members: int,
-        save_path: str | Path,
+        save_path: None | str | Path,
         pipe: Pipeline,
         type_estimator: TunableClassifierType,
         preprocessing: ResolvedPreprocessingStrategy,
         sampler_function: Callable[[Trial], float],
         early_stop_on_validation_set: bool, 
-        eval_set_parameter: str = "eval_set",
-        validation_set_size: float = 0.3,
-        fit_classifier_kwargs: None | dict = None,
-        meta_config: None | MetaConfig = None, ##refactor adapt class on this
-        meta_features: None | dict = None,
+        log: int,
+        validation_set_size: float,
+        meta_config: None | MetaConfig, ## REFACTOR: adapt class on this
+        raise_error_fit_member: bool,
+        raise_error_void_ensemble: bool,
+        seed: int,
+        time_limit: int,
+        bag_cv: None | dict | BagCV,
+        ## REFACTOR: eliminate these?
         meta_candidate_points: None | list[dict] = None,
-        raise_error_fit_member: bool = False,
-        raise_error_void_ensemble: bool = True,
-        seed: int = 0,
-        time_limit: int = 10_000_000,
-        log: int = 20
+        meta_features: None | dict = None,
+        fit_classifier_kwargs: None | dict = None,
+        eval_set_parameter: str = "eval_set",
     ):
         self.name=name
         self.algo=algo
@@ -206,26 +209,43 @@ class EnsembleEstimator:
         self.log=log
         self.seed=seed
         self.time_limit=time_limit
+        self.bag_cv=bag_cv
 
 
+    ## REFACTOR: consider abstract some logic in utilitites or separate classes 
+    # after defining what to do with preprocessings and classifiers extension.
     def fit(self, X: XType, y: YType) -> "EnsembleEstimator":
         start_time = time.time()
-        logger = self._get_logger()
-        logger.info(f"Starting building process of '{self.name}' ensemble.")
+        logger = create_logger(self.name, sys.stdout) ## add formatter?
+        logger.info(f"Starting prepration phase for '{self.name}' ensemble.")
 
-        self._save_path = self.save_path if isinstance(self.save_path, Path) else Path(self.save_path)
-        self._save_path.mkdir(parents=True, exist_ok=True)
+        if self.save_path is not None:
+            self._save_path = self.save_path if isinstance(self.save_path, Path) else Path(self.save_path)
+            self._save_path.mkdir(parents=True, exist_ok=True)
+        else:
+            self._save_path = None
+
+        bag_cv = BagCV.build_from_dict(self.bag_cv) if isinstance(self.bag_cv, dict) else self.bag_cv
+
+        if bag_cv:
+            number_bag_iter = bag_cv.n_folds * bag_cv.n_repeats
+            if number_bag_iter < self.n_members:
+                raise ValueError(
+                    f"Number of bag iterations ({number_bag_iter}) is less than members ({self.n_members})."
+                )
         
+        training_indexes = self._get_training_indexes(X, y, bag_cv)
         fit_classifier_kwargs = ensure_or_create(self.fit_classifier_kwargs, dict)
         hps_confs = self._get_hps_configurations(X, y)
         member_names = [self.name + "_m" + str(i) for i in range(self.n_members)]
         
-        time_prepation = round((time.time() - start_time)/60, 2)
-        logger.info(f"Obtained hps configurations using the {self.algo} algo in {time_prepation} minutes.")
-        
         if self.early_stop_on_validation_set:
             rng_early_stop = np.random.default_rng(self.seed)
-
+        
+        time_preparation = round((time.time() - start_time)/60, 2)
+        logger.info(f"Preparation phase completed in {time_preparation} minutes.")
+        
+        
         self.failed_members_ = []
         self.successful_members_ = []
         self.failed_hps_confs_ = []
@@ -233,21 +253,27 @@ class EnsembleEstimator:
         self._recap_members: list[dict] = []
         self._is_cleaned = False
         self._has_completed = False
+        self._models: list[Pipeline] = []
 
-        for hp_conf, member_name in zip(hps_confs, member_names):
+
+        for hp_conf, member_name, member_train_indexes in zip(hps_confs, member_names, training_indexes):
             try:
                 if self._is_time_limit_violated(start_time):
-                    raise TimiLimitError("Violated time limit")
+                    raise TimeLimitError("Violated time limit")
                 
-                # deepcopy necessary since catboost cannot be refitted
+                # we do not uniform the original data type to preserve the column check at inference  
+                X_member = X.iloc[member_train_indexes, :] if isinstance(X, pd.DataFrame) else X[member_train_indexes]
+                y_member = y.iloc[member_train_indexes] if isinstance(y, pd.Series) else y[member_train_indexes]
+
+                # deepcopy necessary for catboost cannot be refitted and for storing models in memory 
                 pipe = deepcopy(self.pipe)
                 set_params_into_clf(pipe, hp_conf)
             
                 if self.early_stop_on_validation_set:
                     pipe, fit_time = fit_with_early_stop_on_validation_set(
                         pipe=pipe,
-                        X=X,
-                        y=y,
+                        X=X_member,
+                        y=y_member,
                         seed=rng_early_stop.integers(low=0, high=2**30),
                         eval_set_parameter=self.eval_set_parameter,
                         validation_set_size=self.validation_set_size,
@@ -256,17 +282,20 @@ class EnsembleEstimator:
                     )
                 else:
                     t = time.time()
-                    pipe.fit(X, y, **fit_classifier_kwargs)
+                    pipe.fit(X_member, y_member, **fit_classifier_kwargs)
                     fit_time = time.time() - t
 
                 logger.debug(f"'{member_name}' member has been fitted in {round(fit_time / 60, 2)} minutes.")                
                 
-                # save model
-                with open(self._save_path / f"{member_name}.pkl", "wb") as f:
-                    pickle.dump(pipe, f)
+                # store model
+                if self._save_path:
+                    with open(self._save_path / f"{member_name}.pkl", "wb") as f:
+                        pickle.dump(pipe, f)
+                    logger.debug(f"'{member_name}' member saved on disk.")
+                else:
+                    self._models.append(pipe)
 
-                logger.debug(f"'{member_name}' member saved on disk.")
-                # the model is considered successful if fitted AND saved on disk
+                # the model is considered successful if fitted AND stored
                 self.successful_members_.append(member_name)
                 self.successful_hps_confs_.append(hp_conf)
 
@@ -280,9 +309,8 @@ class EnsembleEstimator:
             except Exception as e:
                 if self.raise_error_fit_member:
                     raise ValueError(
-                        f"The fit or saving process of the {member_name} ensemble member has failed" +
-                        f" with the following error: {e}"
-                    )
+                        f"The fit or saving process of the '{member_name}' member has failed."
+                    ) from e
                 
                 self.failed_members_.append(member_name)
                 self.failed_hps_confs_.append(hp_conf)
@@ -296,6 +324,7 @@ class EnsembleEstimator:
 
                 logger.debug(f"'{member_name}' member fit or saving process has failed.")
         
+
         self.is_void_ = False if self.successful_members_ else True
         
         if self.is_void_ and self.raise_error_void_ensemble:
@@ -344,10 +373,14 @@ class EnsembleEstimator:
         that reflects the order of `self.successful_members_`.
         '''
         predictions = []
-        for member in self.successful_members_:
-            path_successful_member = self._save_path / f"{member}.pkl"
-            member_model: Pipeline = self._try_load_model(path_successful_member)
-            predictions.append(member_model.predict_proba(X))
+        if self._save_path:
+            for member in self.successful_members_:
+                with open(self._save_path / f"{member}.pkl", "rb") as f:
+                    model: Pipeline = pickle.load(f) 
+                predictions.append(model.predict_proba(X))
+        else:
+            for model in self._models:
+                predictions.append(model.predict_proba(X))
         return predictions
 
 
@@ -359,6 +392,10 @@ class EnsembleEstimator:
         '''
         # check on succesful members to allow functionality on arrested ensemble 
         check_is_fitted(self, "successful_members_")
+
+        if self._save_path is None:
+            warnings.warn("No path info stored. Models are not on disk.")
+            return None
 
         if self._is_cleaned:
             return None
@@ -409,35 +446,28 @@ class EnsembleEstimator:
             raise ValueError("The ensemble is incomplete, i.e. its building process was arrested.")
         
 
-    @staticmethod
-    def _try_load_model(path: str | Path) -> Pipeline:
-        try:
-            with open(path, "rb") as f:
-                model = pickle.load(f)
-        except Exception as e:
-            raise ValueError(
-                f"Error encountered in the loading process of '{path}': {e}"
-            )
-        return model
-
-
-    def _get_logger(self) -> logging.Logger:
-        logger = logging.getLogger(self.name)
-        logger.setLevel(logging.DEBUG)
-        logger.handlers.clear()
-        handler = logging.StreamHandler(sys.stdout)
-        handler.setLevel(self.log)
-        logger.addHandler(handler)
-        logger.propagate = False
-        return logger
-
-
     def _is_time_limit_violated(self, start_time: float) -> bool:
         return (time.time() - start_time) > self.time_limit
-        
+    
 
+    def _get_training_indexes(self, X: XType, y: YType, bag_cv: None | BagCV) -> list[np.ndarray]:
+        '''
+        Returns a list of training indexes as numpy arrays.
+        In case of bag_cv equal None a list of indexes covering the whole data is returned.
+        '''
+        if bag_cv is None:
+            return [np.arange(X.shape[0])] * self.n_members
+        else:
+            skf = RepeatedStratifiedKFold(
+                n_splits=bag_cv.n_folds, 
+                n_repeats=bag_cv.n_repeats, 
+                random_state=bag_cv.seed
+            )
+            return [tuple_index[0] for tuple_index in skf.split(X, y)]
+            
+    
     def _get_hps_configurations(self, X: XType, y: YType) -> list[dict]:
-        sampler = OptunaRandomSampler()
+        sampler = WrapperRandomSampler()
         mfe = CustomMFE()
         
         if self.algo == "random":
@@ -445,7 +475,7 @@ class EnsembleEstimator:
             points = sampler.sample_points(self.n_members)
 
         elif self.algo == "meta":
-            ## refactor can we simplify this along the searchcv
+            ## REFACTOR: abstract meta-points generation code 
             if self.meta_features is None:
                 metafeatures, _ = mfe.fit(X, y).extract()
             else:

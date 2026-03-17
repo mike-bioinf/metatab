@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING, Literal
 from sklearn.base import ClassifierMixin, BaseEstimator
 from sklearn.utils.validation import check_is_fitted, check_X_y
 from metatab.hp_search.searchcv import SearchCV
-from metatab.utils.general import asdict_shallow, ensure_or_create
 from metatab.api.metaconfig import MetaConfig
 from metatab.classifiers.registry import get_classifier_specs_from_registry
 
@@ -68,7 +67,8 @@ class TuneClassifier(ClassifierMixin, BaseEstimator):
         
         build_df_search (bool, optional):
             Whether to build a dataframe containing search info. 
-            Stored in `df_search_` if True. Adds overhead.
+            Stored in `df_search_` if True. 
+            Adds overhead and increases memory consumption.
             Note: when `n_iter` is 1 no optimization is done,
             since the single drawn point is considered the best by definition.
             Therefore the `df_search_` attribute is not created.
@@ -77,6 +77,11 @@ class TuneClassifier(ClassifierMixin, BaseEstimator):
             Whether to stop the search if an iteration fails.
             If False, failing iterations are skipped. 
             When all iterations fail an error is always raised.
+
+        refit_best_configuration (bool, optional):
+            Whether to refit the best configuration found in the search.
+            If False then is not possible to predict on new data.
+            Useful when one cares about the search info only. 
 
         meta_config (None | MetaConfig, optional):
             Config class for the "meta" algorithm.
@@ -91,12 +96,6 @@ class TuneClassifier(ClassifierMixin, BaseEstimator):
         
         best_params_ (dict):
             Best HPs coming from the search.
-
-        search_losses_ (np.ndarray):
-            Array with the logloss scores of the evaluated points.
-            When `n_iter` equals one, the array contains a single NaN since the single
-            point is the best by definition, and therefore no evaluation is done.
-            Presence of NaNs in the array when `n_iter` > 1 indicate failed iterations.
         
         df_search_ (pd.DataFrame): 
             Dataframe that provides a summary of the optimization process.
@@ -110,25 +109,31 @@ class TuneClassifier(ClassifierMixin, BaseEstimator):
         n_cv_repeats: int = 1,
         n_cv_folds: int = 5, 
         preprocessing: PreprocessingStrategy = "estimator_default",
+        time_limit: float = 10_000_000,
         seed: int = 0,
         n_threads: int = 1,
         device: Literal["cpu", "cuda", "auto"] = "auto",
         build_df_search: bool = True,
         raise_error_during_search:  bool = False,
-        meta_config: None | MetaConfig = None
+        refit_best_configuration: bool = True,
+        meta_config: None | MetaConfig = None,
+        log: int = 20
     ):
-        self.type_classifier = type_classifier
-        self.tune_algo = tune_algo
-        self.n_iter = n_iter
-        self.n_cv_repeats = n_cv_repeats
-        self.n_cv_folds = n_cv_folds
-        self.preprocessing = preprocessing
-        self.seed = seed
-        self.n_threads = n_threads
-        self.device = device
-        self.build_df_search = build_df_search
-        self.raise_error_during_search = raise_error_during_search
-        self.meta_config = meta_config
+        self.type_classifier=type_classifier
+        self.tune_algo=tune_algo
+        self.n_iter=n_iter
+        self.n_cv_repeats=n_cv_repeats
+        self.n_cv_folds=n_cv_folds
+        self.preprocessing=preprocessing
+        self.time_limit=time_limit
+        self.seed=seed
+        self.n_threads=n_threads
+        self.device=device
+        self.build_df_search=build_df_search
+        self.raise_error_during_search=raise_error_during_search
+        self.refit_best_configuration=refit_best_configuration
+        self.meta_config=meta_config
+        self.log=log
             
 
     def fit(
@@ -166,7 +171,7 @@ class TuneClassifier(ClassifierMixin, BaseEstimator):
             raise ValueError(f"With 'tune_algo' != 'meta', 'meta_config' must be None.")
         
         if self.tune_algo == "meta" and self.meta_config is not None:
-            self.meta_config.check()
+            self.meta_config._check()
 
         if self.tune_algo == "meta" and self.meta_config is None:
             self.meta_config = MetaConfig()
@@ -209,7 +214,7 @@ class TuneClassifier(ClassifierMixin, BaseEstimator):
 
         estimator = SearchCV(
             pipe=pipe,
-            type_estimator=self.type_classifier, ##refactor name parameter here
+            type_estimator=self.type_classifier, ## REFACTOR: name parameter here
             preprocessing=resolved_preprocessing,
             algo=self.tune_algo,
             sampler_function=classifer_spec.sampler_function,
@@ -224,14 +229,16 @@ class TuneClassifier(ClassifierMixin, BaseEstimator):
             raise_error_during_search=self.raise_error_during_search,
             build_df_search=self.build_df_search,
             params_as_object_columns_in_df_search=classifer_spec.params_as_object_columns_in_df_search,
-            **ensure_or_create(asdict_shallow(self.meta_config), dict) ## REFACTOR: here pass directly the metaconfig
+            refit_best_configuration=self.refit_best_configuration,
+            meta_config=self.meta_config,
+            time_limit=self.time_limit,
+            log=self.log
         )
 
         self.estimator_ = estimator.fit(X, y)
         if self.build_df_search and self.n_iter > 1:
             self.df_search_ = self.estimator_.df_search_
         self.classes_ = label_encoder.classes_
-        self.search_losses_ = self.estimator_.search_losses_
         self.best_params_ = self.estimator_.best_params_ ## REFACTOR: changed attributes from best_hps_ (check for effect)
         return self
 

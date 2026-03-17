@@ -7,7 +7,7 @@ from sklearn.utils.validation import check_is_fitted
 from metatab.utils.general import ensure_or_create
 
 if TYPE_CHECKING:
-    from metatab.metalearning.sampler import OptunaRandomSampler
+    from metatab.metalearning.sampler import WrapperRandomSampler
     from metatab.metalearning.metafeatures import CustomMFE
     from metatab.utils.types import XType, YType
 
@@ -18,12 +18,12 @@ class MetadataGenerator():
     Class that manages the hp sampler and metafeature extractor to generate metadata.
 
     Parameters:
-        sampler (OptunaRandomSampler):
+        sampler (WrapperRandomSampler):
             Sampler that allows to sample hp points from a space.
         mfe (CustomMFE):
             CustomMFE to extract data metafeatures.
     '''
-    def __init__(self, sampler: OptunaRandomSampler, mfe: CustomMFE,):
+    def __init__(self, sampler: WrapperRandomSampler, mfe: CustomMFE,):
         self.sampler=sampler
         self.mfe=mfe
 

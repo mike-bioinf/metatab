@@ -115,6 +115,7 @@ class CrossValidator:
 
         cv_losses = []
         cv_results = []
+        cv_pred_proba = []
         rng = np.random.default_rng(self.seed)        
         
         for iter_idx, (train_idx, test_idx) in enumerate(skf.split(X, y)):
@@ -128,8 +129,8 @@ class CrossValidator:
             pipe = deepcopy(self.pipe)
             # we overwrite the classifier seed in order to maximize model entropy inside cv, 
             # while assuring uniformity between different cv runs.
-            params = {**params, self.clf_random_state_parameter: int(rng.integers(0, 2**32))}
-            set_params_into_clf(pipe, params, set_tabpfn_inference_config=True, finalize_tabpfn_model_path=True)
+            params_to_fit = {**params, self.clf_random_state_parameter: int(rng.integers(0, 2**32))}
+            set_params_into_clf(pipe, params_to_fit, set_tabpfn_inference_config=True, finalize_tabpfn_model_path=True)
             
             X_train, y_train = X[train_idx, :], y[train_idx]
             X_test, y_test = X[test_idx, :], y[test_idx]
@@ -150,15 +151,19 @@ class CrossValidator:
             pred_proba = pipe.predict_proba(X_test)
             loss = self._compute_loss_score(pred_proba, y_test)
             cv_losses.append(loss)
-            if build_df_cv: cv_results.append({"repeat": repeat, "fold": fold, "loss": loss})
+            if build_df_cv:
+                cv_pred_proba.append(pred_proba)
+                cv_results.append({"repeat": repeat, "fold": fold, "loss": loss})
 
         array_cv_losses = np.array(cv_losses)
         agg_loss = np.mean(array_cv_losses) if agg == "mean" else np.sum(array_cv_losses)
         
         if build_df_cv:
             try:
+                df_cv = pd.DataFrame(cv_results)
+                df_cv["pred_proba"] = cv_pred_proba
                 df_cv = add_broadcasted_objects_as_column(
-                    df=pd.DataFrame(cv_results),
+                    df=df_cv,
                     dictionary=params,
                     convert_bool_to_str=False,
                     convert_none_to_str=False,
@@ -170,8 +175,8 @@ class CrossValidator:
                     
             except Exception as e:
                 raise DFSearchBuildingError(
-                    f"Encountered the following error during df_search building process: {e}"
-                )
+                    f"Encountered an error during df_search building process."
+                ) from e
 
             return (agg_loss, df_cv)
         else:
