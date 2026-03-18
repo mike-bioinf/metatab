@@ -32,6 +32,8 @@ def parse_args(args):
     p = argparse.ArgumentParser()
     
     p.add_argument("-i", "--meta-folder", required=True, help="Path of the folder containing the meta-datasets.")
+
+    p.add_argument("-n", "--number-rows", type=int, default=-1, help="Select the first n rows from the metadatasets.")
     
     p.add_argument("-o", "--output-file", required=True, 
                    help="Output filepath. It will be a binary file containing the serialized surrogate model.")
@@ -89,6 +91,9 @@ def main():
     log_program_setting(logger, pars)
 
     datasets = load_datasets(pars["meta_folder"])
+    if pars["number_rows"] > 0:
+        datasets = [d.iloc[0:pars["number_rows"], :] for d in datasets]
+
     meta_data = pd.concat(datasets, axis=0, ignore_index=True)
     logger.debug("Meta-data loaded in memory!")
 
