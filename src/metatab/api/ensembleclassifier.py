@@ -9,6 +9,7 @@ from metatab.ensemble.single import EnsembleEstimator
 from metatab.utils.general import asdict_shallow, ensure_or_create
 from metatab.api.metaconfig import MetaConfig
 from metatab.classifiers.registry import get_classifier_specs_from_registry
+from metatab.ensemble.utils import BagCV
 
 from metatab.utils.api import (
     create_pipeline, 
@@ -28,7 +29,7 @@ if TYPE_CHECKING:
 class EnsembleClassifier(ClassifierMixin, BaseEstimator):
     def __init__(
         self,
-        save_path: str | Path,
+        save_path: None | str | Path, # REFACTOR: add documentation about None
         type_classifier: TunableClassifierType,
         name: str = "ens",
         ensemble_algo = Literal["random", "meta"],
@@ -41,6 +42,7 @@ class EnsembleClassifier(ClassifierMixin, BaseEstimator):
         raise_error_fit_member: bool = False,
         raise_error_void_ensemble: bool = True,
         meta_config: None | MetaConfig = None,
+        bag_cv: None | dict | BagCV = None, ##REFACTOR add documentation
         log: int = 20
     ):
         '''
@@ -148,6 +150,7 @@ class EnsembleClassifier(ClassifierMixin, BaseEstimator):
         self.raise_error_fit_member=raise_error_fit_member
         self.raise_error_void_ensemble=raise_error_void_ensemble
         self.meta_config=meta_config
+        self.bag_cv=bag_cv
 
 
     def fit(
@@ -169,18 +172,25 @@ class EnsembleClassifier(ClassifierMixin, BaseEstimator):
             raise ValueError(f"With 'ensemble_algo' != 'meta', 'meta_config' must be None.")
         
         if self.ensemble_algo == "meta" and self.meta_config is not None:
-            self.meta_config.check()
+            self.meta_config._check()
 
         if self.ensemble_algo == "meta" and self.meta_config is None:
             self.meta_config = MetaConfig(meta_strategy="random_uniform_from_best")
 
         check_validation_set(validation_set_size)
         
-        check_validation_set_classifier_combination(
-            validation_set=validation_set_size,
-            classifier_spec=classifer_spec,
-            type_classifier=self.type_classifier
-        )
+        # check_validation_set_classifier_combination(
+        #     validation_set=validation_set_size,
+        #     classifier_spec=classifer_spec,
+        #     type_classifier=self.type_classifier
+        # )
+
+        bag_cv = BagCV.build_from_dict(self.bag_cv) if isinstance(self.bag_cv, dict) else self.bag_cv
+        
+        if validation_set_size and isinstance(self.bag_cv, BagCV) and self.bag_cv.use_oof_as_validation:
+            raise ValueError(
+                "'validation_set_size' must be None when oof is used as validation in bagging ensembling."
+            )
         
         resolved_device = handle_device(
             input_device=self.device,
@@ -225,6 +235,7 @@ class EnsembleClassifier(ClassifierMixin, BaseEstimator):
             log=self.log,
             raise_error_fit_member=self.raise_error_fit_member,
             raise_error_void_ensemble=self.raise_error_void_ensemble,
+            bag_cv=self.bag_cv
             **ensure_or_create(asdict_shallow(self.meta_config), dict)##refactor here pass directly the metaconfig
         )
 

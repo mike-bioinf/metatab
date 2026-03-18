@@ -13,6 +13,7 @@ class BagCV:
     n_repeats: int
     n_folds: int
     seed: int
+    use_oof_as_validation: bool
 
     @classmethod
     def build_from_dict(cls, dictionary: dict) -> "BagCV":
