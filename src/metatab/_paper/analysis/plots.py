@@ -184,6 +184,8 @@ def draw_scatter_diagonal_plot(
 ) -> Axes:
     '''
     Plot paired xy values in a scatter plot with a diagonal line representing equal values.
+    The function set x_left/y_bottom and x_right/y_top to the min and max values found in xy
+    to assure a correct interpreation of paired values.
 
     Parameters:
         ax (Axes): 
@@ -244,6 +246,10 @@ def draw_scatter_diagonal_plot(
     )
     
     ax.plot([0, 1], [0, 1], color='black', linestyle='-', transform=ax.transAxes)
+    min_value = min(df[x_column].min(), df[y_column].min())
+    max_value = max(df[x_column].max(), df[y_column].max())
+    ax.set_xlim(right=max_value, left=min_value)
+    ax.set_ylim(top=max_value, bottom=min_value)
 
     if top_left_anno is not None:
         ax.text(
