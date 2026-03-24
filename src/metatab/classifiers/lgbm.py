@@ -30,12 +30,13 @@ class _BaseLGBMSpec:
     main_device = "cpu"
     supported_devices = ["cpu"]
     default_preprocessing = "base"
-    sampler_function = _lgbm_sampler_function
+    hps_sampler_function = _lgbm_sampler_function
     initialize_search_function = lambda: None
     params_as_object_columns_in_df_search = None
 
 
 class LGBMSpec(_BaseLGBMSpec):
+    type_classifier = "lgbm"
     early_stop_on_validation_set = False
     default_params = {
         "min_child_samples": 1, # the default of 31 is too high for small datasets
@@ -60,6 +61,7 @@ class LGBMSpec(_BaseLGBMSpec):
 
 
 class EsLGBMSpec(_BaseLGBMSpec):
+    type_classifier = "es_lgbm"
     early_stop_on_validation_set = True
     default_params = {
         "n_estimators": 10000, # high number for early stop

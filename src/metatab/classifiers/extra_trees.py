@@ -21,6 +21,7 @@ def _extra_trees_sampler_function(trial: optuna.Trial) -> dict:
 
 
 class ExtraTreeSpec:
+    type_classifier = "extra_trees"
     classifier_class = ExtraTreesClassifier
     early_stop_on_validation_set = False
     random_state_parameter = "random_state"
@@ -32,6 +33,6 @@ class ExtraTreeSpec:
     default_params = {}
     fixed_params = {"n_estimators": 1000}
     callbacks_on_params = None
-    sampler_function = _extra_trees_sampler_function
+    hps_sampler_function = _extra_trees_sampler_function
     initialize_search_function = lambda: None
     params_as_object_columns_in_df_search = ["max_features"]

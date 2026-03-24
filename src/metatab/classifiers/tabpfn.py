@@ -117,6 +117,7 @@ def _tabpfn_sampler_function(trial: optuna.Trial) -> dict:
 
 
 class TabPFNSpec:
+    type_classifier = "tabpfn"
     classifier_class = TabPFNClassifier
     early_stop_on_validation_set = False
     random_state_parameter = "random_state"
@@ -140,7 +141,7 @@ class TabPFNSpec:
         }
     }
     callbacks_on_params = None
-    sampler_function = _tabpfn_sampler_function
+    hps_sampler_function = _tabpfn_sampler_function
     initialize_search_function = lambda: _download_and_return_tabpfn_checkpoints(TABPFN_CHECKPOINTS)
     #refactor: check if these needed to avoid pandas warning
     params_as_object_columns_in_df_search = [

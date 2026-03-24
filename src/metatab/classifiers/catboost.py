@@ -38,12 +38,13 @@ class _BaseCatBoostSpec:
     main_device = "cpu"
     supported_devices = ["cpu"]
     default_preprocessing = "base"
-    sampler_function = _catboost_sampler_function
+    hps_sampler_function = _catboost_sampler_function
     initialize_search_function = lambda: None
     params_as_object_columns_in_df_search = None
 
 
 class CatBoostSpec(_BaseCatBoostSpec):
+    type_classifier = "catboost"
     early_stop_on_validation_set = False
     default_params = {"verbose": False, "allow_writing_files": False}
     fixed_params = {
@@ -59,6 +60,7 @@ class CatBoostSpec(_BaseCatBoostSpec):
 
 
 class EsCatBoostSpec(_BaseCatBoostSpec):
+    type_classifier = "es_catboost"
     early_stop_on_validation_set = True
     default_params = {
         "n_estimators": 10000,

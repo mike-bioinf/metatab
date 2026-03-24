@@ -37,12 +37,13 @@ class _BaseXGBSpec:
     main_device = "cpu"
     supported_devices = ["cpu"]
     default_preprocessing = "base"
-    sampler_function = _xgb_sampler_function
+    hps_sampler_function = _xgb_sampler_function
     initialize_search_function = lambda: None
     params_as_object_columns_in_df_search = None
 
 
 class XGBSpec(_BaseXGBSpec):
+    type_classifier = "xgb"
     early_stop_on_validation_set = False
     default_params = {"verbosity": 0}
     fixed_params = {"n_estimators": 1000, "verbosity": 0}
@@ -52,6 +53,7 @@ class XGBSpec(_BaseXGBSpec):
 
 
 class EsXGBSpec(_BaseXGBSpec):
+    type_classifier = "es_xgb"
     early_stop_on_validation_set = True
     default_params = {
         "n_estimators": 10000, # high number for early stop

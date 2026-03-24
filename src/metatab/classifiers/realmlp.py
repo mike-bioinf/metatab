@@ -150,6 +150,7 @@ def _realmlp_sampler_function(trial: optuna.Trial) -> dict:
 
 
 class RealMLPSpec:
+    type_classifier = "realmlp"
     classifier_class = RealMLPClassifier
     early_stop_on_validation_set = True
     random_state_parameter = "random_state"
@@ -173,6 +174,6 @@ class RealMLPSpec:
         "early_stopping_additive_patience": 60 # we x3 the default of 20 to be less aggressive
     },
     callbacks_on_params = None
-    sampler_function = _realmlp_sampler_function
+    hps_sampler_function = _realmlp_sampler_function
     initialize_search_function = lambda: None
     params_as_object_columns_in_df_search = None

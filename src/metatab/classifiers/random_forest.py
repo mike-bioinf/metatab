@@ -21,6 +21,7 @@ def _random_forest_sampler_function(trial: optuna.Trial) -> dict:
 
 
 class RandomForestSpec:
+    type_classifier = "random_forest"
     classifier_class = RandomForestClassifier
     early_stop_on_validation_set = False
     random_state_parameter = "random_state"
@@ -32,6 +33,6 @@ class RandomForestSpec:
     default_params = {}
     fixed_params = {"n_estimators": 1000}
     callbacks_on_params = None
-    sampler_function = _random_forest_sampler_function
+    hps_sampler_function = _random_forest_sampler_function
     initialize_search_function = lambda: None
     params_as_object_columns_in_df_search = ["max_features"]

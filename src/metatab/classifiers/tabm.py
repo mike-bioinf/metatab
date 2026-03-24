@@ -154,6 +154,7 @@ def _tabm_sampler_function(trial: optuna.Trial) -> dict:
 
 
 class TabMSpec:
+    type_classifier = "tabm"
     classifier_class = TabMClassifier
     early_stop_on_validation_set = True
     random_state_parameter = "random_state"
@@ -188,6 +189,6 @@ class TabMSpec:
         "allow_amp": True
     }
     callbacks_on_params = None
-    sampler_function = _tabm_sampler_function
+    hps_sampler_function = _tabm_sampler_function
     initialize_search_function = lambda: None
     params_as_object_columns_in_df_search = None
