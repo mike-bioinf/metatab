@@ -1,12 +1,14 @@
 import numpy as np
 import pandas as pd
+from typing import Callable
+from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.utils.validation import check_is_fitted
 from autogluon.tabular import TabularPredictor
 from metatab.utils.types import XType, YType
 
 
 
-class AutoGluonClassifier:
+class AutoGluonClassifier(ClassifierMixin, BaseEstimator):
     def __init__(
         self,
         eval_metric: str,
@@ -95,4 +97,5 @@ class AutoGluonSpec:
         "presets": "extreme_quality",
         "time_limit": 7200, # 2 hours
     }
+    set_params_function: Callable[[AutoGluonClassifier, dict], AutoGluonClassifier] = lambda cls, hps: cls.set_params(**hps)
     callbacks_on_params = None

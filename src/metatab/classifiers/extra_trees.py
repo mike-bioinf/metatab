@@ -1,4 +1,5 @@
 import optuna
+from typing import Callable
 from sklearn.ensemble import ExtraTreesClassifier
 
 
@@ -35,4 +36,5 @@ class ExtraTreeSpec:
     callbacks_on_params = None
     hps_sampler_function = _extra_trees_sampler_function
     initialize_search_function = lambda: None
+    set_params_function: Callable[[ExtraTreesClassifier, dict], ExtraTreesClassifier] = lambda cls, hps: cls.set_params(**hps)
     params_as_object_columns_in_df_search = ["max_features"]

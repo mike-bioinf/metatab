@@ -1,4 +1,5 @@
 import optuna
+from typing import Callable
 from functools import partial
 from catboost import CatBoostClassifier
 from metatab.utils.core import adjust_objective_logloss_and_num_classes, adjust_es_logloss_metric
@@ -40,6 +41,7 @@ class _BaseCatBoostSpec:
     default_preprocessing = "base"
     hps_sampler_function = _catboost_sampler_function
     initialize_search_function = lambda: None
+    set_params_function: Callable[[CatBoostClassifier, dict], CatBoostClassifier] = lambda cls, hps: cls.set_params(**hps)
     params_as_object_columns_in_df_search = None
 
 

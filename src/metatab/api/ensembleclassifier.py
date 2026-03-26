@@ -5,14 +5,12 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 from sklearn.base import ClassifierMixin, BaseEstimator
 from sklearn.utils.validation import check_is_fitted, check_X_y
-from metatab.ensemble.single import EnsembleEstimator
-from metatab.utils.general import asdict_shallow, ensure_or_create
+from metatab.ensemble import EnsembleEstimator
 from metatab.api.metaconfig import MetaConfig
 from metatab.classifiers.registry import get_classifier_specs_from_registry
-from metatab.ensemble.utils import BagCV
+from metatab.search.search import UnoptimizedRandomSearch
 
-from metatab.utils.api import (
-    create_pipeline, 
+from metatab.utils.api import ( 
     encode_y, 
     handle_device, 
     check_validation_set, 
@@ -20,6 +18,7 @@ from metatab.utils.api import (
 )
 
 if TYPE_CHECKING:
+    from metatab.search.configuration import PipelineConfiguration
     from metatab.preprocessing.types import PreprocessingStrategy
     from metatab.utils.types import XType, YType
     from metatab.utils.types import TunableClassifierType
@@ -29,12 +28,13 @@ if TYPE_CHECKING:
 class EnsembleClassifier(ClassifierMixin, BaseEstimator):
     def __init__(
         self,
-        save_path: None | str | Path, # REFACTOR: add documentation about None
         type_classifier: TunableClassifierType,
+        save_path: None | str | Path,
         name: str = "ens",
         ensemble_algo = Literal["random", "meta"],
         n_members: int = 16,
-        preprocessing: PreprocessingStrategy = "estimator_default",
+        preprocessing: PreprocessingStrategy | list[PreprocessingStrategy] = "estimator_default", ## REFACTOR: change here
+        n_bag_cv_folds: int | None = None,
         time_limit: int = 10_000_000,
         seed: int = 0,
         n_threads: int = 1,
@@ -42,21 +42,19 @@ class EnsembleClassifier(ClassifierMixin, BaseEstimator):
         raise_error_fit_member: bool = False,
         raise_error_void_ensemble: bool = True,
         meta_config: None | MetaConfig = None,
-        bag_cv: None | dict | BagCV = None, ##REFACTOR add documentation
         log: int = 20
     ):
         '''
         Ensemble a classifier.
 
         Parameters:
-            save_path (str | Path):
-                Folder where ensemble members are saved. 
-                Members are serialized with pickle and named using the ensemble name plus a number. 
-                The folder is created when not existent.
-            
             type_classifier (TunableClassifierType):
                 Classifier to ensemble.
 
+            save_path (str | Path):
+                Disk folder where to save ensemble models. Models are serialized with pickle. 
+                The folder is created when not existent. If None models are kept in memory.
+            
             name (str, optional): 
                 Name of the ensemble, used as a prefix for member filenames.
             
@@ -68,10 +66,15 @@ class EnsembleClassifier(ClassifierMixin, BaseEstimator):
 
             n_members (int, optional):
                 Number of ensemble members.
-                In other terms the number of hps configuration to derive.
+                In other terms the number of configurations to derive.
 
             preprocessing (PreprocessingStrategy, optional):
-                Preprocessing strategy to apply.
+                Preprocessing strategies to use.
+                If multiple startegies are passed then a random selection for each ensemble member is done.
+
+            n_bag_cv_folds (int | None, optional):
+                Number of folds to use in a cv bagging procedure.
+                ### REFACTOR: explain better.
 
             time_limit (int, optional):
                 Time in seconds to spend for ensemble construction.
@@ -142,6 +145,7 @@ class EnsembleClassifier(ClassifierMixin, BaseEstimator):
         self.ensemble_algo=ensemble_algo
         self.n_members=n_members
         self.preprocessing=preprocessing
+        self.n_bag_cv_folds=n_bag_cv_folds
         self.time_limit=time_limit
         self.log=log
         self.seed=seed
@@ -150,7 +154,6 @@ class EnsembleClassifier(ClassifierMixin, BaseEstimator):
         self.raise_error_fit_member=raise_error_fit_member
         self.raise_error_void_ensemble=raise_error_void_ensemble
         self.meta_config=meta_config
-        self.bag_cv=bag_cv
 
 
     def fit(
@@ -176,20 +179,25 @@ class EnsembleClassifier(ClassifierMixin, BaseEstimator):
 
         if self.ensemble_algo == "meta" and self.meta_config is None:
             self.meta_config = MetaConfig(meta_strategy="random_uniform_from_best")
+        
+        if self.n_members < 1:
+            raise ValueError("'n_members' must be greater than 0.")
+        
+        if self.n_bag_cv_folds and self.n_bag_cv_folds < 2:
+            raise ValueError("'n_bag_cv_folds' must be an int greater or equal than 2.")
 
         check_validation_set(validation_set_size)
         
-        # check_validation_set_classifier_combination(
-        #     validation_set=validation_set_size,
-        #     classifier_spec=classifer_spec,
-        #     type_classifier=self.type_classifier
-        # )
-
-        bag_cv = BagCV.build_from_dict(self.bag_cv) if isinstance(self.bag_cv, dict) else self.bag_cv
+        check_validation_set_classifier_combination(
+            validation_set=validation_set_size,
+            classifier_spec=classifer_spec,
+            type_classifier=self.type_classifier
+        )
         
-        if validation_set_size and isinstance(self.bag_cv, BagCV) and self.bag_cv.use_oof_as_validation:
+        ### REFACTOR: render this more clear for users if maintened this way
+        if validation_set_size and self.n_bag_cv_folds:
             raise ValueError(
-                "'validation_set_size' must be None when oof is used as validation in bagging ensembling."
+                "'validation_set_size' must be None when 'n_bag_cv_folds' is specified."
             )
         
         resolved_device = handle_device(
@@ -200,46 +208,25 @@ class EnsembleClassifier(ClassifierMixin, BaseEstimator):
         
         # execute configuration code necessary for ensembling
         classifer_spec.initialize_search_function()
-        label_encoder, y = encode_y(X, y)
-        
-        resolved_preprocessing = classifer_spec.default_preprocessing \
-            if self.preprocessing == "estimator_default" \
-            else self.preprocessing
-        
-        pipe = create_pipeline(
-            classifier_class=classifer_spec.classifier_class,
-            classifier_params=classifer_spec.fixed_params,
-            callbacks_on_classifier_params=classifer_spec.callbacks_on_params,
-            y=y,
-            preprocessing=resolved_preprocessing,
-            classifier_random_state_parameter=classifer_spec.random_state_parameter,
-            classifier_nthreads_paramater=classifer_spec.n_threads_parameter,
-            classifier_device_parameter=classifer_spec.device_parameter,
-            seed=self.seed,
-            n_threads=self.n_threads,
-            device=resolved_device
-        )
+        label_encoder, y = encode_y(X, y)                
+        pipe_confs = self._get_pipe_configurations(classifer_spec)
 
         estimator = EnsembleEstimator(
             name=self.name,
-            algo=self.ensemble_algo,
-            n_members=self.n_members,
             save_path=self.save_path,
-            pipe=pipe,
-            type_estimator=self.type_classifier,##refactor: change name parameter here
-            preprocessing=resolved_preprocessing,
-            early_stop_on_validation_set=classifer_spec.early_stop_on_validation_set,
+            pipe_configurations=pipe_confs,
+            n_bag_cv_folds=self.n_bag_cv_folds,
             validation_set_size=validation_set_size,
-            sampler_function=classifer_spec.sampler_function,
-            time_limit=self.time_limit,
-            log=self.log,
             raise_error_fit_member=self.raise_error_fit_member,
             raise_error_void_ensemble=self.raise_error_void_ensemble,
-            bag_cv=self.bag_cv
-            **ensure_or_create(asdict_shallow(self.meta_config), dict)##refactor here pass directly the metaconfig
+            seed=self.seed,
+            device=resolved_device,
+            n_threads=self.n_threads,
+            time_limit=self.time_limit,
+            log=self.log
         )
 
-        self.estimator_ = estimator.fit(X, y)        
+        self.estimator_ = estimator.fit(X, y)     
         self.classes_ = label_encoder.classes_
         for k, v in self.estimator_.collect_fit_info().items(): setattr(self, k, v)
         return self
@@ -292,3 +279,18 @@ class EnsembleClassifier(ClassifierMixin, BaseEstimator):
         '''Delete the ensemble models from disk'''
         check_is_fitted(self, "estimator_")       
         self.estimator_.delete_models_from_disk()
+
+
+    def _get_pipe_configurations(self, classifier_spec) -> list[PipelineConfiguration]:
+        if self.ensemble_algo == "random":
+            search_object = UnoptimizedRandomSearch(
+                classifier_spec=classifier_spec,
+                preprocessing=self.preprocessing,
+                n_confs=self.n_members,
+                seed=self.seed
+            )
+        else:
+            ## REFACTOR: build MetaSearch object
+            pass
+
+        return search_object.get_configurations()

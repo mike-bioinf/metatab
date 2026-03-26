@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import warnings
 import optuna
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Literal, Callable
 from sklearn.utils.validation import check_is_fitted
 from pytabkit import TabM_D_Classifier
 from metatab.utils.core import learn_sklearn_features_attributes, check_predict_features
@@ -191,4 +191,5 @@ class TabMSpec:
     callbacks_on_params = None
     hps_sampler_function = _tabm_sampler_function
     initialize_search_function = lambda: None
+    set_params_function: Callable[[TabMClassifier, dict], TabMClassifier] = lambda cls, hps: cls.set_params(**hps)
     params_as_object_columns_in_df_search = None

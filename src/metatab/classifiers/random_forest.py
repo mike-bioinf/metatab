@@ -1,4 +1,5 @@
 import optuna
+from typing import Callable
 from sklearn.ensemble import RandomForestClassifier
 
 
@@ -35,4 +36,5 @@ class RandomForestSpec:
     callbacks_on_params = None
     hps_sampler_function = _random_forest_sampler_function
     initialize_search_function = lambda: None
+    set_params_function: Callable[[RandomForestClassifier, dict], RandomForestClassifier] = lambda cls, hps: cls.set_params(**hps)
     params_as_object_columns_in_df_search = ["max_features"]

@@ -1,28 +1,35 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
-from metatab.classifiers.registry import ClassifierSpec
+from sklearn.pipeline import Pipeline
+from metatab.utils.general import ensure_or_create
+from metatab.preprocessing.preprocessing import build_preprocessing_pipeline
 
 if TYPE_CHECKING:
-    from sklearn.pipeline import Pipeline
+    from metatab.utils.types import YType
     from metatab.preprocessing.types import PreprocessingStrategy
+    from metatab.classifiers.registry import ClassifierSpec
 
 
 
 def build_pipeline(
+    *,
     preprocessing: PreprocessingStrategy, 
     hps: dict, 
-    classifier_spec: ClassifierSpec, ## can be smplified with the name of the random_state_parameter ???
-    classifier_seed: int
+    classifier_spec: ClassifierSpec,
+    classifier_seed: int,
+    classifier_device: str,
+    classifier_nthreads: int,
+    y: YType
 ) -> Pipeline:
     '''
-    Utility that builds the pipeline using the preprocessing and dynamic hps in input.
+    Utility that builds a pipeline (preprocessing + classifier).
 
     Parameters:
-        preprocessing (PreprocessingStrategy): Preprocessing to use.
+        preprocessing (PreprocessingStrategy): Preprocessing to use.    
         
         hps (dict): classifier hps.
-        
+
         classifier_spec (ClassifierSpec): 
             Classifier dataclass of which we are building the pipeline.
         
@@ -30,10 +37,30 @@ def build_pipeline(
             integer used to seed the classifier object.
             When the classifier has no a random_state-like paramater it is ignored.
 
+        y (YType): y labels. Needed for callbacks mechanisms.
+
     Returns:
         Pipeline: The pipeline object.
     '''
-    pass
-    # params_to_fit = {**params, self.clf_random_state_parameter: int(rng.integers(0, 2**32))}
-    ### ATTENZIONE AL SET. Qui dobbiamo finalizzare i params.
-    # set_params_into_clf(pipe, params_to_fit, set_tabpfn_inference_config=True, finalize_tabpfn_model_path=True)
+    preprocessing_pipeline = build_preprocessing_pipeline(preprocessing)
+    
+    hps = {
+        **hps,
+        **{
+            param: value
+            for param, value in [
+                (classifier_spec.random_state_parameter, classifier_seed),
+                (classifier_spec.n_threads_parameter, classifier_nthreads),
+                (classifier_spec.device_parameter, classifier_device),
+            ]
+            if param is not None
+        }
+    }
+    
+    for callback in ensure_or_create(classifier_spec.callbacks_on_params, list):
+        hps = callback(hps, y, False)
+
+    classifier = classifier_spec.classifier_class()
+    classifier_spec.set_params_function(classifier, hps)
+    full_pipeline = Pipeline(preprocessing_pipeline.steps + [("classifier", classifier)])
+    return full_pipeline

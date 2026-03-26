@@ -1,19 +1,14 @@
 from __future__ import annotations
 
-import re
-import sys
 import time
-import warnings
+import numpy as np
 import pandas as pd
 from copy import deepcopy
 from typing import TYPE_CHECKING, Literal, Any
 from sklearn.pipeline import Pipeline
 from sklearn.model_selection import train_test_split
-from tabpfn import TabPFNClassifier
-from tabpfn.model_loading import _user_cache_dir
 
 if TYPE_CHECKING:
-    import numpy as np
     from metatab.utils.types import XType, YType, Classifier
     from sklearn.pipeline import Pipeline
 
@@ -48,21 +43,22 @@ def remove_prefix_from_params(params_dict: dict[str, Any], string: str) -> dict:
 
 
 
-def fit_with_early_stop_on_validation_set(
+def fit_using_validation_set(
     *,
     pipe: Pipeline,
     X: XType,
     y: YType,
+    X_val : XType | None = None,
+    y_val: YType | None = None,
+    validation_set_size: float | None = None,
     seed: int,
-    validation_set_size: float,
-    eval_set_parameter: str = "eval_set",
-    fit_classifier_kwargs: dict | None = None,
     return_fit_time: bool = False
  ) -> Pipeline | tuple[Pipeline, float]:
     '''
-    Utility to fit an estimator with early stop on a validation set.
-    The estimator must implement the early stop capability at its 
-    fit interface, following a GBDT-like API ("eval_set-like" parameter).
+    Utility to fit a classifier in a pipe needing a validation set.
+    Supports both external validation or draws the set from the input data.
+    The classifier (pipe head) must support the validation set at its fit interface, 
+    through the "eval_set" parameter, accepting a tuple (X_val, y_val).
 
     Parameters:
         pipe (Pipeline): 
@@ -72,20 +68,21 @@ def fit_with_early_stop_on_validation_set(
         
         y (YType): Training labels.
         
+        X_val (XType | None):
+            X data to use as validation (external to X).
+
+        y_val (YType | None):
+            y data to use as validation (external to y)
+        
+        validation_set_size (float | None): 
+            Ratio of training data to use as validation.
+            The validation set is drawn from "X" and "y".
+            Must be a number in (0, 1) or None.
+
         seed (int): 
             Seed for reproducibility used ONLY in the train/val splitting.
+            Used only with "validation_set_size" is specified.
         
-        validation_set_size (float): 
-            Ratio of training data to use as validation.
-            Must be a number in (0, 1).
-        
-        eval_set_parameter (str, optional): 
-            Name of the parameter accepting the validation sets.
-
-        fit_classifier_kwargs (None | dict, optional):
-            A dict unpackaged in the classifier fit calls.
-            The dict keys can be either in classifier or pipeline "formats".
-
         return_fit_time (bool, optional):
             Whether to return the fit time along with the fitted pipe.
             If True returns a tuple [pipe, fit_time], otherwise pipe directly.
@@ -94,22 +91,28 @@ def fit_with_early_stop_on_validation_set(
         Pipeline|tuple: 
         The fitted pipeline alone or in a tuple with the fit time.
     '''
-    X_train, X_val, y_train, y_val = train_test_split(
-        X, 
-        y, 
-        test_size=validation_set_size,
-        random_state=seed,
-        stratify=y
-    )
+    if X_val is None and y_val is not None:
+        raise ValueError("X_val is None and y_val is not")
 
-    if fit_classifier_kwargs is None:
-        fit_classifier_kwargs = {}
-    else:  
-        # we fit the underlying classifier directly (see next)
-        fit_classifier_kwargs = remove_prefix_from_params(
-            params_dict=fit_classifier_kwargs, 
-            string=f"{pipe.steps[-1][0]}__"
+    if y_val is None and X_val is not None:
+        raise ValueError("y_val is None and X_val is not.")
+
+    if X_val is None and validation_set_size is None:
+        raise ValueError("One between X/y_val and validation_set_size must be specified")
+
+    if X_val is not None and validation_set_size is not None:
+        raise ValueError("Both X/y_val and validation_set_size are specified. Pick one option.")
+
+    if X_val is None:
+        X_train, X_val, y_train, y_val = train_test_split(
+            X, 
+            y, 
+            test_size=validation_set_size,
+            random_state=seed,
+            stratify=y
         )
+    else:
+        X_train, y_train = X, y
 
     # we always consider the preprocessing in the fit time
     start_fit_time = time.time()
@@ -122,20 +125,10 @@ def fit_with_early_stop_on_validation_set(
         preprocessing_pipeline: Pipeline = pipe[:-1]
         X_train_transformed = preprocessing_pipeline.fit_transform(X_train)
         X_val_transformed = preprocessing_pipeline.transform(X_val)
-
-        clf.fit(
-            X_train_transformed, y_train, 
-            **{eval_set_parameter: [(X_val_transformed, y_val)]},
-            **fit_classifier_kwargs
-        )
-
+        clf.fit(X_train_transformed, y_train, eval_set=[(X_val_transformed, y_val)])
     else:
         # we fit directly the classifier
-        pipe[-1].fit(
-            X_train, y_train,
-            **{eval_set_parameter: [(X_val, y_val)]},
-            **fit_classifier_kwargs
-        )
+        pipe[-1].fit(X_train, y_train, eval_set=[(X_val, y_val)])
     
     fit_time = time.time() - start_fit_time
 
@@ -143,70 +136,6 @@ def fit_with_early_stop_on_validation_set(
         return [pipe, fit_time]
     else:
         return pipe
-    
-
-
-def set_params_into_clf(
-    pipe: Pipeline, 
-    params: dict[str, Any],
-    set_tabpfn_inference_config: bool = True,
-    finalize_tabpfn_model_path: bool = True
-) -> None:
-    '''
-    Set the classifier (pipeline head) parameters in place. 
-    The method works with all classifiers, and with pipeline or classifier formatted params.
-    The method overwrites the pre-existent parameters values for the ones specified in params.
-    For tabpfn classifiers is possible to micro manage the setting of the `inference_config__` marked parameters,
-    and to finalize the `model_path` param with the full path of the user tabpfn models cache directory.
-    '''
-    clf: Classifier = pipe[-1]
-    params = remove_prefix_from_params(params, string=f"{pipe.steps[-1][0]}__")
-
-    if not isinstance(clf, TabPFNClassifier):
-        clf.set_params(**params)
-    else:
-        if "inference_config" in params.keys():
-            raise KeyError(
-                "The inference_config parameter cannot be handled explicity.",
-                "Instead its keys must be passed as normal parameters marked with the 'inference_config__' prefix."
-            )
-
-        inference_config = {}
-        cleaned_params = {}
-        
-        for k, v in params.items():
-            if k.startswith("inference_config__"):
-                inference_config[k.removeprefix("inference_config__")] = v
-            else:
-                cleaned_params[k] = v
-
-        if set_tabpfn_inference_config:
-            if not inference_config:
-                warnings.warn((
-                    "Derived an empty inference_config dict."
-                    " It will overwrite the classifier's existing inference_config."
-                ))
-            clf.set_params(inference_config=inference_config, **cleaned_params)
-        else:
-            if inference_config:
-                warnings.warn((
-                    "Derived a non-empty inference_config dict, but since "
-                    "set_tabpfn_inference_config=False, it will be ignored."
-                ))
-            clf.set_params(**cleaned_params)
-
-        if finalize_tabpfn_model_path:
-            if "model_path" in params.keys():
-                ckpt = params["model_path"]
-                cache_dir = _user_cache_dir(platform=sys.platform, appname="tabpfn").resolve()
-                if re.match(str(cache_dir), ckpt):
-                    warnings.warn((
-                        "tabpfn ckpt has already been finalized with the cache dir path. "
-                        "The finalization process is therefore skipped."
-                    ))
-                    return None
-                else:
-                    clf.set_params(model_path = str(cache_dir / ckpt))
 
 
 

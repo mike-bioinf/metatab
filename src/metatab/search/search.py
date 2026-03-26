@@ -1,17 +1,18 @@
 from __future__ import annotations
 
 import sys
+import math
+import time
 import logging
 import warnings
-import time
 import optuna
 import numpy as np
 from typing import Literal, TYPE_CHECKING
 from metatab.utils.general import enlist
 from metatab.utils.logging import create_logger
-from metatab.temp_search.configuration import PipelineConfiguration
-from metatab.temp_search.cross_validator import CrossValidator
 from metatab.utils.exceptions import PipelineFitError
+from metatab.search.configuration import PipelineConfiguration
+from metatab.search.score import PipelineConfigurationCVScorer
 
 if TYPE_CHECKING:
     from metatab.classifiers.registry import ClassifierSpec
@@ -20,69 +21,83 @@ if TYPE_CHECKING:
 
 
 ## REFACTOR: complete here
+# 0) Supports multiple classifiers ??
+# 1) confs per classifier?
+## this should be established above at api level and then we adjust this according
 class MetaSearch:
     '''
-    Search done via the metaframework.
+    Search done using the meta-framework.
     '''
+    ## UnoptimizedRandomSearch over one or multiple classifiers and get list confs
+    ## evaluation though surrogate (meta-machinery)
+    ## pick the best-inferred confs
+    ## return them
     pass
 
 
 
 class SearchWithFixedConfiguration:
     '''
-    Select the best configurations from a pre-defined list.
-    The configurations are evaluated by the evaluator, and the one
-    optimizing the score accoring to the chosen direction is selected. 
+    Select the best configuration from a pre-defined list.
+    The configurations are scored by the scorer, and the one
+    optimizing the score according to the chosen direction is selected. 
     '''
     def __init__(
         self,
-        confs: list[PipelineConfiguration],
-        evaluator: CrossValidator,
+        pipe_configurations: list[PipelineConfiguration],
+        scorer: PipelineConfigurationCVScorer,
         direction_optimization: Literal["minimize", "maximize"],
         log: int,
-        time_limit: int
+        time_limit: int,
+        raise_error_during_search: bool
     ):
-        self.confs=confs
-        self.evaluator=evaluator
+        self.pipe_configurations=pipe_configurations
+        self.scorer=scorer
         self.direction_optimization=direction_optimization
         self.log=log
         self.time_limit=time_limit
+        self.raise_error_during_search=raise_error_during_search
 
     def get_configurations(self) -> list[PipelineConfiguration]:
         # return the single configuration which is the best by definition
-        if len(self.confs) == 1:
-            return self.confs
+        if len(self.pipe_configurations) == 1:
+            return self.pipe_configurations
         
         start_time = time.time()
+        logger = create_logger("search_fix_conf_logger", sys.stdout, formatter="standard")
+        logger.info("Starting optimation study with fixed configurations.")
+        
+        best_score = -math.inf if self.direction_optimization == "maximize" else math.inf
+        scores = []
+        best_index = -1 # mock
 
-        formatter = logging.Formatter(
-            fmt="[%(levelname).1s %(asctime)s,%(msecs)03d] %(message)s",
-            datefmt="%Y-%m-%d %H:%M:%S"
-        )
+        for i, pipe_conf in enumerate(self.pipe_configurations):
+            if (time.time() - start_time) > self.time_limit: break
+            score = safe_score(pipe_conf, self.scorer, self.raise_error_during_search)
+            scores.append(score)
 
-        meta_logger = create_logger("meta_logger", sys.stdout, formatter)
-        meta_logger.info("Starting optimation study with fixed configurations.")
+            if not np.isnan(score):
+                if self.direction_optimization == "maximize":
+                    if score > best_score:
+                        best_score = score
+                        best_index = i
+                else:
+                    if score < best_score:
+                        best_score = score
+                        best_index = i
+            
+            logger.info((
+                f"Trial {i} finished with value: {score} and parameters: {pipe_conf.asdict()}."
+                f" Best is trial {best_index} with value: {best_score}."
+            ))
 
-        losses = []
-        best_conf_index = 0
-
-        for i, conf in enumerate(self.confs):
-            if (time.time() - start_time) > self.time_limit:
-                break
-            ## REFACTOR: complete here
-            ## build pipeline from conf
-            ## evaluate pipeline
-            ## store loss 
-            ## evaluate best
-            ## log
-
-        if not losses:
+        if not scores:
             raise ValueError("No trial has been evaluated. Increase the time limit.")
         
-        if np.isnan(np.array(losses)).all():
+        if np.isnan(np.array(scores)).all():
             raise ValueError("All trials have failed.")
         
-        return self.confs[best_conf_index]
+        return self.pipe_configurations[best_index]
 
 
 
@@ -95,9 +110,9 @@ class OptunaSearch:
     def __init__(
         self,
         classifier_spec: ClassifierSpec,
-        preprocessing: PreprocessingStrategy,
+        preprocessing: PreprocessingStrategy | list[PreprocessingStrategy],
         optuna_sampler: Literal["random", "tpe"],
-        evaluator: CrossValidator,
+        scorer: PipelineConfigurationCVScorer,
         n_trials: int,
         direction_optimization: Literal["minimize", "maximize"],
         time_limit: int,
@@ -108,7 +123,7 @@ class OptunaSearch:
         self.classifier_spec=classifier_spec
         self.preprocessing = preprocessing
         self.optuna_sampler = optuna_sampler
-        self.evaluator=evaluator
+        self.scorer=scorer
         self.n_trials=n_trials
         self.direction_optimization=direction_optimization
         self.time_limit=time_limit
@@ -130,7 +145,7 @@ class OptunaSearch:
         
         def preprocessing_sampler(trial: optuna.Trial) -> str:
             return trial.suggest_categorical(
-                name="__classifier_preprocessing", 
+                name="__preprocessing", 
                 choices=enlist(self.preprocessing)
             )
         
@@ -144,8 +159,9 @@ class OptunaSearch:
             def objective(trial):
                 prep = preprocessing_sampler(trial)
                 hps = self.classifier_spec.hps_sampler_function(trial)
-                loss = safe_evaluator_score(self.evaluator, prep, hps, self.classifier_spec, add_fixed_hps=True)
-                return loss
+                pipe_conf = PipelineConfiguration(prep, hps, self.classifier_spec)
+                score = safe_score(pipe_conf, self.scorer, self.raise_error_during_search)
+                return score
             
         with warnings.catch_warnings():
             warnings.filterwarnings(
@@ -159,10 +175,10 @@ class OptunaSearch:
         if not any([t.state == optuna.trial.TrialState.COMPLETE for t in study.trials]):
             raise ValueError("All trials have failed.")
         
-        prep = study.best_trial.params.pop("__classifier_preprocessing")
+        best_prep = study.best_trial.params.pop("__preprocessing")
         # this resolve conditional logic returning a classifier-compatible hp dict
-        hps = self.classifier_spec.hps_sampler_function(study.best_trial.params)
-        best_configuration = PipelineConfiguration(prep, hps, self.classifier_spec)
+        best_hps = self.classifier_spec.hps_sampler_function(study.best_trial)
+        best_configuration = PipelineConfiguration(best_prep, best_hps, self.classifier_spec)
         # we return a list to comply to other search objects
         return [best_configuration]
 
@@ -177,7 +193,7 @@ class UnoptimizedRandomSearch:
     def __init__(
         self,
         classifier_spec: ClassifierSpec,
-        preprocessing: PreprocessingStrategy,
+        preprocessing: PreprocessingStrategy | list[PreprocessingStrategy],
         n_confs: int,
         seed: int
     ) -> "UnoptimizedRandomSearch":
@@ -188,7 +204,7 @@ class UnoptimizedRandomSearch:
 
     def get_configurations(self) -> list[PipelineConfiguration]:
         '''
-        Get `n_confs` configurations and returns them.
+        Get `n_confs` PipelineConfiguration objects and returns them in a list.
         '''
         optuna.logging.set_verbosity(optuna.logging.WARNING) # disable logs
         study = optuna.create_study(sampler=optuna.samplers.RandomSampler(self.seed))
@@ -196,7 +212,7 @@ class UnoptimizedRandomSearch:
         
         def preprocessing_sampler(trial: optuna.Trial) -> str:
             return trial.suggest_categorical(
-                name="__classifier_preprocessing", 
+                name="__preprocessing", 
                 choices=preprocessings
             )
 
@@ -209,28 +225,27 @@ class UnoptimizedRandomSearch:
             
             def mock_objective(trial): 
                 # we trigger the trial sampling
-                preprocessing_sampler(trial)
-                self.classifier_spec.hps_sampler_function(trial)
+                _ = preprocessing_sampler(trial)
+                _ = self.classifier_spec.hps_sampler_function(trial)
                 return 0
             
             study.optimize(mock_objective, n_trials=self.n_confs)
         
-        configurations = []
+        pipe_confs = []
         for t in study.trials:
-            prep = t.params.pop("__classifier_preprocessing")
-            configurations.append(PipelineConfiguration(prep, t.params, self.classifier_spec))
+            prep = t.params.pop("__preprocessing")
+            pipe_confs.append(
+                PipelineConfiguration(prep, self.classifier_spec.hps_sampler_function(t), self.classifier_spec)
+            )
 
-        return configurations
+        return pipe_confs
     
 
 
-def safe_evaluator_score(
-    evaluator: CrossValidator,
+def safe_score(
+    pipe_configuration: PipelineConfiguration,
+    scorer: PipelineConfigurationCVScorer,
     raise_error_during_search: bool, 
-    preprocessing: PreprocessingStrategy, 
-    hps: dict, 
-    classifier_spec: ClassifierSpec,
-    add_fixed_hps: bool
 ) -> float:
     '''
     Utility that controls the error management in the search.
@@ -240,7 +255,7 @@ def safe_evaluator_score(
     When tollerated a nan is returned as score.
     '''
     try:
-        score = evaluator.score(preprocessing, hps, classifier_spec, add_fixed_hps)
+        score = scorer.score(pipe_configuration)
         return score
     except PipelineFitError:
         if raise_error_during_search:

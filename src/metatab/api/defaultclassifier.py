@@ -4,10 +4,10 @@ from typing import TYPE_CHECKING, Literal
 from sklearn.utils.validation import check_is_fitted, check_X_y
 from sklearn.base import BaseEstimator, ClassifierMixin
 from metatab.classifiers.registry import get_classifier_specs_from_registry
-from metatab.utils.core import fit_with_early_stop_on_validation_set
+from metatab.utils.core import fit_using_validation_set
+from metatab.utils.pipeline import build_pipeline
 
-from metatab.utils.api import (
-    create_pipeline, 
+from metatab.utils.api import ( 
     check_validation_set,
     check_validation_set_classifier_combination,
     encode_y, 
@@ -24,7 +24,7 @@ if TYPE_CHECKING:
 
 class DefaultClassifier(ClassifierMixin, BaseEstimator):
     '''
-    Run a classifier with the pre-defined default configuration.
+    Run a classifier with the default configuration.
 
     Parameters:
         type_classifier (DefaultClassifierType):
@@ -39,6 +39,7 @@ class DefaultClassifier(ClassifierMixin, BaseEstimator):
 
         n_threads (int, optional):
             Number of threads used to parallelize classifier fitting.
+            Ignored by classifiers that does not support this.
 
         device (Literal["cpu", "cuda", "auto"], optional):
             Device to fit the model(s) on.
@@ -46,7 +47,6 @@ class DefaultClassifier(ClassifierMixin, BaseEstimator):
             - "auto" falls on "cuda" if available and supported by the classifier; otherwise "cpu".
 
     ## Attributes:
-
         classes_ (np.ndarray): 
             The array of class labels learnt at fit time.
     '''
@@ -72,14 +72,12 @@ class DefaultClassifier(ClassifierMixin, BaseEstimator):
         validation_set_size: float | None = None
     ) -> "DefaultClassifier":
         '''
-        Fit on training data.
+        Fit the classifier.
         
         Parameters:
-            X (XType): 
-                Data to fit.
+            X (XType): Data to fit.
             
-            y (Ytype): 
-                Data labels to fit.
+            y (Ytype): Data labels to fit.
             
             validation_set_size (None | float, optional): 
                 Size of the validation set.
@@ -92,38 +90,28 @@ class DefaultClassifier(ClassifierMixin, BaseEstimator):
         '''
         check_X_y(X, y, dtype=None, ensure_all_finite=False)
         classifier_spec = get_classifier_specs_from_registry(self.type_classifier)
-
         check_validation_set(validation_set_size)
         check_validation_set_classifier_combination(validation_set_size, classifier_spec, self.type_classifier)
-        resolved_device = handle_device(self.device, classifier_spec, self.type_classifier)
-        
-        resolved_preprocessing = classifier_spec.default_preprocessing \
-            if self.preprocessing == "estimator_default"\
-            else self.preprocessing
-        
+        resolved_device = handle_device(self.device, classifier_spec, self.type_classifier)        
         label_encoder, y = encode_y(X, y)
 
-        pipe = create_pipeline(
-            classifier_class=classifier_spec.classifier_class,
-            classifier_params=classifier_spec.default_params,
-            callbacks_on_classifier_params=classifier_spec.callbacks_on_params,
-            y=y,
-            preprocessing=resolved_preprocessing,
-            classifier_random_state_parameter=classifier_spec.random_state_parameter,
-            classifier_nthreads_paramater=classifier_spec.n_threads_parameter,
-            classifier_device_parameter=classifier_spec.device_parameter,
-            seed=self.seed,
-            n_threads=self.n_threads,
-            device=resolved_device
+        pipe = build_pipeline(
+            preprocessing=self.preprocessing,
+            hps=classifier_spec.default_params,
+            classifier_spec=classifier_spec,
+            classifier_seed=self.seed,
+            classifier_device=resolved_device,
+            classifier_nthreads=self.n_threads,
+            y=y
         )
 
         if classifier_spec.early_stop_on_validation_set:
-            self.estimator_ = fit_with_early_stop_on_validation_set(
+            self.estimator_ = fit_using_validation_set(
                 pipe=pipe,
                 X=X,
                 y=y,
-                seed=self.seed,
                 validation_set_size=validation_set_size,
+                seed=self.seed
             )
         else:
             self.estimator_ = pipe.fit(X, y)

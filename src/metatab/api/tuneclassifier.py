@@ -1,15 +1,19 @@
 from __future__ import annotations
 
+import time
+import warnings
 import numpy as np
 from typing import TYPE_CHECKING, Literal
 from sklearn.base import ClassifierMixin, BaseEstimator
 from sklearn.utils.validation import check_is_fitted, check_X_y
-from metatab.hp_search.searchcv import SearchCV
 from metatab.api.metaconfig import MetaConfig
 from metatab.classifiers.registry import get_classifier_specs_from_registry
+from metatab.search.search import OptunaSearch
+from metatab.search.score import PipelineConfigurationCVScorer
+from metatab.utils.pipeline import build_pipeline
+from metatab.utils.core import fit_using_validation_set
 
-from metatab.utils.api import (
-    create_pipeline, 
+from metatab.utils.api import ( 
     encode_y, 
     handle_device, 
     check_validation_set, 
@@ -75,7 +79,7 @@ class TuneClassifier(ClassifierMixin, BaseEstimator):
 
         raise_error_during_search (bool, optional):
             Whether to stop the search if an iteration fails.
-            If False, failing iterations are skipped. 
+            If True, failed iterations are skipped.
             When all iterations fail an error is always raised.
 
         refit_best_configuration (bool, optional):
@@ -108,7 +112,7 @@ class TuneClassifier(ClassifierMixin, BaseEstimator):
         n_iter: int = 1,
         n_cv_repeats: int = 1,
         n_cv_folds: int = 5, 
-        preprocessing: PreprocessingStrategy = "estimator_default",
+        preprocessing: PreprocessingStrategy | list[PreprocessingStrategy] = "estimator_default", ## REFACTOR:  remove estimator_default option
         time_limit: float = 10_000_000,
         seed: int = 0,
         n_threads: int = 1,
@@ -146,11 +150,9 @@ class TuneClassifier(ClassifierMixin, BaseEstimator):
         Tune on training data.
         
         Parameters:
-            X (XType): 
-                Data to fit.
+            X (XType): Data to fit.
             
-            y (Ytype): 
-                Data labels to fit.
+            y (Ytype): Data labels to fit.
             
             validation_set_size (None | float, optional): 
                 Size of the validation set.
@@ -193,53 +195,79 @@ class TuneClassifier(ClassifierMixin, BaseEstimator):
         # execute configuration code needed for the optimization task
         classifer_spec.initialize_search_function()
         label_encoder, y = encode_y(X, y)
-        
-        resolved_preprocessing = classifer_spec.default_preprocessing \
-            if self.preprocessing == "estimator_default" \
-            else self.preprocessing
-        
-        pipe = create_pipeline(
-            classifier_class=classifer_spec.classifier_class,
-            classifier_params=classifer_spec.fixed_params,
-            callbacks_on_classifier_params=classifer_spec.callbacks_on_params,
+
+        if self.build_df_search and self.n_iter == 1:
+            warnings.warn((
+                "No search is done when 'n_iter' equal 1." 
+                " The 'build_df_search' parameter is forced to False."
+            ))
+            build_df_search = False
+        else:
+            build_df_search = self.build_df_search
+
+        search_scorer = PipelineConfigurationCVScorer(
+            X=X,
             y=y,
-            preprocessing=resolved_preprocessing,
-            classifier_random_state_parameter=classifer_spec.random_state_parameter,
-            classifier_nthreads_paramater=classifer_spec.n_threads_parameter,
-            classifier_device_parameter=classifer_spec.device_parameter,
+            n_folds=self.n_cv_folds,
+            n_repeats=self.n_cv_repeats,
+            metric="logloss",
+            metric_aggregation="mean",
+            validation_set_size=validation_set_size,
             seed=self.seed,
             n_threads=self.n_threads,
-            device=resolved_device
+            device=resolved_device,
+            store_cv_info=build_df_search
         )
 
-        estimator = SearchCV(
-            pipe=pipe,
-            type_estimator=self.type_classifier, ## REFACTOR: name parameter here
-            preprocessing=resolved_preprocessing,
-            algo=self.tune_algo,
-            sampler_function=classifer_spec.sampler_function,
-            n_iter=self.n_iter,
-            n_cv_folds=self.n_cv_folds,
-            n_cv_repeats=self.n_cv_repeats,
-            seed=self.seed,
-            random_state_parameter=classifer_spec.random_state_parameter,
-            metric_to_minimize="logloss",
-            early_stop_on_validation_set=classifer_spec.early_stop_on_validation_set,
-            validation_set_size=validation_set_size,
-            raise_error_during_search=self.raise_error_during_search,
-            build_df_search=self.build_df_search,
-            params_as_object_columns_in_df_search=classifer_spec.params_as_object_columns_in_df_search,
-            refit_best_configuration=self.refit_best_configuration,
-            meta_config=self.meta_config,
-            time_limit=self.time_limit,
-            log=self.log
-        )
+        if self.tune_algo == "meta":
+            ### we should do a search on n_iter meta-confs
+            ## MetaSearch
+            ## SearchWithFixedConfigurations
+            ## best_conf (obtained)
+            pass
+        else:
+            search_object = OptunaSearch(
+                classifier_spec=classifer_spec,
+                preprocessing=self.preprocessing,
+                optuna_sampler=self.tune_algo,
+                scorer=search_scorer,
+                n_trials=self.n_iter,
+                direction_optimization="minimize", # we use the logloss as score 
+                time_limit=self.time_limit,
+                seed=self.seed,
+                log=self.log,
+                raise_error_during_search=self.raise_error_during_search
+            )
+            best_conf = search_object.get_configurations()[0]
 
-        self.estimator_ = estimator.fit(X, y)
-        if self.build_df_search and self.n_iter > 1:
-            self.df_search_ = self.estimator_.df_search_
+
+        if self.refit_best_configuration:
+            best_pipe = build_pipeline(
+                **best_conf.asdict(), 
+                classifier_seed=self.seed,
+                classifier_device=self.device,
+                classifier_nthreads=self.n_threads,
+                y=y
+            )
+              
+            if best_conf.classifier_spec.early_stop_on_validation_set:
+                self.estimator_, self.refit_time_ = fit_using_validation_set(
+                    pipe=best_pipe,
+                    X=X,
+                    y=y,
+                    validation_set_size=validation_set_size,
+                    seed=self.seed,
+                    return_fit_time=True
+                )
+            else:
+                start_refit_time = time.time()
+                self.estimator_ = best_pipe.fit(X, y)
+                self.refit_time_ = time.time() - start_refit_time
+
+        if build_df_search: 
+            self.df_search_ = search_scorer.build_df_cv()
         self.classes_ = label_encoder.classes_
-        self.best_params_ = self.estimator_.best_params_ ## REFACTOR: changed attributes from best_hps_ (check for effect)
+        self.best_conf_ = best_conf
         return self
 
 
@@ -254,8 +282,7 @@ class TuneClassifier(ClassifierMixin, BaseEstimator):
             np.ndarray: The predicted classes.
         '''
         check_is_fitted(self, "estimator_")
-        check_is_fitted(self.estimator_, "best_estimator_")
-        return self.estimator_.best_estimator_.predict(X)
+        return self.estimator_.predict(X)
 
 
     def predict_proba(self, X: XType) -> np.ndarray:
@@ -269,5 +296,4 @@ class TuneClassifier(ClassifierMixin, BaseEstimator):
             np.ndarray: The class probabilities of the input samples.
         '''
         check_is_fitted(self, "estimator_")
-        check_is_fitted(self.estimator_, "best_estimator_")
-        return self.estimator_.best_estimator_.predict_proba(X)
+        return self.estimator_.predict_proba(X)

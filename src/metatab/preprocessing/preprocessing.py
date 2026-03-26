@@ -9,7 +9,17 @@ from metatab.preprocessing.density_selector import DensityFeatureSelector
 
 if TYPE_CHECKING:
     from metatab.utils.types import Classifier
-    from metatab.preprocessing.types import ResolvedPreprocessingStrategy
+    from metatab.preprocessing.types import ResolvedPreprocessingStrategy  ## REFACTOR: remove concept of default preprocessing
+    from metatab.preprocessing.types import PreprocessingStrategy
+
+
+
+### REFACTOR: complete this.
+## Returns the preprocessing Pipeline (no classifier here) 
+def build_preprocessing_pipeline(preprocessing: PreprocessingStrategy) -> Pipeline:
+    ### MOCK TO TESTING PURPOSES
+    return Pipeline([("var", VarianceThreshold())])
+    pass
 
 
 

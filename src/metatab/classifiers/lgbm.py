@@ -1,4 +1,5 @@
 import optuna
+from typing import Callable
 from functools import partial
 from lightgbm import LGBMClassifier
 from metatab.utils.core import adjust_objective_logloss_and_num_classes, adjust_es_logloss_metric
@@ -31,6 +32,7 @@ class _BaseLGBMSpec:
     supported_devices = ["cpu"]
     default_preprocessing = "base"
     hps_sampler_function = _lgbm_sampler_function
+    set_params_function: Callable[[LGBMClassifier, dict], LGBMClassifier] = lambda cls, hps: cls.set_params(**hps)
     initialize_search_function = lambda: None
     params_as_object_columns_in_df_search = None
 

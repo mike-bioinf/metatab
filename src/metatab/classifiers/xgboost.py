@@ -1,4 +1,5 @@
 import optuna
+from typing import Callable
 from functools import partial
 from xgboost import XGBClassifier
 from metatab.utils.core import adjust_objective_logloss_and_num_classes, adjust_es_logloss_metric
@@ -39,6 +40,7 @@ class _BaseXGBSpec:
     default_preprocessing = "base"
     hps_sampler_function = _xgb_sampler_function
     initialize_search_function = lambda: None
+    set_params_function: Callable[[XGBClassifier, dict], XGBClassifier] = lambda cls, hps: cls.set_params(**hps)
     params_as_object_columns_in_df_search = None
 
 

@@ -3,25 +3,25 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 from typing import TYPE_CHECKING, Literal
-from sklearn.model_selection import RepeatedStratifiedKFold
 from sklearn.metrics import log_loss
-from metatab.classifiers.registry import ClassifierSpec
-from metatab.utils.core import fit_with_early_stop_on_validation_set
+from sklearn.model_selection import RepeatedStratifiedKFold
+from metatab.utils.core import fit_using_validation_set
 from metatab.utils.general import add_broadcasted_objects_as_column, ensure_or_create
 from metatab.utils.exceptions import PipelineFitError
 from metatab.utils.pipeline import build_pipeline
 
 if TYPE_CHECKING:
     from metatab.utils.types import XType, YType
-    from metatab.preprocessing.types import PreprocessingStrategy
+    from metatab.search.configuration import PipelineConfiguration
 
 
 
-class CrossValidator:
+class PipelineConfigurationCVScorer:
     '''
-    Score pipeline configurations using a cross-validation procedure.
-    Raises "PipelineFitError" when the pipeline fit process fails.
-    The instance stores the cv info in the "dfs_cv" attribute when "store_cv_info" is True.
+    Score `PipelineConfiguration` objects by building and evaluating them through a cross-validation procedure.
+    Handles both pipeline construction and cv evaluation.
+    Raises `PipelineFitError` when the pipeline fit process fails.
+    Stores cv info in the `dfs_cv` attribute when `store_cv_info` is True.
     
     Parameters:
         X (XType): X data.
@@ -38,14 +38,20 @@ class CrossValidator:
             The performance metric to compute.
 
         metric_aggregation (Literal["mean", "sum"]):
-            Aggregation strategy used to compute whole cv value.
+            Aggregation strategy used to aggregate metric values over the whole cv.
         
-        seed (int):
-            Seed for reproducibility.
-
-        validation_set_size (float):
+        validation_set_size (float | None):
             The validation set ratio.
             Ignored for classifiers that do not use validation sets.
+        
+        device (Literal["cpu", "cuda"]): 
+            Device to fit the classifier on.
+
+        n_threads (int): 
+            Number of threads to fit the classifier.
+
+        seed (int):
+            Seed for reproducibility.
         
         store_cv_info (bool):
             Whether to store the cv info.
@@ -59,8 +65,10 @@ class CrossValidator:
         n_repeats: int, 
         metric: Literal["logloss"],
         metric_aggregation: Literal["mean", "sum"],
+        validation_set_size: float | None,
         seed: int,
-        validation_set_size: float,
+        device: Literal["cpu", "cuda"],
+        n_threads: int,
         store_cv_info: bool
     ):
         self.X = X if isinstance(X, np.ndarray) else X.to_numpy()
@@ -71,35 +79,21 @@ class CrossValidator:
         self.metric_aggregation=metric_aggregation
         self.validation_set_size=validation_set_size
         self.seed=seed
+        self.device=device
+        self.n_threads=n_threads
         self.store_cv_info=store_cv_info
         self.dfs_cv = []
 
 
-    def score(
-        self, 
-        preprocessing: PreprocessingStrategy, 
-        hps: dict, 
-        classifier_spec: ClassifierSpec,
-        add_fixed_hps: bool
-    ) -> float:
+    def score(self, pipe_configuration: PipelineConfiguration) -> float:
         '''
-        Score a pipeline configuration.
-        Note that the configuration is passed through its attributes. 
-
-        Parameters:
-            preprocessing (PreprocessingStrategy): preprocessing.
-            hps (dict): classifier hps.
-            classifier_spec (ClassifierSpec): classifier dataclass.
-            add_fixed_hps (bool): 
-                Whether to retrieve the fixed hps from classifier_spec and 
-                add them to the hps passed in input to this function to instanziate the classifier.
-                Note that the fixed hps are in every case not stored in the instance.
-
-        Returns:
-           float: The aggregated cv loss.
+        Score a PipelineConfiguration returing the aggregated cv loss.
         '''
-        rng = np.random.default_rng(self.seed)        
-        
+        cv_rng = np.random.default_rng(self.seed)        
+        preprocessing = pipe_configuration.preprocessing
+        hps = pipe_configuration.hps
+        classifier_spec = pipe_configuration.classifier_spec
+
         skf = RepeatedStratifiedKFold(
             n_splits=self.n_folds, 
             n_repeats=self.n_repeats, 
@@ -116,22 +110,24 @@ class CrossValidator:
             repeat = iter_idx // self.n_folds
             fold = iter_idx - (self.n_folds * repeat)
             
-            if add_fixed_hps:
-                full_hps = {**hps, **classifier_spec.default_params}
-            else:
-                full_hps = hps
+            pipe = build_pipeline(
+                preprocessing=preprocessing, 
+                hps={**hps, **classifier_spec.fixed_params}, # add fixed to dynamic hps
+                classifier_spec=classifier_spec, 
+                classifier_seed=int(cv_rng.integers(0, 2**32)), # vary classifier seed in cv
+                classifier_device=self.device,
+                classifier_nthreads=self.n_threads,
+                y=y_train
+            )
 
-            pipe = build_pipeline(preprocessing, full_hps, classifier_spec, int(rng.integers(0, 2**32)))
-            
             try:
                 if classifier_spec.early_stop_on_validation_set:
-                    pipe = fit_with_early_stop_on_validation_set(
+                    pipe = fit_using_validation_set(
                         pipe=pipe,
                         X=X_train,
                         y=y_train,
-                        seed=self.seed,
                         validation_set_size=self.validation_set_size,
-                        eval_set_parameter="eval_set" ## REFACTOR: we can remove this info???
+                        seed=self.seed,
                     )
                 else:
                     pipe.fit(X_train, y_train)
@@ -186,4 +182,4 @@ class CrossValidator:
                 return None
             else:
                 raise ValueError("No cv execution info is stored in the instance.")
-        return pd.concat([self.dfs_cv], axis=0, ignore_index=True)
+        return pd.concat(self.dfs_cv, axis=0, ignore_index=True)

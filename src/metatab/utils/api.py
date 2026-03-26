@@ -2,69 +2,14 @@ from __future__ import annotations
 
 import torch
 import pandas as pd
-from copy import deepcopy
 from typing import TYPE_CHECKING, Literal
-from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import LabelEncoder
-from metatab.preprocessing import create_classifier_pipeline
 from metatab.utils.exceptions import DeviceError
-from metatab.utils.general import ensure_or_create
 
 if TYPE_CHECKING:
-    from metatab.preprocessing.types import ResolvedPreprocessingStrategy
-    from metatab.utils.types import Classifier, DefaultClassifierType
+    from metatab.utils.types import DefaultClassifierType
     from metatab.utils.types import XType, YType
-    from sklearn.pipeline import Pipeline
     from metatab.classifiers.registry import ClassifierSpec
-
-
-
-def create_pipeline(
-    classifier_class: Classifier,
-    classifier_params: dict,
-    callbacks_on_classifier_params: None | list,
-    y: YType,
-    preprocessing: ResolvedPreprocessingStrategy,
-    classifier_random_state_parameter: str | None,
-    classifier_nthreads_paramater: str | None,
-    classifier_device_parameter: str | None,
-    seed: int,
-    n_threads: int,
-    device: Literal["cpu", "cuda"],
-) -> Pipeline:
-    '''
-    Create the pipeline headed by the classifier. In detail:
-    - finalize the classifier params with seed, n_threads, device info.
-    - Calls the callbacks that adjust the params.
-    - creates the classifier with the finalized params inside the pipeline.
-
-    Notes: it create always a deepcopy of the dixed params on which to operate.
-
-    Returns:
-        Pipeline: The pipeline headed by the classifier.
-    '''
-    params = deepcopy(classifier_params)
-
-    if classifier_random_state_parameter: 
-        params[classifier_random_state_parameter] = seed
-
-    if classifier_nthreads_paramater: 
-        params[classifier_nthreads_paramater] = n_threads
-
-    if classifier_device_parameter:
-        params[classifier_device_parameter] = device
-    
-    for callback in ensure_or_create(callbacks_on_classifier_params, list):
-        params = callback(params, y, False)
-
-    pipe = create_classifier_pipeline(
-        preprocessing=preprocessing,
-        density_feature_selector_strategy="exact", ###REFACTOR: CAPIRE COME GESTIRLO (FISSO?)
-        classifier=classifier_class,
-        classifier_params=classifier_params,
-    )
-
-    return pipe
 
 
 
@@ -95,11 +40,11 @@ def check_validation_set_classifier_combination(
 
     if clf_uses_validation_set and validation_set is None:
         raise ValueError(
-            f"'{type_classifier}' is early stopped. The 'validation_set' param cannot be None."
+            f"'{type_classifier}'uses validation set. The 'validation_set' param cannot be None."
         )
     elif not clf_uses_validation_set and validation_set is not None:
         raise ValueError(
-            f"'{type_classifier}' cannot be early stopped. The 'validation_set' param must be None."
+            f"'{type_classifier}' does not use validation set. The 'validation_set' param must be None."
         )
 
 

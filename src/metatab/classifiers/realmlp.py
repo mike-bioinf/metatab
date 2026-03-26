@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import warnings
 import optuna
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Literal, Callable
 from sklearn.utils.validation import check_is_fitted
 from pytabkit import RealMLP_TD_Classifier
 from metatab.utils.core import learn_sklearn_features_attributes, check_predict_features
@@ -176,4 +176,5 @@ class RealMLPSpec:
     callbacks_on_params = None
     hps_sampler_function = _realmlp_sampler_function
     initialize_search_function = lambda: None
+    set_params_function: Callable[[RealMLPClassifier, dict], RealMLPClassifier] = lambda cls, hps: cls.set_params(**hps)
     params_as_object_columns_in_df_search = None

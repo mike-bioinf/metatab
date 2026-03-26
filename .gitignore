@@ -167,3 +167,4 @@ debug_code
 old_code.py
 tests/data/metadata
 optuna_example.ipynb
+deprecated_fixed_search*

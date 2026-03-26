@@ -6,6 +6,7 @@ We also use tabpfn internal capabilities to locally download and store tabpfn cl
 """
 import sys
 import optuna
+from typing import Any, Callable
 from tabpfn import TabPFNClassifier
 from tabpfn.model_loading import _user_cache_dir, download_model
  
@@ -116,6 +117,42 @@ def _tabpfn_sampler_function(trial: optuna.Trial) -> dict:
     return point
 
 
+def _tabpfn_set_params_function(clf: TabPFNClassifier, hps: dict[str, Any]) -> TabPFNClassifier:
+    '''
+    Function that expand on the 'set_params' utility of TabPFNClassifier by:
+    - managing "inference_config" parameters
+    - finalizing the "model_path" argument by adding the full path of user tabpfn models cache directory.
+    '''
+    if "inference_config" in hps.keys():
+        raise KeyError(
+            "The inference_config parameter cannot be handled explicity.",
+            "Instead its keys must be passed as normal parameters marked with the 'inference_config__' prefix."
+        )
+
+    inference_config = {}
+    other_params = {}
+    
+    for k, v in hps.items():
+        if k.startswith("inference_config__"):
+            inference_config[k.removeprefix("inference_config__")] = v
+        else:
+            other_params[k] = v
+
+    # when the inference config is empty we fallback on the default
+    if not inference_config:
+        inference_config = None
+
+    # euristic to add full path to the model checkpoint file when needed
+    if "model_path" in other_params.keys():
+        ckpt: str = other_params["model_path"]
+        cache_dir = _user_cache_dir(platform=sys.platform, appname="tabpfn").resolve()
+        if not ckpt.startswith(str(cache_dir)):
+            other_params["model_path"] = str(cache_dir / ckpt)
+
+    return clf.set_params(inference_config=inference_config, **other_params)
+            
+
+
 class TabPFNSpec:
     type_classifier = "tabpfn"
     classifier_class = TabPFNClassifier
@@ -129,20 +166,19 @@ class TabPFNSpec:
     default_params = {
         "ignore_pretraining_limits": True,
         # suppressing categorical transformation that leads to testing data loss with small sparse data
-        "inference_config": {"MIN_UNIQUE_FOR_NUMERICAL_FEATURES": 0},
+        "inference_config__MIN_UNIQUE_FOR_NUMERICAL_FEATURES": 0,
     }
     fixed_params = {
         "ignore_pretraining_limits": True,
-        "inference_config": {
-            # suppressing categorical transformation that leads to testing data loss with small sparse data
-            "MIN_UNIQUE_FOR_NUMERICAL_FEATURES": 0,
-            # avoid polynomial feature computation errors
-            "POLYNOMIAL_FEATURES": "no"
-        }
+        # suppressing categorical transformation that leads to testing data loss with small sparse data
+        "inference_config__MIN_UNIQUE_FOR_NUMERICAL_FEATURES": 0,
+        # avoid polynomial feature computation errors
+        "inference_config__POLYNOMIAL_FEATURES": "no"
     }
     callbacks_on_params = None
     hps_sampler_function = _tabpfn_sampler_function
     initialize_search_function = lambda: _download_and_return_tabpfn_checkpoints(TABPFN_CHECKPOINTS)
+    set_params_function: Callable[[TabPFNClassifier, dict], TabPFNClassifier] = lambda cls, hps: _tabpfn_set_params_function(cls, hps)
     #refactor: check if these needed to avoid pandas warning
     params_as_object_columns_in_df_search = [
         "inference_config__OUTLIER_REMOVAL_STD",
