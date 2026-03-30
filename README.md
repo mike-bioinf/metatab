@@ -279,7 +279,7 @@ pdf = PredictionDataframe()
 
 ## Available Models
 
-| Model | Default | Tuned (HPO) | Ensembled (HPO) |
+| Model | Default | Tuned  | Ensembled |
 |-------|---------|-------------|----------------|
 | Extra Trees | ✅ | ✅ | ✅ |
 | Random Forest | ✅ | ✅ | ✅ |
@@ -309,8 +309,8 @@ If you use Metatab in your research, please cite:
 
 ```bibtex
 @software{metatab,
-  author = {Avagliano, Michele and Pasolli, Edoardo},
-  title = {Metatab: A Classification Benchmark Framework for Microbial Taxonomic Profiles},
+  author = {Avagliano Michele, Rodner Erik, and Pasolli Edoardo},
+  title = {Metatab: a toolkit and benchmark of tabular learners for metagenomic case-control classification},
   year = {2026},
   url = {https://github.com/mike-bioinf/metatab}
 }
