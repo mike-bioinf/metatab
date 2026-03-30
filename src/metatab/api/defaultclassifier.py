@@ -14,10 +14,9 @@ from metatab.utils.api import (
     handle_device
 )
 
-
 if TYPE_CHECKING:
     import numpy as np
-    from metatab.preprocessing.types import PreprocessingStrategy
+    from metatab.preprocessing import PreprocessingStrategy
     from metatab.utils.types import XType, YType, DefaultClassifierType
 
 
@@ -30,8 +29,8 @@ class DefaultClassifier(ClassifierMixin, BaseEstimator):
         type_classifier (DefaultClassifierType):
             Classifier to run.
 
-        preprocessing (PreprocessingStrategy, optional):
-            Preprocessing strategy to apply.
+        preprocessing (PreprocessingStrategy | list[PreprocessingStrategy], optional):
+            Preprocessing strategy/ies to apply.
         
         seed (int, optional):
             Random seed controlling classifer randomness.
@@ -53,7 +52,7 @@ class DefaultClassifier(ClassifierMixin, BaseEstimator):
     def __init__(
         self,
         type_classifier: DefaultClassifierType,
-        preprocessing: PreprocessingStrategy = "estimator_default",
+        preprocessing: PreprocessingStrategy | list[PreprocessingStrategy] = "zero_variance",
         seed: int = 0,
         n_threads: int = 1,
         device: Literal["cpu", "cuda", "auto"] = "auto",

@@ -3,18 +3,18 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from sklearn.pipeline import Pipeline
 from metatab.utils.general import ensure_or_create
-from metatab.preprocessing.preprocessing import build_preprocessing_pipeline
+from metatab.preprocessing import build_preprocessing_pipeline
 
 if TYPE_CHECKING:
     from metatab.utils.types import YType
-    from metatab.preprocessing.types import PreprocessingStrategy
+    from metatab.preprocessing import PreprocessingStrategy
     from metatab.classifiers.registry import ClassifierSpec
 
 
 
 def build_pipeline(
     *,
-    preprocessing: PreprocessingStrategy, 
+    preprocessing: PreprocessingStrategy | list[PreprocessingStrategy], 
     hps: dict, 
     classifier_spec: ClassifierSpec,
     classifier_seed: int,
@@ -24,14 +24,16 @@ def build_pipeline(
 ) -> Pipeline:
     '''
     Utility that builds a pipeline (preprocessing + classifier).
+    The classifier step is named as "classifier" in the resulting pipeline.
+    The preprocessing steps are named after the strategies.
 
     Parameters:
-        preprocessing (PreprocessingStrategy): Preprocessing to use.    
+        preprocessing (PreprocessingStrategy | list[PreprocessingStrategy]): 
+            Preprocessing/s to use.    
         
         hps (dict): classifier hps.
 
-        classifier_spec (ClassifierSpec): 
-            Classifier dataclass of which we are building the pipeline.
+        classifier_spec (ClassifierSpec): Classifier dataclass.
         
         classifier_seed (int): 
             integer used to seed the classifier object.

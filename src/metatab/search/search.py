@@ -3,7 +3,6 @@ from __future__ import annotations
 import sys
 import math
 import time
-import logging
 import warnings
 import optuna
 import numpy as np
@@ -16,7 +15,7 @@ from metatab.search.score import PipelineConfigurationCVScorer
 
 if TYPE_CHECKING:
     from metatab.classifiers.registry import ClassifierSpec
-    from metatab.preprocessing.types import PreprocessingStrategy
+    from metatab.preprocessing import PreprocessingStrategy
 
 
 
@@ -208,12 +207,11 @@ class UnoptimizedRandomSearch:
         '''
         optuna.logging.set_verbosity(optuna.logging.WARNING) # disable logs
         study = optuna.create_study(sampler=optuna.samplers.RandomSampler(self.seed))
-        preprocessings = enlist(self.preprocessing)
         
         def preprocessing_sampler(trial: optuna.Trial) -> str:
             return trial.suggest_categorical(
                 name="__preprocessing", 
-                choices=preprocessings
+                choices=enlist(self.preprocessing)
             )
 
         with warnings.catch_warnings():

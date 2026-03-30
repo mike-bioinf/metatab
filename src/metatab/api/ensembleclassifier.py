@@ -19,7 +19,7 @@ from metatab.utils.api import (
 
 if TYPE_CHECKING:
     from metatab.search.configuration import PipelineConfiguration
-    from metatab.preprocessing.types import PreprocessingStrategy
+    from metatab.preprocessing import PreprocessingStrategy
     from metatab.utils.types import XType, YType
     from metatab.utils.types import TunableClassifierType
 

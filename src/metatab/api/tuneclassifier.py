@@ -21,7 +21,7 @@ from metatab.utils.api import (
 )
 
 if TYPE_CHECKING:
-    from metatab.preprocessing.types import PreprocessingStrategy
+    from metatab.preprocessing import PreprocessingStrategy
     from metatab.utils.types import XType, YType
     from metatab.utils.types import TunableClassifierType
 
@@ -112,7 +112,7 @@ class TuneClassifier(ClassifierMixin, BaseEstimator):
         n_iter: int = 1,
         n_cv_repeats: int = 1,
         n_cv_folds: int = 5, 
-        preprocessing: PreprocessingStrategy | list[PreprocessingStrategy] = "estimator_default", ## REFACTOR:  remove estimator_default option
+        preprocessing: PreprocessingStrategy | list[PreprocessingStrategy] = "zero_variance",
         time_limit: float = 10_000_000,
         seed: int = 0,
         n_threads: int = 1,

@@ -23,11 +23,6 @@ if TYPE_CHECKING:
 
 
 
-## REFACTOR:
-# - this should get in input a set of PipelineConfigurations
-# - PROBLEM in managining device and n_theads here --> we can admit only fixed not multiple 
-# values but they should be unpacked in terms of device "auto"
-# maybe this is something to leave to the building pipeline construction utility.
 class EnsembleEstimator:
     '''
     Ensemble PipelineConfigurations using an uniform (unweighted) strategy.
