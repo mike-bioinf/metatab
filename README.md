@@ -297,6 +297,7 @@ pdf = PredictionDataframe()
 ## Authors
 
 - **Michele Avagliano** - University of Naples Federico II
+- **Erik Rodner** - University of Applied Sciences Berlin
 - **Edoardo Pasolli** - University of Naples Federico II
 
 ## License
