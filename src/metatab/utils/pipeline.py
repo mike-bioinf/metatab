@@ -31,12 +31,12 @@ def build_pipeline(
         preprocessing (PreprocessingStrategy | list[PreprocessingStrategy]): 
             Preprocessing/s to use.    
         
-        hps (dict): classifier hps.
+        hps (dict): Classifier hps.
 
         classifier_spec (ClassifierSpec): Classifier dataclass.
         
         classifier_seed (int): 
-            integer used to seed the classifier object.
+            Integer used to seed the classifier object.
             When the classifier has no a random_state-like paramater it is ignored.
 
         y (YType): y labels. Needed for callbacks mechanisms.

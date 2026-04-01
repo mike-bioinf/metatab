@@ -52,9 +52,15 @@ class TuneClassifier(ClassifierMixin, BaseEstimator):
         n_cv_repeats (int, optional):
             Number of times the inner cross-validation is repeated for each hyperparameter configuration.
 
-        preprocessing (PreprocessingStrategy, optional):
-            Preprocessing strategy to apply.
-            Custom preprocessing cannot currently be applied within the inner cross-validation procedure.
+        preprocessing (PreprocessingStrategy | list[PreprocessingStrategy], list[list[PreprocessingStrategy]], optional):
+            Preprocessing strategies to optimize.
+            If a single strategy is passed then it is used in all iterations (no optimization).
+            If multiple strategies are passed then a random-search-based optimization is done on them.
+            Is possible to specify strategies composed by multiple steps to apply together following the input order. 
+            So for example ["log", "clr"] signal to optimize for the single options.
+            Instead [["log", "clr"]] signal to use a single preprocessing composed by 2 step.
+            Is also possible to specify multiple multi-steps preprocessing to optimize.
+            Custom preprocessing cannot currently be specified.
 
         seed (int, optional):
             Random seed controlling classifier randomness and the inner cross-validation procedure.
@@ -112,7 +118,7 @@ class TuneClassifier(ClassifierMixin, BaseEstimator):
         n_iter: int = 1,
         n_cv_repeats: int = 1,
         n_cv_folds: int = 5, 
-        preprocessing: PreprocessingStrategy | list[PreprocessingStrategy] = "zero_variance",
+        preprocessing: PreprocessingStrategy | list[PreprocessingStrategy] | list[list[PreprocessingStrategy]] = "zero_variance",
         time_limit: float = 10_000_000,
         seed: int = 0,
         n_threads: int = 1,

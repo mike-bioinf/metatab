@@ -33,7 +33,7 @@ class EnsembleClassifier(ClassifierMixin, BaseEstimator):
         name: str = "ens",
         ensemble_algo = Literal["random", "meta"],
         n_members: int = 16,
-        preprocessing: PreprocessingStrategy | list[PreprocessingStrategy] = "estimator_default", ## REFACTOR: change here
+        preprocessing: PreprocessingStrategy | list[PreprocessingStrategy] | list[list[PreprocessingStrategy]] = "zero_variance",
         n_bag_cv_folds: int | None = None,
         time_limit: int = 10_000_000,
         seed: int = 0,
@@ -68,9 +68,15 @@ class EnsembleClassifier(ClassifierMixin, BaseEstimator):
                 Number of ensemble members.
                 In other terms the number of configurations to derive.
 
-            preprocessing (PreprocessingStrategy, optional):
+            preprocessing (PreprocessingStrategy | list[PreprocessingStrategy] | list[list[PreprocessingStrategy]], optional):
                 Preprocessing strategies to use.
-                If multiple startegies are passed then a random selection for each ensemble member is done.
+                If a single strategy is passed then it is used in all members.
+                If multiple strategies are passed then a random selection is done on them.
+                Is possible to specify strategies composed by multiple steps to apply together following the input order. 
+                So for example ["log", "clr"] signal to use two single options.
+                Instead [["log", "clr"]] signal to use a single preprocessing composed by 2 step.
+                Is also possible to specify multiple multi-steps preprocessing.
+                Custom preprocessing cannot currently be specified.
 
             n_bag_cv_folds (int | None, optional):
                 Number of folds to use in a cv bagging procedure.

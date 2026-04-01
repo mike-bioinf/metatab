@@ -81,7 +81,7 @@ def fit_using_validation_set(
 
         seed (int): 
             Seed for reproducibility used ONLY in the train/val splitting.
-            Used only with "validation_set_size" is specified.
+            Used only when "validation_set_size" is specified.
         
         return_fit_time (bool, optional):
             Whether to return the fit time along with the fitted pipe.

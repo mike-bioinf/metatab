@@ -109,7 +109,7 @@ class OptunaSearch:
     def __init__(
         self,
         classifier_spec: ClassifierSpec,
-        preprocessing: PreprocessingStrategy | list[PreprocessingStrategy],
+        preprocessing: PreprocessingStrategy | list[PreprocessingStrategy] | list[list[PreprocessingStrategy]],
         optuna_sampler: Literal["random", "tpe"],
         scorer: PipelineConfigurationCVScorer,
         n_trials: int,
@@ -174,6 +174,7 @@ class OptunaSearch:
         if not any([t.state == optuna.trial.TrialState.COMPLETE for t in study.trials]):
             raise ValueError("All trials have failed.")
         
+        ### REFACTOR: change pop here ???
         best_prep = study.best_trial.params.pop("__preprocessing")
         # this resolve conditional logic returning a classifier-compatible hp dict
         best_hps = self.classifier_spec.hps_sampler_function(study.best_trial)
@@ -192,7 +193,7 @@ class UnoptimizedRandomSearch:
     def __init__(
         self,
         classifier_spec: ClassifierSpec,
-        preprocessing: PreprocessingStrategy | list[PreprocessingStrategy],
+        preprocessing: PreprocessingStrategy | list[PreprocessingStrategy] | list[list[PreprocessingStrategy]],
         n_confs: int,
         seed: int
     ) -> "UnoptimizedRandomSearch":
