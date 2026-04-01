@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+import torch
+from typing import TYPE_CHECKING, Literal
 from sklearn.pipeline import Pipeline
 from metatab.utils.general import ensure_or_create
 from metatab.preprocessing import build_preprocessing_pipeline
@@ -18,7 +19,7 @@ def build_pipeline(
     hps: dict, 
     classifier_spec: ClassifierSpec,
     classifier_seed: int,
-    classifier_device: str,
+    classifier_device: Literal["cpu", "cuda", "auto"],
     classifier_nthreads: int,
     y: YType
 ) -> Pipeline:
@@ -26,6 +27,7 @@ def build_pipeline(
     Utility that builds a pipeline (preprocessing + classifier).
     The classifier step is named as "classifier" in the resulting pipeline.
     The preprocessing steps are named after the strategies.
+    Handles the device "auto" specification.
 
     Parameters:
         preprocessing (PreprocessingStrategy | list[PreprocessingStrategy]): 
@@ -45,7 +47,13 @@ def build_pipeline(
         Pipeline: The pipeline object.
     '''
     preprocessing_pipeline = build_preprocessing_pipeline(preprocessing)
-    
+
+    if classifier_device == "auto":
+        if classifier_spec.main_device == "cuda" and torch.cuda.is_available():
+            classifier_device = "cuda"
+        else:
+            classifier_device = "cpu"
+        
     hps = {
         **hps,
         **{

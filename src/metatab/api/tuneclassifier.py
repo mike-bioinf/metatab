@@ -12,28 +12,24 @@ from metatab.search.search import OptunaSearch
 from metatab.search.score import PipelineConfigurationCVScorer
 from metatab.utils.pipeline import build_pipeline
 from metatab.utils.core import fit_using_validation_set
-
-from metatab.utils.api import ( 
-    encode_y, 
-    handle_device, 
-    check_validation_set, 
-    check_validation_set_classifier_combination
-)
+from metatab.utils.general import enlist
+from metatab.utils.api import encode_y, check_device, check_validation_set
 
 if TYPE_CHECKING:
     from metatab.preprocessing import PreprocessingStrategy
-    from metatab.utils.types import XType, YType
-    from metatab.utils.types import TunableClassifierType
+    from metatab.utils.types import XType, YType, TunableClassifierType
+    from metatab.classifiers.registry import ClassifierSpec
 
 
 
 class TuneClassifier(ClassifierMixin, BaseEstimator):
     '''
-    Tune a classifier using a cross-validation strategy.
+    Tune classifiers using a cross-validation strategy.
 
     Parameters:
-        type_classifier (TunableClassifierType):
-            Classifier to optimize.
+        type_classifier (TunableClassifierType | list[TunableClassifierType]):
+            Classifiers to optimize.
+            Is possible to specify multiple classifiers using a list.
 
         tune_algo (Literal["random", "tpe", "meta"]):
             Optimization algorithm to use.
@@ -54,14 +50,16 @@ class TuneClassifier(ClassifierMixin, BaseEstimator):
 
         preprocessing (PreprocessingStrategy | list[PreprocessingStrategy], list[list[PreprocessingStrategy]], optional):
             Preprocessing strategies to optimize.
-            If a single strategy is passed then it is used in all iterations (no optimization).
-            If multiple strategies are passed then a random-search-based optimization is done on them.
-            Is possible to specify strategies composed by multiple steps to apply together following the input order. 
-            So for example ["log", "clr"] signal to optimize for the single options.
-            Instead [["log", "clr"]] signal to use a single preprocessing composed by 2 step.
+            Is possible to specify strategies composed by multiple steps to apply together following the input order.
+            For example [["log", "clr"]] signal to use a single preprocessing composed by 2 step.
+            Instead ["log", "clr"] signal to optimize for the single options separately.
             Is also possible to specify multiple multi-steps preprocessing to optimize.
             Custom preprocessing cannot currently be specified.
 
+        validation_set_size (float, optional): 
+            Size of the validation set.
+            Ignored by classifiers that does not use a validation set.
+        
         seed (int, optional):
             Random seed controlling classifier randomness and the inner cross-validation procedure.
 
@@ -100,7 +98,6 @@ class TuneClassifier(ClassifierMixin, BaseEstimator):
 
 
     ## Attributes:
-
         classes_ (np.ndarray): 
             The array of class labels learnt at fit time.
         
@@ -113,12 +110,13 @@ class TuneClassifier(ClassifierMixin, BaseEstimator):
     '''
     def __init__(
         self,
-        type_classifier: TunableClassifierType,
+        type_classifier: TunableClassifierType | list[TunableClassifierType],
         tune_algo: Literal["tpe", "random", "meta"],
         n_iter: int = 1,
         n_cv_repeats: int = 1,
         n_cv_folds: int = 5, 
         preprocessing: PreprocessingStrategy | list[PreprocessingStrategy] | list[list[PreprocessingStrategy]] = "zero_variance",
+        validation_set_size: float = 0.3,
         time_limit: float = 10_000_000,
         seed: int = 0,
         n_threads: int = 1,
@@ -135,6 +133,7 @@ class TuneClassifier(ClassifierMixin, BaseEstimator):
         self.n_cv_repeats=n_cv_repeats
         self.n_cv_folds=n_cv_folds
         self.preprocessing=preprocessing
+        self.validation_set_size=validation_set_size
         self.time_limit=time_limit
         self.seed=seed
         self.n_threads=n_threads
@@ -146,60 +145,31 @@ class TuneClassifier(ClassifierMixin, BaseEstimator):
         self.log=log
             
 
-    def fit(
-        self,
-        X: XType,
-        y: YType,
-        validation_set_size: None | float = None
-    ) -> "TuneClassifier":
+    def fit(self, X: XType, y: YType) -> "TuneClassifier":
         '''
         Tune on training data.
         
         Parameters:
             X (XType): Data to fit.
-            
             y (Ytype): Data labels to fit.
-            
-            validation_set_size (None | float, optional): 
-                Size of the validation set.
-                Must be provided only for classifiers that use the validation set in the fit process.
-                An error is raised when it is provided and the classifier does not support it,
-                or when it is not provided and the classifier needs it.
         
         Returns:
             self
-        '''
-        check_X_y(X, y, dtype=None, ensure_all_finite=False)
-        classifer_spec = get_classifier_specs_from_registry(self.type_classifier)
+        '''        
+        classifier_specs = [
+            get_classifier_specs_from_registry(type_clf) 
+            for type_clf in list(set(enlist(self.type_classifier)))
+        ]
 
-        if self.tune_algo not in ["random", "tpe", "meta"]:
-            raise ValueError(f"Unsupported tune_algo: '{self.tune_algo}'.")
+        self._check_inputs(X, y, classifier_specs)
         
-        if self.tune_algo != "meta" and self.meta_config:
-            raise ValueError(f"With 'tune_algo' != 'meta', 'meta_config' must be None.")
-        
-        if self.tune_algo == "meta" and self.meta_config is not None:
-            self.meta_config._check()
-
         if self.tune_algo == "meta" and self.meta_config is None:
             self.meta_config = MetaConfig()
 
-        check_validation_set(validation_set_size)
-        
-        check_validation_set_classifier_combination(
-            validation_set=validation_set_size,
-            classifier_spec=classifer_spec,
-            type_classifier=self.type_classifier
-        )
-
-        resolved_device = handle_device(
-            input_device=self.device,
-            classifier_spec=classifer_spec,
-            type_classifier=self.type_classifier
-        )
-
         # execute configuration code needed for the optimization task
-        classifer_spec.initialize_search_function()
+        for classifier_spec in classifier_specs:
+            classifier_spec.initialize_search_function()
+        
         label_encoder, y = encode_y(X, y)
 
         if self.build_df_search and self.n_iter == 1:
@@ -218,10 +188,10 @@ class TuneClassifier(ClassifierMixin, BaseEstimator):
             n_repeats=self.n_cv_repeats,
             metric="logloss",
             metric_aggregation="mean",
-            validation_set_size=validation_set_size,
+            validation_set_size=self.validation_set_size,
             seed=self.seed,
             n_threads=self.n_threads,
-            device=resolved_device,
+            device=self.device,
             store_cv_info=build_df_search
         )
 
@@ -233,7 +203,7 @@ class TuneClassifier(ClassifierMixin, BaseEstimator):
             pass
         else:
             search_object = OptunaSearch(
-                classifier_spec=classifer_spec,
+                classifier_specs=classifier_specs,
                 preprocessing=self.preprocessing,
                 optuna_sampler=self.tune_algo,
                 scorer=search_scorer,
@@ -248,8 +218,15 @@ class TuneClassifier(ClassifierMixin, BaseEstimator):
 
 
         if self.refit_best_configuration:
+            best_prep = best_conf.preprocessing
+            best_spec = best_conf.classifier_spec
+            # we add the fixed params to the dynamic obtained from the search
+            best_hps = {**best_conf.hps, **best_spec.default_params}
+
             best_pipe = build_pipeline(
-                **best_conf.asdict(), 
+                preprocessing=best_prep,
+                hps=best_hps,
+                classifier_spec=best_spec, 
                 classifier_seed=self.seed,
                 classifier_device=self.device,
                 classifier_nthreads=self.n_threads,
@@ -261,7 +238,7 @@ class TuneClassifier(ClassifierMixin, BaseEstimator):
                     pipe=best_pipe,
                     X=X,
                     y=y,
-                    validation_set_size=validation_set_size,
+                    validation_set_size=self.validation_set_size,
                     seed=self.seed,
                     return_fit_time=True
                 )
@@ -275,6 +252,23 @@ class TuneClassifier(ClassifierMixin, BaseEstimator):
         self.classes_ = label_encoder.classes_
         self.best_conf_ = best_conf
         return self
+
+
+    def _check_inputs(self, X: XType, y: YType, classifier_specs: list[ClassifierSpec]) -> None:
+        check_X_y(X, y, dtype=None, ensure_all_finite=False)
+        
+        if self.tune_algo not in ["random", "tpe", "meta"]:
+            raise ValueError(f"Unsupported tune_algo: '{self.tune_algo}'.")
+        
+        if self.tune_algo != "meta" and self.meta_config:
+            raise ValueError(f"With 'tune_algo' != 'meta', 'meta_config' must be None.")
+        
+        if self.tune_algo == "meta" and self.meta_config is not None:
+            self.meta_config._check()
+
+        check_validation_set(self.validation_set_size)
+        check_device(self.device, classifier_specs)
+
 
 
     def predict(self, X: XType) -> np.ndarray:

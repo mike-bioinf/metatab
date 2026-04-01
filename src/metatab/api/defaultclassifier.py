@@ -6,13 +6,8 @@ from sklearn.base import BaseEstimator, ClassifierMixin
 from metatab.classifiers.registry import get_classifier_specs_from_registry
 from metatab.utils.core import fit_using_validation_set
 from metatab.utils.pipeline import build_pipeline
+from metatab.utils.api import check_validation_set, encode_y, check_device
 
-from metatab.utils.api import ( 
-    check_validation_set,
-    check_validation_set_classifier_combination,
-    encode_y, 
-    handle_device
-)
 
 if TYPE_CHECKING:
     import numpy as np
@@ -31,11 +26,16 @@ class DefaultClassifier(ClassifierMixin, BaseEstimator):
 
         preprocessing (PreprocessingStrategy | list[PreprocessingStrategy], optional):
             Preprocessing strategy/ies to apply.
+            If a list the preprocessing steps follow input order.
+        
+        validation_set_size (float, optional): 
+            Size of the validation set.
+            Ignored by classifiers that does not use a validation set.
         
         seed (int, optional):
             Random seed controlling classifer randomness.
             Ignored by classifiers that do not allow to set this (AutoGluon)
-
+        
         n_threads (int, optional):
             Number of threads used to parallelize classifier fitting.
             Ignored by classifiers that does not support this.
@@ -53,45 +53,34 @@ class DefaultClassifier(ClassifierMixin, BaseEstimator):
         self,
         type_classifier: DefaultClassifierType,
         preprocessing: PreprocessingStrategy | list[PreprocessingStrategy] = "zero_variance",
+        validation_set_size: float = 0.3,
         seed: int = 0,
         n_threads: int = 1,
         device: Literal["cpu", "cuda", "auto"] = "auto",
     ):
         self.type_classifier=type_classifier
         self.preprocessing=preprocessing
+        self.validation_set_size=validation_set_size
         self.seed=seed
         self.n_threads=n_threads
         self.device=device
 
 
-    def fit(
-        self,
-        X: XType,
-        y: YType,
-        validation_set_size: float | None = None
-    ) -> "DefaultClassifier":
+    def fit(self, X: XType, y: YType) -> "DefaultClassifier":
         '''
         Fit the classifier.
         
         Parameters:
             X (XType): Data to fit.
-            
             y (Ytype): Data labels to fit.
-            
-            validation_set_size (None | float, optional): 
-                Size of the validation set.
-                Must be provided only for classifiers that use the validation set in the fit process.
-                An error is raised when it is provided and the classifier does not support it,
-                or when it is not provided and the classifier needs it.
         
         Returns:
             self
         '''
         check_X_y(X, y, dtype=None, ensure_all_finite=False)
         classifier_spec = get_classifier_specs_from_registry(self.type_classifier)
-        check_validation_set(validation_set_size)
-        check_validation_set_classifier_combination(validation_set_size, classifier_spec, self.type_classifier)
-        resolved_device = handle_device(self.device, classifier_spec, self.type_classifier)        
+        check_validation_set(self.validation_set_size)
+        check_device(self.device, [classifier_spec])     
         label_encoder, y = encode_y(X, y)
 
         pipe = build_pipeline(
@@ -99,7 +88,7 @@ class DefaultClassifier(ClassifierMixin, BaseEstimator):
             hps=classifier_spec.default_params,
             classifier_spec=classifier_spec,
             classifier_seed=self.seed,
-            classifier_device=resolved_device,
+            classifier_device=self.device,
             classifier_nthreads=self.n_threads,
             y=y
         )
@@ -109,7 +98,7 @@ class DefaultClassifier(ClassifierMixin, BaseEstimator):
                 pipe=pipe,
                 X=X,
                 y=y,
-                validation_set_size=validation_set_size,
+                validation_set_size=self.validation_set_size,
                 seed=self.seed
             )
         else:

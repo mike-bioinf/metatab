@@ -97,21 +97,21 @@ def enumerate_preprocess_transforms() -> list[list[dict]]:
 
 def _tabpfn_sampler_function(trial: optuna.Trial) -> dict:
     point = {
-        "model_path": trial.suggest_categorical("model_path", TABPFN_CHECKPOINTS),
-        "n_estimators": trial.suggest_categorical("n_estimators", [8, 12, 16]),
-        "average_before_softmax": trial.suggest_categorical("average_before_softmax", [True, False]),
-        "softmax_temperature": trial.suggest_categorical("softmax_temperature", [0.75, 0.8, 0.9, 0.95, 1.0]),
+        "model_path": trial.suggest_categorical("tabpfn__model_path", TABPFN_CHECKPOINTS),
+        "n_estimators": trial.suggest_categorical("tabpfn__n_estimators", [8, 12, 16]),
+        "average_before_softmax": trial.suggest_categorical("tabpfn__average_before_softmax", [True, False]),
+        "softmax_temperature": trial.suggest_categorical("tabpfn__softmax_temperature", [0.75, 0.8, 0.9, 0.95, 1.0]),
         # inference config parameters
-        "inference_config__FINGERPRINT_FEATURE": trial.suggest_categorical("inference_config__FINGERPRINT_FEATURE", [True, False]),
+        "inference_config__FINGERPRINT_FEATURE": trial.suggest_categorical("tabpfn__inference_config__FINGERPRINT_FEATURE", [True, False]),
         "inference_config__PREPROCESS_TRANSFORMS": trial.suggest_categorical(
-            "inference_config__PREPROCESS_TRANSFORMS",
+            "tabpfn__inference_config__PREPROCESS_TRANSFORMS",
             enumerate_preprocess_transforms()
         ),
         "inference_config__OUTLIER_REMOVAL_STD": trial.suggest_categorical(
-            "inference_config__OUTLIER_REMOVAL_STD", [None, 7.0, 9.0, 12.0]
+            "tabpfn__inference_config__OUTLIER_REMOVAL_STD", [None, 7.0, 9.0, 12.0]
         ),
         "inference_config__SUBSAMPLE_SAMPLES": trial.suggest_categorical(
-            "inference_config__SUBSAMPLE_SAMPLES", [0.99, None]
+            "tabpfn__inference_config__SUBSAMPLE_SAMPLES", [0.99, None]
         )
     }
     return point

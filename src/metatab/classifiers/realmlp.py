@@ -131,20 +131,20 @@ def _realmlp_sampler_function(trial: optuna.Trial) -> dict:
     "https://github.com/autogluon/tabarena/blob/main/tabarena/tabarena/models/realmlp/generate.py"
     '''
     return {
-        "batch_size": trial.suggest_categorical("batch_size", ["auto", 256]),
-        "n_hidden_layers": trial.suggest_int("n_hidden_layers", 2, 4),
-        "hidden_width": trial.suggest_categorical("hidden_width", [256, 384, 512]), # increase in time and memory
-        "tfms": trial.suggest_categorical("tfms", [[], ["median_center", "robust_scale", "smooth_clip"]]), # none or default preprocessing
-        "plr_sigma": trial.suggest_float("plr_sigma", 1e-2, 50.0, log=True),
-        "plr_hidden_1": trial.suggest_categorical("plr_hidden_1", [8, 16, 32]), # have a minor-moderate impact on time and memory peak
-        "plr_hidden_2": trial.suggest_categorical("plr_hidden_2", [4, 6, 8, 12]), # have a large impact on time and memory peak
-        "plr_lr_factor": trial.suggest_float("plr_lr_factor", 5e-2, 3e-1, log=True),
-        "p_drop": trial.suggest_float("p_drop", 0.0, 0.5),
-        "scale_lr_factor": trial.suggest_float("scale_lr_factor", 2.0, 10.0, log=True),
-        "first_layer_lr_factor": trial.suggest_float("first_layer_lr_factor", 0.3, 1.5, log=True),
-        "lr": trial.suggest_float("lr", 2e-2, 3e-1, log=True),
-        "wd": trial.suggest_float("wd", 1e-3, 5e-2, log=True),
-        "use_early_stopping": trial.suggest_categorical("use_early_stopping", [False, True]), # can help in reducing computational time
+        "batch_size": trial.suggest_categorical("realmlp__batch_size", ["auto", 256]),
+        "n_hidden_layers": trial.suggest_int("realmlp__n_hidden_layers", 2, 4),
+        "hidden_width": trial.suggest_categorical("realmlp__hidden_width", [256, 384, 512]), # increase in time and memory
+        "tfms": trial.suggest_categorical("realmlp__tfms", [[], ["median_center", "robust_scale", "smooth_clip"]]), # none or default preprocessing
+        "plr_sigma": trial.suggest_float("realmlp__plr_sigma", 1e-2, 50.0, log=True),
+        "plr_hidden_1": trial.suggest_categorical("realmlp__plr_hidden_1", [8, 16, 32]), # have a minor-moderate impact on time and memory peak
+        "plr_hidden_2": trial.suggest_categorical("realmlp__plr_hidden_2", [4, 6, 8, 12]), # have a large impact on time and memory peak
+        "plr_lr_factor": trial.suggest_float("realmlp__plr_lr_factor", 5e-2, 3e-1, log=True),
+        "p_drop": trial.suggest_float("realmlp__p_drop", 0.0, 0.5),
+        "scale_lr_factor": trial.suggest_float("realmlp__scale_lr_factor", 2.0, 10.0, log=True),
+        "first_layer_lr_factor": trial.suggest_float("realmlp__first_layer_lr_factor", 0.3, 1.5, log=True),
+        "lr": trial.suggest_float("realmlp__lr", 2e-2, 3e-1, log=True),
+        "wd": trial.suggest_float("realmlp__wd", 1e-3, 5e-2, log=True),
+        "use_early_stopping": trial.suggest_categorical("realmlp__use_early_stopping", [False, True]), # can help in reducing computational time
         }
 
 

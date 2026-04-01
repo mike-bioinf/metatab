@@ -6,27 +6,27 @@ from metatab.utils.core import adjust_objective_logloss_and_num_classes, adjust_
 
 
 
-def _catboost_sampler_function(trial: optuna.Trial) -> dict:
+def _catboost_sampler_function(trial: optuna.Trial, prefix: str) -> dict:
     point = {
-        "score_function": trial.suggest_categorical("score_function", ["Cosine", "L2"]),
-        "grow_policy": trial.suggest_categorical("grow_policy", ["SymmetricTree", "Depthwise", "Lossguide"]),
-        "max_bin": trial.suggest_categorical("max_bin", [5, 10, 20, 30, 50, 100, 150, 254]),
-        "learning_rate": trial.suggest_float("learning_rate", 0.001, 0.1, log=True),
-        "leaf_estimation_iterations": trial.suggest_int("leaf_estimation_iterations", 1, 10, log=True),
-        "l2_leaf_reg": trial.suggest_float("l2_leaf_reg", 1e-4, 5.0, log=True),
-        "bagging_temperature": trial.suggest_float("bagging_temperature", 0.0, 1.0),
-        "random_strength": trial.suggest_int("random_strength", 1, 11),
-        "rsm": trial.suggest_categorical("rsm", [0.6, 0.7, 0.8, 0.9, 1])
+        "score_function": trial.suggest_categorical(f"{prefix}__score_function", ["Cosine", "L2"]),
+        "grow_policy": trial.suggest_categorical(f"{prefix}__grow_policy", ["SymmetricTree", "Depthwise", "Lossguide"]),
+        "max_bin": trial.suggest_categorical(f"{prefix}__max_bin", [5, 10, 20, 30, 50, 100, 150, 254]),
+        "learning_rate": trial.suggest_float(f"{prefix}__learning_rate", 0.001, 0.1, log=True),
+        "leaf_estimation_iterations": trial.suggest_int(f"{prefix}__leaf_estimation_iterations", 1, 10, log=True),
+        "l2_leaf_reg": trial.suggest_float(f"{prefix}__l2_leaf_reg", 1e-4, 5.0, log=True),
+        "bagging_temperature": trial.suggest_float(f"{prefix}__bagging_temperature", 0.0, 1.0),
+        "random_strength": trial.suggest_int(f"{prefix}__random_strength", 1, 11),
+        "rsm": trial.suggest_categorical(f"{prefix}__rsm", [0.6, 0.7, 0.8, 0.9, 1])
     }
 
     if point["grow_policy"] != "SymmetricTree":
-        point["min_data_in_leaf"] = trial.suggest_int("min_data_in_leaf", 1, 5) # unique to one branch
+        point["min_data_in_leaf"] = trial.suggest_int(f"{prefix}__min_data_in_leaf", 1, 5) # unique to one branch
     
     if point["grow_policy"] == "Lossguide":
         point["max_depth"] = 16
-        point["max_leaves"] = trial.suggest_int("max_leaves", 2, 128, log=True) # unique to one branch
+        point["max_leaves"] = trial.suggest_int(f"{prefix}__max_leaves", 2, 128, log=True) # unique to one branch
     else:
-        point["max_depth"] = trial.suggest_int("max_depth", 1, 8)
+        point["max_depth"] = trial.suggest_int(f"{prefix}__max_depth", 1, 8)
     
     return point
 
@@ -38,8 +38,7 @@ class _BaseCatBoostSpec:
     device_parameter = None
     main_device = "cpu"
     supported_devices = ["cpu"]
-    default_preprocessing = "base"
-    hps_sampler_function = _catboost_sampler_function
+    default_preprocessing = "zero_variance"
     initialize_search_function = lambda: None
     set_params_function: Callable[[CatBoostClassifier, dict], CatBoostClassifier] = lambda cls, hps: cls.set_params(**hps)
     params_as_object_columns_in_df_search = None
@@ -58,6 +57,7 @@ class CatBoostSpec(_BaseCatBoostSpec):
         "verbose": False,
         "allow_writing_files": False,
     }
+    hps_sampler_function = partial(_catboost_sampler_function, prefix="catboost")
     callbacks_on_params = [partial(adjust_objective_logloss_and_num_classes, framework="catboost")]
 
 
@@ -86,6 +86,7 @@ class EsCatBoostSpec(_BaseCatBoostSpec):
         "verbose": False,
         "allow_writing_files": False,
     }
+    hps_sampler_function = partial(_catboost_sampler_function, prefix="es_catboost")
     callbacks_on_params = [
         partial(adjust_objective_logloss_and_num_classes, framework="catboost"),
         partial(adjust_es_logloss_metric, framework="catboost"),

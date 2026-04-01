@@ -104,11 +104,10 @@ class OptunaSearch:
     '''
     Search object that uses optuna to perform an optimized search.
     Returns the top configuration resulting from the optimization.
-    Currently does not support a multi-classifier search.
     '''
     def __init__(
         self,
-        classifier_spec: ClassifierSpec,
+        classifier_specs: list[ClassifierSpec],
         preprocessing: PreprocessingStrategy | list[PreprocessingStrategy] | list[list[PreprocessingStrategy]],
         optuna_sampler: Literal["random", "tpe"],
         scorer: PipelineConfigurationCVScorer,
@@ -119,9 +118,9 @@ class OptunaSearch:
         log: int,
         raise_error_during_search: bool
     ):
-        self.classifier_spec=classifier_spec
-        self.preprocessing = preprocessing
-        self.optuna_sampler = optuna_sampler
+        self.classifier_specs=classifier_specs
+        self.preprocessing=preprocessing
+        self.optuna_sampler=optuna_sampler
         self.scorer=scorer
         self.n_trials=n_trials
         self.direction_optimization=direction_optimization
@@ -137,10 +136,22 @@ class OptunaSearch:
         if self.optuna_sampler == "random":
             sampler = optuna.samplers.RandomSampler(seed=self.seed)
         else:
-            sampler = optuna.samplers.TPESampler(
-                n_startup_trials=20, # number of random init points, we double the default of 10
-                seed=self.seed,
-            )
+            with warnings.catch_warnings():
+                # 'multivariate' and 'group' are experimental interface so they raise warnings
+                warnings.filterwarnings("ignore", category=optuna.exceptions.ExperimentalWarning)
+                sampler = optuna.samplers.TPESampler(
+                    # number of random init points, we double the default of 10
+                    n_startup_trials=20,
+                    seed=self.seed,
+                    # beneficial since look at hps interconnections
+                    multivariate=True,
+                    # we partition the search space for each classifier
+                    # this is/should inferred by optuna based on parameters co-occurence
+                    group=len(self.classifier_specs) > 1,
+                    # the multivariate sampling fail in some occasions (i.e, dynamic options),
+                    # so it fallback to the independent one raising a warning
+                    warn_independent_sampling=False
+                )
         
         def preprocessing_sampler(trial: optuna.Trial) -> str:
             return trial.suggest_categorical(
@@ -148,17 +159,25 @@ class OptunaSearch:
                 choices=enlist(self.preprocessing)
             )
         
+        def classifier_sampler(trial: optuna.Trial) -> ClassifierSpec:
+            return trial.suggest_categorical(
+                name="__classifier_spec",
+                choices=self.classifier_specs
+            )
+        
         if self.n_trials == 1:
             # mock objective
             def objective(trial):
                 _ = preprocessing_sampler(trial)
-                _ = self.classifier_spec.hps_sampler_function(trial)
+                spec = classifier_sampler(trial)
+                _ = spec.hps_sampler_function(trial)
                 return -1
         else:
             def objective(trial):
                 prep = preprocessing_sampler(trial)
-                hps = self.classifier_spec.hps_sampler_function(trial)
-                pipe_conf = PipelineConfiguration(prep, hps, self.classifier_spec)
+                spec =  classifier_sampler(trial)
+                hps = spec.hps_sampler_function(trial)
+                pipe_conf = PipelineConfiguration(prep, hps, spec)
                 score = safe_score(pipe_conf, self.scorer, self.raise_error_during_search)
                 return score
             
@@ -174,11 +193,11 @@ class OptunaSearch:
         if not any([t.state == optuna.trial.TrialState.COMPLETE for t in study.trials]):
             raise ValueError("All trials have failed.")
         
-        ### REFACTOR: change pop here ???
-        best_prep = study.best_trial.params.pop("__preprocessing")
-        # this resolve conditional logic returning a classifier-compatible hp dict
-        best_hps = self.classifier_spec.hps_sampler_function(study.best_trial)
-        best_configuration = PipelineConfiguration(best_prep, best_hps, self.classifier_spec)
+        best_prep = study.best_trial.params["__preprocessing"]
+        best_spec = study.best_trial.params["__classifier_spec"]
+        # this resolve conditional logic returning a classifier-compatible HP dict
+        best_hps = best_spec.hps_sampler_function(study.best_trial)
+        best_configuration = PipelineConfiguration(best_prep, best_hps, best_spec)
         # we return a list to comply to other search objects
         return [best_configuration]
 
@@ -188,19 +207,18 @@ class UnoptimizedRandomSearch:
     '''
     Search object that does not perform optimization.
     It samples randomly and returns the sampled configurations.
-    Currently does not support a multi-classifier search.
     '''
     def __init__(
         self,
-        classifier_spec: ClassifierSpec,
+        classifier_specs: list[ClassifierSpec],
         preprocessing: PreprocessingStrategy | list[PreprocessingStrategy] | list[list[PreprocessingStrategy]],
         n_confs: int,
         seed: int
     ) -> "UnoptimizedRandomSearch":
-        self.classifier_spec = classifier_spec
-        self.preprocessing = preprocessing
-        self.seed = seed
-        self.n_confs = n_confs
+        self.classifier_specs=classifier_specs
+        self.preprocessing=preprocessing
+        self.seed=seed
+        self.n_confs=n_confs
 
     def get_configurations(self) -> list[PipelineConfiguration]:
         '''
@@ -209,10 +227,16 @@ class UnoptimizedRandomSearch:
         optuna.logging.set_verbosity(optuna.logging.WARNING) # disable logs
         study = optuna.create_study(sampler=optuna.samplers.RandomSampler(self.seed))
         
-        def preprocessing_sampler(trial: optuna.Trial) -> str:
+        def preprocessing_sampler(trial: optuna.Trial) -> PreprocessingStrategy | list[PreprocessingStrategy]:
             return trial.suggest_categorical(
                 name="__preprocessing", 
                 choices=enlist(self.preprocessing)
+            )
+        
+        def classifier_sampler(trial: optuna.Trial) -> ClassifierSpec:
+            return trial.suggest_categorical(
+                name="__classifier_spec",
+                choices=self.classifier_specs
             )
 
         with warnings.catch_warnings():
@@ -225,17 +249,18 @@ class UnoptimizedRandomSearch:
             def mock_objective(trial): 
                 # we trigger the trial sampling
                 _ = preprocessing_sampler(trial)
-                _ = self.classifier_spec.hps_sampler_function(trial)
+                sampled_spec = classifier_sampler(trial)
+                _ = sampled_spec.hps_sampler_function(trial)
                 return 0
             
             study.optimize(mock_objective, n_trials=self.n_confs)
         
         pipe_confs = []
         for t in study.trials:
-            prep = t.params.pop("__preprocessing")
-            pipe_confs.append(
-                PipelineConfiguration(prep, self.classifier_spec.hps_sampler_function(t), self.classifier_spec)
-            )
+            prep = t.params["__preprocessing"]
+            spec = t.params["__classifier_spec"]
+            hps = spec.hps_sampler_function(t)
+            pipe_confs.append(PipelineConfiguration(prep, hps, spec))
 
         return pipe_confs
     

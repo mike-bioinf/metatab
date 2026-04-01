@@ -5,18 +5,18 @@ from sklearn.ensemble import ExtraTreesClassifier
 
 def _extra_trees_sampler_function(trial: optuna.Trial) -> dict:
     point = {
-        "criterion": trial.suggest_categorical("criterion", ["gini", "entropy"]),
-        "max_features": trial.suggest_categorical("max_features", [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, None, "sqrt", "log2"]),
-        "min_samples_split": trial.suggest_int("min_samples_split", 2, 15),
-        "min_samples_leaf": trial.suggest_int("min_samples_leaf", 1, 5),
-        "max_samples": trial.suggest_categorical("max_samples", [0.7, 0.8, 0.9, 1.0]),
-        "min_impurity_decrease": trial.suggest_categorical("min_impurity_decrease", ["zero", "positive"]),
+        "criterion": trial.suggest_categorical("extra_trees__criterion", ["gini", "entropy"]),
+        "max_features": trial.suggest_categorical("extra_trees__max_features", [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, None, "sqrt", "log2"]),
+        "min_samples_split": trial.suggest_int("extra_trees__min_samples_split", 2, 15),
+        "min_samples_leaf": trial.suggest_int("extra_trees__min_samples_leaf", 1, 5),
+        "max_samples": trial.suggest_categorical("extra_trees__max_samples", [0.7, 0.8, 0.9, 1.0]),
+        "min_impurity_decrease": trial.suggest_categorical("extra_trees__min_impurity_decrease", ["zero", "positive"]),
     }
     
     if point["min_impurity_decrease"] == "zero":
         point["min_impurity_decrease"] = 0.0
     else:
-        point["min_impurity_decrease"] = trial.suggest_float("mid_positive", 1e-5, 1e-3, log=True)
+        point["min_impurity_decrease"] = trial.suggest_float("extra_trees__mid_positive", 1e-5, 1e-3, log=True)
 
     return point
 
@@ -32,7 +32,7 @@ class ExtraTreeSpec:
     supported_devices = ["cpu"]
     default_preprocessing = "base"
     default_params = {}
-    fixed_params = {"n_estimators": 1000}
+    fixed_params = {"n_estimators": 1000, "bootstrap": True}
     callbacks_on_params = None
     hps_sampler_function = _extra_trees_sampler_function
     initialize_search_function = lambda: None

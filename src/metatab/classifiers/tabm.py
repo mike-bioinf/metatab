@@ -125,30 +125,30 @@ def _tabm_sampler_function(trial: optuna.Trial) -> dict:
     "https://github.com/autogluon/tabarena/blob/main/tabarena/tabarena/models/tabm/generate.py"
     '''
     point = {
-        "arch_type": trial.suggest_categorical("arch_type", ["tabm", "tabm-mini"]),
-        "num_emb_n_bins": trial.suggest_int("num_emb_n_bins", 2, 128, step=2),
-        "d_embedding": trial.suggest_int( "d_embedding", 8, 24, step=4), # high increase in time and memory peak
-        "batch_size": trial.suggest_categorical("batch_size", ["auto", 256]),
-        "lr": trial.suggest_float("lr", 1e-4, 3e-3, log=True),
+        "arch_type": trial.suggest_categorical("tabm__arch_type", ["tabm", "tabm-mini"]),
+        "num_emb_n_bins": trial.suggest_int("tabm__num_emb_n_bins", 2, 128, step=2),
+        "d_embedding": trial.suggest_int("tabm__d_embedding", 8, 24, step=4), # high increase in time and memory peak
+        "batch_size": trial.suggest_categorical("tabm__batch_size", ["auto", 256]),
+        "lr": trial.suggest_float("tabm__lr", 1e-4, 3e-3, log=True),
         # weight_decay can be 0 or loguniform positive value
-        "weight_decay": trial.suggest_categorical("weight_decay", ["zero", "positive"]),
-        "d_block": trial.suggest_int("d_block", 128, 768, step=32), # high increase in time and memory peak
-        "n_blocks": trial.suggest_int("n_blocks", 2, 5), # high increase in time
+        "weight_decay": trial.suggest_categorical("tabm__weight_decay", ["zero", "positive"]),
+        "d_block": trial.suggest_int("tabm__d_block", 128, 768, step=32), # high increase in time and memory peak
+        "n_blocks": trial.suggest_int("tabm__n_blocks", 2, 5), # high increase in time
         # dropout can be 0 or uniform positive value
-        "dropout": trial.suggest_categorical("dropout", ["zero", "positive"]),
+        "dropout": trial.suggest_categorical("tabm__dropout", ["zero", "positive"]),
         # none, tabm default and realmlp default preprocessing
-        "tfms": trial.suggest_categorical("tfms", [[], ["quantile_tabr"], ["median_center", "robust_scale", "smooth_clip"]])
+        "tfms": trial.suggest_categorical("tabm__tfms", [[], ["quantile_tabr"], ["median_center", "robust_scale", "smooth_clip"]])
     }
     
     # resolve conditional weight_decay
     point["weight_decay"] = 0.0 \
         if point["weight_decay"] == "zero" \
-        else trial.suggest_float("pos_weight_decay", 1e-4, 1e-1, log=True)
+        else trial.suggest_float("tabm__pos_weight_decay", 1e-4, 1e-1, log=True)
     
     # resolve conditional dropout
     point["dropout"] = 0.0 \
         if point["dropout"] == "zero" \
-        else trial.suggest_float("pos_dropout", 0.0, 0.5)
+        else trial.suggest_float("tabm__pos_dropout", 0.0, 0.5)
     
     return point
 

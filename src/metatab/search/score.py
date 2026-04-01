@@ -67,7 +67,7 @@ class PipelineConfigurationCVScorer:
         metric_aggregation: Literal["mean", "sum"],
         validation_set_size: float | None,
         seed: int,
-        device: Literal["cpu", "cuda"],
+        device: Literal["cpu", "cuda", "auto"],
         n_threads: int,
         store_cv_info: bool
     ):
@@ -82,7 +82,7 @@ class PipelineConfigurationCVScorer:
         self.device=device
         self.n_threads=n_threads
         self.store_cv_info=store_cv_info
-        self.dfs_cv = []
+        self.dfs_cv: list[pd.DataFrame] = []
 
 
     def score(self, pipe_configuration: PipelineConfiguration) -> float:
@@ -149,7 +149,7 @@ class PipelineConfigurationCVScorer:
             df_cv = pd.DataFrame(cv_results)
             df_cv["pred_proba"] = cv_pred_proba
             df_cv["classifier"] = classifier_spec.type_classifier
-            df_cv["preprocessing"] = preprocessing
+            df_cv["preprocessing"] = str(preprocessing)
             df_cv = add_broadcasted_objects_as_column(
                 df=df_cv,
                 dictionary=hps,
@@ -182,4 +182,11 @@ class PipelineConfigurationCVScorer:
                 return None
             else:
                 raise ValueError("No cv execution info is stored in the instance.")
-        return pd.concat(self.dfs_cv, axis=0, ignore_index=True)
+        
+        dfs_completed = []
+        for i, df in enumerate(self.dfs_cv):
+            df = self.dfs_cv[i]
+            df.insert(loc=0, column="search_iter", value=i)
+            dfs_completed.append(df)
+
+        return pd.concat(dfs_completed, axis=0, ignore_index=True)

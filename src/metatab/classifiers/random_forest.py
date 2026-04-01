@@ -5,18 +5,18 @@ from sklearn.ensemble import RandomForestClassifier
 
 def _random_forest_sampler_function(trial: optuna.Trial) -> dict:
     point = {
-        "criterion": trial.suggest_categorical("criterion", ["gini", "entropy"]),
-        "max_features": trial.suggest_categorical("max_features", [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, None, "sqrt", "log2"]),
-        "min_samples_split": trial.suggest_int("min_samples_split", 2, 15),
-        "min_samples_leaf": trial.suggest_int("min_samples_leaf", 1, 5),
-        "max_samples": trial.suggest_categorical("max_samples", [0.7, 0.8, 0.9, 1.0]),
-        "min_impurity_decrease": trial.suggest_categorical("min_impurity_decrease", ["zero", "positive"]),
+        "criterion": trial.suggest_categorical("random_forest__criterion", ["gini", "entropy"]),
+        "max_features": trial.suggest_categorical("random_forest__max_features", [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, None, "sqrt", "log2"]),
+        "min_samples_split": trial.suggest_int("random_forest__min_samples_split", 2, 15),
+        "min_samples_leaf": trial.suggest_int("random_forest__min_samples_leaf", 1, 5),
+        "max_samples": trial.suggest_categorical("random_forest__max_samples", [0.7, 0.8, 0.9, 1.0]),
+        "min_impurity_decrease": trial.suggest_categorical("random_forest__min_impurity_decrease", ["zero", "positive"]),
     }
     
     if point["min_impurity_decrease"] == "zero":
         point["min_impurity_decrease"] = 0.0
     else:
-        point["min_impurity_decrease"] = trial.suggest_float("mid_positive", 1e-5, 1e-3, log=True)
+        point["min_impurity_decrease"] = trial.suggest_float("random_forest__mid_positive", 1e-5, 1e-3, log=True)
 
     return point
 

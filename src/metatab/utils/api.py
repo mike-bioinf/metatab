@@ -27,7 +27,7 @@ def encode_y(X: XType, y: YType) -> tuple[LabelEncoder, YType]:
     return le, y_encoded
 
 
-
+## REFACTOR: to cancel
 def check_validation_set_classifier_combination(
     validation_set: None | float | tuple[XType, YType],
     classifier_spec: ClassifierSpec,
@@ -84,19 +84,36 @@ def check_validation_set_classifier_combination(
 
 
 
-def check_validation_set(validation_set: float | None) -> None:
+def check_validation_set(validation_set_size: float) -> None:
+    '''Check validation set type and value'''
+    if not isinstance(validation_set_size, float):
+        raise TypeError("'validation_set_size' must be a float.")
+    if not 0 < validation_set_size < 1:
+        raise ValueError("'validation_set_size' must be a float in (0, 1).")
+
+
+
+def check_device(
+    device: Literal["auto", "cpu", "cuda"], 
+    classifier_specs: list[ClassifierSpec]
+) -> None:
     '''
-    Check validation set type and value.
+    Check that the device info is compatible for all classifiers.
+    In detail performs checks when device is "cuda".
+    When "cpu" or "auto" no check is done since all classifiers support both.
     '''
-    if not isinstance(validation_set, float) and validation_set is not None:
-        raise TypeError("'validation_set' must be a float or None.")
+    if device not in ["auto", "cpu", "cuda"]:
+        raise DeviceError("Device must me one of: 'cpu', 'cuda', or 'auto'.")
+    
+    if device == "cuda":
+        if not torch.cuda.is_available():
+            DeviceError("cuda is requested but not available.")
+        for classifier_spec in classifier_specs:
+            if device not in classifier_spec.supported_devices:
+                raise DeviceError(f"'{classifier_spec.type_classifier}' does not support cuda.")
 
-    if isinstance(validation_set, float):
-        if not 0 < validation_set < 1:
-            raise ValueError("'validation_set' must be a float in (0, 1).")
 
-
-
+## REFACTOR: to cancel
 def handle_device(
     input_device: str, 
     classifier_spec: ClassifierSpec,

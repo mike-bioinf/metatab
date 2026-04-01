@@ -6,26 +6,26 @@ from metatab.utils.core import adjust_objective_logloss_and_num_classes, adjust_
 
 
 
-def _xgb_sampler_function(trial: optuna.Trial) -> dict:
+def _xgb_sampler_function(trial: optuna.Trial, prefix: str) -> dict:
     point = {
-        "grow_policy": trial.suggest_categorical("grow_policy", ["depthwise", "lossguide"]),
-        "learning_rate": trial.suggest_float("learning_rate", 0.001, 0.1, log=True),
-        "reg_lambda": trial.suggest_float("reg_lambda", 0.001, 5, log=True),
-        "reg_alpha": trial.suggest_float("reg_alpha", 0.001, 5, log=True),
-        "gamma": trial.suggest_float("gamma", 0.001, 5, log=True),
-        "min_child_weight": trial.suggest_float("min_child_weight", 0.001, 5, log=True),
-        "subsample": trial.suggest_categorical("subsample", [0.8, 0.9, 1]),
-        "colsample_bylevel": trial.suggest_categorical("colsample_bylevel", [0.6, 0.7, 0.8, 0.9, 1])
+        "grow_policy": trial.suggest_categorical(f"{prefix}__grow_policy", ["depthwise", "lossguide"]),
+        "learning_rate": trial.suggest_float(f"{prefix}__learning_rate", 0.001, 0.1, log=True),
+        "reg_lambda": trial.suggest_float(f"{prefix}__reg_lambda", 0.001, 5, log=True),
+        "reg_alpha": trial.suggest_float(f"{prefix}__reg_alpha", 0.001, 5, log=True),
+        "gamma": trial.suggest_float(f"{prefix}__gamma", 0.001, 5, log=True),
+        "min_child_weight": trial.suggest_float(f"{prefix}__min_child_weight", 0.001, 5, log=True),
+        "subsample": trial.suggest_categorical(f"{prefix}__subsample", [0.8, 0.9, 1]),
+        "colsample_bylevel": trial.suggest_categorical(f"{prefix}__colsample_bylevel", [0.6, 0.7, 0.8, 0.9, 1])
     }
 
     if point["grow_policy"] == "depthwise":
-        point["tree_method"] = trial.suggest_categorical("tree_method_depthwise", ["exact", "hist"])
-        point["max_depth"] = trial.suggest_int("max_depth", 1, 8)
+        point["tree_method"] = trial.suggest_categorical(f"{prefix}__tree_method_depthwise", ["exact", "hist"])
+        point["max_depth"] = trial.suggest_int(f"{prefix}__max_depth", 1, 8)
         point["max_leaves"] = 0 # no limit
     else:
-        point["tree_method"] = trial.suggest_categorical("tree_method_not_depthwise", ["approx", "hist"])
+        point["tree_method"] = trial.suggest_categorical(f"{prefix}__tree_method_not_depthwise", ["approx", "hist"])
         point["max_depth"] = 0 # no limit
-        point["max_leaves"] = trial.suggest_int("max_leaves", 2, 128, log=True)
+        point["max_leaves"] = trial.suggest_int(f"{prefix}__max_leaves", 2, 128, log=True)
 
     return point
 
@@ -38,7 +38,6 @@ class _BaseXGBSpec:
     main_device = "cpu"
     supported_devices = ["cpu"]
     default_preprocessing = "base"
-    hps_sampler_function = _xgb_sampler_function
     initialize_search_function = lambda: None
     set_params_function: Callable[[XGBClassifier, dict], XGBClassifier] = lambda cls, hps: cls.set_params(**hps)
     params_as_object_columns_in_df_search = None
@@ -49,6 +48,7 @@ class XGBSpec(_BaseXGBSpec):
     early_stop_on_validation_set = False
     default_params = {"verbosity": 0}
     fixed_params = {"n_estimators": 1000, "verbosity": 0}
+    hps_sampler_function = partial(_xgb_sampler_function, prefix="xgb")
     callbacks_on_params = [
         partial(adjust_objective_logloss_and_num_classes, framework="xgboost"),
     ]
@@ -69,6 +69,7 @@ class EsXGBSpec(_BaseXGBSpec):
         "early_stopping_rounds": 100,
         "verbosity": 0,
     }
+    hps_sampler_function = partial(_xgb_sampler_function, prefix="es_xgb")
     callbacks_on_params = [
         partial(adjust_objective_logloss_and_num_classes, framework="xgboost"),
         partial(adjust_es_logloss_metric, framework="xgboost"),
