@@ -19,18 +19,19 @@ if TYPE_CHECKING:
 
 
 
-## REFACTOR: complete here
-# 0) Supports multiple classifiers ??
-# 1) confs per classifier?
-## this should be established above at api level and then we adjust this according
 class MetaSearch:
     '''
-    Search done using the meta-framework.
+    Search object that levareges metatab meta-framework to propose promising configurations.
     '''
-    ## UnoptimizedRandomSearch over one or multiple classifiers and get list confs
-    ## evaluation though surrogate (meta-machinery)
-    ## pick the best-inferred confs
-    ## return them
+    ## takes classifiers and split n_candidates uniformly?
+    # n_candidates_for_classifier = self.n_candidates / len(self.classifier_specs)
+    # for classifier_spec in self.classifier_specs:
+    #   urs = UnoptimizedRandomSearch()
+    #   confs = urs.get_configurations()
+    #   build df using confs
+    #   surrogate = load_surrogate()
+    #   surrogate.predict(df)
+    #   select best and return them
     pass
 
 

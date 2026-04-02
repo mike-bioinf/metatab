@@ -270,7 +270,6 @@ class TuneClassifier(ClassifierMixin, BaseEstimator):
         check_device(self.device, classifier_specs)
 
 
-
     def predict(self, X: XType) -> np.ndarray:
         '''
         Predict class for X.

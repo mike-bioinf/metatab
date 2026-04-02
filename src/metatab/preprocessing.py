@@ -39,15 +39,15 @@ class GeneralPreprocessorMixin:
         return X
 
 
-class MicrobiomeTransformerMixin(GeneralPreprocessorMixin, TransformerMixin, BaseEstimator):
+class BaseMicrobiomeTransformer(GeneralPreprocessorMixin, TransformerMixin, BaseEstimator):
     pass
 
 
-class MicrobiomeSelectorMixin(GeneralPreprocessorMixin, SelectorMixin, BaseEstimator):
+class BaseMicrobiomeSelector(GeneralPreprocessorMixin, SelectorMixin, BaseEstimator):
     pass
 
 
-class LogTransformer(MicrobiomeTransformerMixin):
+class LogTransformer(BaseMicrobiomeTransformer):
     '''
     Log10 of relative abundances.
     We add half of the minimun not zero value to handle zeros.
@@ -62,7 +62,7 @@ class LogTransformer(MicrobiomeTransformerMixin):
         return np.log10(X + self.pseudovalue_)
 
 
-class CLRTransformer(MicrobiomeTransformerMixin):
+class CLRTransformer(BaseMicrobiomeTransformer):
     '''
     Centered log-ratio tranformation.
     We add half of the minimun not zero value to handle zeros.
@@ -78,7 +78,7 @@ class CLRTransformer(MicrobiomeTransformerMixin):
         return log_X - log_X.mean(axis=1, keepdims=True)
 
 
-class RobustCLRTransformer(MicrobiomeTransformerMixin):
+class RobustCLRTransformer(BaseMicrobiomeTransformer):
     '''
     Robust centered log-ratio transformation.
     It manages zeros by excluding them from computation vs "standard "clr.
@@ -96,7 +96,7 @@ class RobustCLRTransformer(MicrobiomeTransformerMixin):
         return result
 
 
-class PresenceAbsenceTransformer(MicrobiomeTransformerMixin):
+class PresenceAbsenceTransformer(BaseMicrobiomeTransformer):
     '''
     Convert relative abudances in presence/absence (1/0).
     Uses a threshold to determine presence.
@@ -109,7 +109,7 @@ class PresenceAbsenceTransformer(MicrobiomeTransformerMixin):
         return (X > self.threshold).astype(float)
 
 
-class ArcsineTransformer(MicrobiomeTransformerMixin):
+class ArcsineTransformer(BaseMicrobiomeTransformer):
     '''
     Arcsine square root transformation.
     - scaled=False: output in [0, pi/2]
@@ -126,7 +126,7 @@ class ArcsineTransformer(MicrobiomeTransformerMixin):
         return out
 
 
-class ILRTransformer(MicrobiomeTransformerMixin):
+class ILRTransformer(BaseMicrobiomeTransformer):
     '''
     Isometric log ratio transformation.
     We use the deterministic default basis implemented in scikit-bio.
@@ -143,7 +143,7 @@ class ILRTransformer(MicrobiomeTransformerMixin):
         return np.array([f"ilr_{i}" for i in range(self.n_features_in_ - 1)])
 
 
-class HellingerTransformer(MicrobiomeTransformerMixin):
+class HellingerTransformer(BaseMicrobiomeTransformer):
     '''
     Square root of relative abundance for variance stabilization.
     Returns values in [0, 1].
@@ -152,7 +152,7 @@ class HellingerTransformer(MicrobiomeTransformerMixin):
         return np.sqrt(self._to_numpy(X))
     
 
-class FeaturePrevalenceSelector(MicrobiomeSelectorMixin):
+class FeaturePrevalenceSelector(BaseMicrobiomeSelector):
     '''
     Filter features for which their prevalence (percentage of non-zero values)
     does not satisfy the threshold.
@@ -170,7 +170,7 @@ class FeaturePrevalenceSelector(MicrobiomeSelectorMixin):
         return self._mask
 
 
-class RobustStandardScaler(MicrobiomeTransformerMixin):
+class RobustStandardScaler(BaseMicrobiomeTransformer):
     '''
     Robust version of sklearn StandardScaler accounting for features
     with low standard deviation due to high sparsity. A floor is added
@@ -198,7 +198,7 @@ class RobustStandardScaler(MicrobiomeTransformerMixin):
 
 
 
-class FeatureDensitySelector(MicrobiomeSelectorMixin):
+class FeatureDensitySelector(BaseMicrobiomeSelector):
     '''
    Selects the N most dense columns. Some key features:
     - The selector can select a number of columns different from the desired target,
