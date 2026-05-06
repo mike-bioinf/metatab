@@ -1,4 +1,4 @@
-# Metatab
+# MetaTab
 
 A comprehensive classification framework for microbial taxonomic profiles.
 
@@ -31,7 +31,7 @@ pip install -e metatab
 ## Quick Start
 
 ### CLI
-Metatab provides three main commands:
+MetaTab provides three main commands:
 - metatab-fit
 - metatab-resample
 - metatab-predict
@@ -127,7 +127,7 @@ metatab-fit tune \
     --create-outdir
 
 
-# Fit an ensembled model on a dataset using metatab metalearning capabilities
+# Fit an ensembled model on a dataset using MetaTab metalearning capabilities
 metatab-fit ensemble \
     --input-data "${example_dataset_path}" \
     --output-dir "path/of/your/output-directory" \
@@ -197,12 +197,12 @@ metatab-resample cv ensemble \
 
 
 ### Python API
-- Metatab exposes standard/meta tuned/ensembled classes for each supported classifier (AutoGluon excluded).
+- MetaTab exposes standard/meta tuned/ensembled classes for each supported classifier (AutoGluon excluded).
 These classes follow a unified sintax: {Meta/Standard}{Tune/Ensemble}{Classifier} (see examples below). 
 They abstract hyperparameter tuning and ensembling using curated predefined search spaces.
-For gradient boosted decision tree classifiers, Metatab provides two variants: one that employs early stop and one that does not.
+For gradient boosted decision tree classifiers, MetaTab provides two variants: one that employs early stop and one that does not.
 The early-stopped versions include "Es" in the class name (e.g., MetaTuneEsLGBMClassifier vs MetaTuneLGBMClassifier).
-- Metatab implements the FamilyEnsembleEstimator class to streamline the evaluation of cross-classifier ensembles (see code snippet).
+- MetaTab implements the FamilyEnsembleEstimator class to streamline the evaluation of cross-classifier ensembles (see code snippet).
 - The PredictionDataframe class can be used to easily load and parse the pred_dataframe* files generated through the CLI API into a single pandas DataFrame.
 
 ```python
@@ -306,12 +306,12 @@ MIT License - see LICENSE file for details.
 
 ## Citation
 
-If you use Metatab in your research, please cite:
+If you use MetaTab in your research, please cite:
 
 ```bibtex
 @software{metatab,
   author = {Avagliano Michele, Rodner Erik, and Pasolli Edoardo},
-  title = {Metatab: a toolkit and benchmark of tabular learners for metagenomic case-control classification},
+  title = {MetaTab: a toolkit and benchmark of tabular learners for metagenomic case-control classification},
   year = {2026},
   url = {https://github.com/mike-bioinf/metatab}
 }
