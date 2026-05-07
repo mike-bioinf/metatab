@@ -1,8 +1,10 @@
 import numpy as np
 import pandas as pd
 import seaborn as sns
+import matplotlib.patches as mpatches
 from typing import Literal
 from matplotlib.axes import Axes
+from matplotlib import lines as mlines
 from adjustText import adjust_text
 from paretoset import paretoset
 
@@ -389,3 +391,205 @@ def draw_win_heatmap_plot(
     ax.set_xlabel("")
     ax.set_ylabel("")
     return ax
+
+
+
+def draw_stacked_bar_improvability(
+    ax: Axes,
+    df: pd.DataFrame,
+    x_column: str,
+    hue_column: str,
+    y_column: str,
+    paired_column: str,
+    hline_x_hue_category: tuple[str, str] | None,
+    hline_kwargs: None | dict = None,
+    palette: dict | None = None,
+    p_values=None,
+    pvalue_alpha: float = 0.05
+) -> tuple[pd.DataFrame, Axes]:
+    """
+    Stacked overlapping bar chart of metric improvability over hue categories.
+    The improvability is computed as the mean across paired obs of the differences max(metric) minus metric within paired obs.
+    Therefore it makes sense for performance metric like AUC that are higher is better and naturally normalized between a range.
+
+    Parameters:
+        ax (Axes): 
+            Axes onto which draw the plot.
+        
+        df (pd.DataFrame):
+            Long-format DataFrame containing all relevant columns.
+
+        x_column (str):
+            Column defining the categories shown on the x-axis.
+
+        hue_column (str):
+            Column defining the groups shown as stacked bars.
+
+        y_column (str):
+            Column containing the performance metric.
+
+        paired_column (str):
+            Column identifying the paired observations used to compute improvability
+            Improvability is averaged over unique values of this column.
+
+        palette (dict | None, optional):
+            Colors for each hue level in the order they appear in hue_column.
+            If None, uses matplotlib's default color cycle.
+
+        hline_kwargs (dict | None, optional):
+            Keyword arguments forwarded to ax.axhline. Recognized extra keys:
+                - "label" (str): label shown in the legend for the hline.
+            If None, defaults to {"linestyle": "--", "linewidth": 2.5, "color": "black"}.
+
+        p_values (dict, optional):
+            Significance annotations. Keys are (x_value, hue_a, hue_b) tuples,
+            values are p-values. Pairs with p < 0.05 are annotated with circled
+            numbers above each bar. Lookup is symmetric: (clf, a, b) and (clf, b, a)
+            are treated as the same comparison.
+
+        pvalue_alpha (float, optional):
+            Significance thresold used for pvalues displaying.
+            Ignored when p_values is None.
+
+    Returns:
+        tuple[Axes,pd.Series]: 
+        A tuple of the improvability values and the plotted axes.
+    """
+   # Defaults
+    _hline_kwargs = {"linestyle": "--", "linewidth": 2.5, "color": "black"}
+    if hline_kwargs is not None:
+        _hline_kwargs.update(hline_kwargs)
+    hline_label = _hline_kwargs.pop("label", None)
+    hline_x, hline_hue = hline_x_hue_category if hline_x_hue_category is not None else (None, None)
+    
+    # Hues and colors 
+    hues = [
+        h for h in df[hue_column].unique()
+        if hline_hue is None or h != hline_hue
+    ]
+
+    if palette is None:
+        palette = {h: f"C{i}" for i, h in enumerate(hues)}
+    
+    hue_colors = [palette[h] for h in hues]
+
+    # Build wide table
+    df = df.copy()
+    df["_key"] = df[hue_column].astype(str) + "--" + df[x_column].astype(str)
+    df_wide = df[["_key", paired_column, y_column]].pivot(columns="_key", index=paired_column, values=y_column)
+
+    # Check hline category in df_wide
+    if hline_x_hue_category is not None:
+        hline_key = f"{hline_hue}--{hline_x}"
+        if hline_key not in df_wide.columns:
+            raise ValueError(
+                f"hline_x_hue_category {hline_x_hue_category!r} not found in data."
+            )
+
+    # Improvability: mean gap to best
+    full_imp = df_wide.apply(lambda row: row.max() - row, axis=1).mean(axis=0)
+
+    # hline value management
+    if hline_x_hue_category is not None:
+        hline_value = full_imp[hline_key]
+        imp = full_imp.drop(hline_key)
+    else:
+        hline_value = None
+        imp = full_imp
+
+    # imp_matrix: x_values x hues (excluding hline category)
+    x_values = [
+        v for v in df[x_column].unique()
+        if hline_x_hue_category is None or v != hline_x
+    ]
+    
+    imp_matrix = pd.DataFrame({
+        x: {h: imp[f"{h}--{x}"] for h in hues}
+        for x in x_values
+    }).T.reindex(columns=hues)
+
+    #  Order x by min improvability (lowest = best = leftmost) 
+    x_order = imp_matrix.min(axis=1).sort_values().index.tolist()
+    imp_matrix = imp_matrix.loc[x_order]
+
+    #  Sort hues per x: worst first (widest bar behind), best last (narrowest on top) 
+    rank_matrix = np.argsort(imp_matrix.values, axis=1)[:, ::-1]
+    sorted_imp = np.take_along_axis(imp_matrix.values, rank_matrix, axis=1)
+    sorted_colors = np.array(hue_colors)[rank_matrix]
+
+    n_hues = len(hues)
+    widths = np.linspace(0.6, 0.2, n_hues)
+    x = np.arange(len(x_order))
+
+    # Bars
+    for level in range(n_hues):
+        ax.bar(
+            x, sorted_imp[:, level], 
+            bottom=0,
+            color=sorted_colors[:, level],
+            width=widths[level],
+            zorder=level,
+        )
+
+    # Significance annotations 
+    if p_values is not None:
+        # get all pairwise comparisons
+        comparisons = [(a, b) for i, a in enumerate(hues) for b in hues[i + 1:]]
+        # associate a symbol to each comparison 
+        symbols = [chr(0x2460 + i) for i in range(len(comparisons))]
+
+        for xi, x_val in enumerate(x_order):
+            y_top = imp_matrix.loc[x_val].max()
+            parts = []
+            for (h_a, h_b), sym in zip(comparisons, symbols):
+                p = (
+                    p_values.get((x_val, h_a, h_b)) or
+                    p_values.get((x_val, h_b, h_a)) or
+                    1.0 # fallback to 1 when not found
+                )
+                parts.append(sym if p <= pvalue_alpha else " ")
+            ax.text(
+                x=xi, 
+                y=y_top + y_top * 0.01,
+                s="".join(parts),
+                ha="center", 
+                va="bottom", 
+                fontsize=12
+            )
+
+        legend_text = "\n".join(
+            f"{sym} {a} vs {b}" for sym, (a, b) in zip(symbols, comparisons)
+        ) + f"\n(p <= {pvalue_alpha})"
+
+        ax.text(
+            x=1.01, 
+            y=0.99, 
+            s=legend_text,
+            transform=ax.transAxes, 
+            fontsize=10,
+            va="top", 
+            ha="left",
+            bbox=dict(boxstyle="round", facecolor="white", edgecolor="gray", alpha=0.8)
+        )
+
+    # Hline 
+    if hline_value is not None:
+        ax.axhline(y=hline_value, **_hline_kwargs)
+
+    # Legend 
+    handles = [mpatches.Patch(color=c, label=h) for c, h in zip(hue_colors, hues)]
+    if hline_value is not None and hline_label is not None:
+        handles.append(
+            mlines.Line2D(
+                [], [],
+                color=_hline_kwargs.get("color", "black"),
+                linestyle=_hline_kwargs.get("linestyle", "--"),
+                linewidth=_hline_kwargs.get("linewidth", 2.5),
+                label=hline_label,
+            )
+        )
+    ax.legend(handles=handles, title=hue_column, fontsize=10, title_fontsize=11)
+    ax.set_xticks(x)
+    ax.set_xticklabels(x_order, rotation=45, ha="right")
+    ax.set_ylabel("Improvability")
+    return ax, full_imp
