@@ -401,6 +401,7 @@ def draw_stacked_bar_improvability(
     hue_column: str,
     y_column: str,
     paired_column: str,
+    type_improvability: Literal["gap", "tabarena"],
     hline_x_hue_category: tuple[str, str] | None,
     hline_kwargs: None | dict = None,
     palette: dict | None = None,
@@ -409,8 +410,7 @@ def draw_stacked_bar_improvability(
 ) -> tuple[pd.DataFrame, Axes]:
     """
     Stacked overlapping bar chart of metric improvability over hue categories.
-    The improvability is computed as the mean across paired obs of the differences max(metric) minus metric within paired obs.
-    Therefore it makes sense for performance metric like AUC that are higher is better and naturally normalized between a range.
+    This implementation assumes that improvability is computed over AUC values.
 
     Parameters:
         ax (Axes): 
@@ -431,6 +431,11 @@ def draw_stacked_bar_improvability(
         paired_column (str):
             Column identifying the paired observations used to compute improvability
             Improvability is averaged over unique values of this column.
+
+        type_improvability (Literal["gap", "tabarena"]):
+            Type of improvability metric:
+            - "gap": mean across paired obs of the differences max(auc) minus model auc within paired obs.
+            - "tabarena": quantify the mean across paired obs of how much error you can recover by switching to the best method.
 
         palette (dict | None, optional):
             Colors for each hue level in the order they appear in hue_column.
@@ -486,8 +491,11 @@ def draw_stacked_bar_improvability(
                 f"hline_x_hue_category {hline_x_hue_category!r} not found in data."
             )
 
-    # Improvability: mean gap to best
-    full_imp = df_wide.apply(lambda row: row.max() - row, axis=1).mean(axis=0)
+    # Improvability computation
+    if type_improvability == "tabarena":
+        full_imp = df_wide.apply(lambda row: (row.max() - row) / (1 - row) * 100, axis=1).mean(axis=0)
+    else:
+        full_imp = df_wide.apply(lambda row: row.max() - row, axis=1).mean(axis=0)
 
     # hline value management
     if hline_x_hue_category is not None:
