@@ -35,8 +35,6 @@ def parse_args(args):
     p = argparse.ArgumentParser()
     
     p.add_argument("-i", "--meta-folder", required=True, help="Path of the folder containing the meta-datasets.")
-
-    p.add_argument("-n", "--number-rows", type=int, default=-1, help="Select the first n rows from the metadatasets.")
     
     p.add_argument("-o", "--output-folder", required=True, 
                    help="""Output folder path. It will contains all the surrogate models called after the names
@@ -123,9 +121,6 @@ def main():
         
         meta_datasets = [d for n, d in datasets.items() if n != name_dataset]
         assert len(meta_datasets) < len(datasets)
-        
-        if pars["number_rows"] > 0:
-            meta_datasets = [d.iloc[list(range(pars["number_rows"])), :] for d in meta_datasets]
 
         meta_data = pd.concat(meta_datasets, axis=0, ignore_index=True)
         X = meta_data.drop(columns=y_col)

@@ -73,6 +73,7 @@ metatab-prepare-metadata = "metatab.cli.programs.metalearning.prepare_metadata:m
 metatab-fit-surrogate = "metatab.cli.programs.metalearning.fit_surrogate:main"
 metatab-fit-surrogate-loo = "metatab.cli.programs.metalearning.fit_surrogate_loo:main"
 metatab-mfe-sensitivity = "metatab._paper.analysis.mfe_sensitivity.permutation:main"
+metatab-predict-surrogate = "metatab.cli.programs.metalearning.predict_surrogate:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
