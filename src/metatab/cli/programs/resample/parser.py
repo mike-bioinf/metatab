@@ -23,11 +23,17 @@ def parse_args(args):
     p_holdout = sub_resample_mode.add_parser("holdout", help="Holdout resample")
     p_cv = sub_resample_mode.add_parser("cv", help="Cross-validation resample")
 
-    # second layer estimator mode: default, tune, ensemble, family-ensemble or autogluon
+    # second layer estimator mode: default, good_default, tune, ensemble, family-ensemble or autogluon
     sub_holdout_estimator_mode = p_holdout.add_subparsers(required=True, title="Estimator Mode", description="Valid subcommands")
     
     p_holdout_default = sub_holdout_estimator_mode.add_parser(
         "default", 
+        parents=[make_base_parser(), make_extra_base_parser(), make_base_resample_parser(), make_resample_seed_parser(), make_holdout_parser()],
+        formatter_class=argparse.RawTextHelpFormatter
+    )
+
+    p_holdout_good_default = sub_holdout_estimator_mode.add_parser(
+        "good_default", 
         parents=[make_base_parser(), make_extra_base_parser(), make_base_resample_parser(), make_resample_seed_parser(), make_holdout_parser()],
         formatter_class=argparse.RawTextHelpFormatter
     )
@@ -57,6 +63,7 @@ def parse_args(args):
     )
 
     p_holdout_default.set_defaults(splitting_mode="holdout", estimator_mode="default")
+    p_holdout_good_default.set_defaults(splitting_mode="holdout", estimator_mode="good_default")
     p_holdout_tune.set_defaults(splitting_mode="holdout", estimator_mode="tune")
     p_holdout_ensemble.set_defaults(splitting_mode="holdout", estimator_mode="ensemble")
     p_holdout_family_ensemble.set_defaults(splitting_mode="holdout", estimator_mode="family_ensemble")
@@ -66,6 +73,12 @@ def parse_args(args):
     
     p_cv_default = sub_cv_estimator_mode.add_parser(
         "default", 
+        parents=[make_base_parser(), make_extra_base_parser(), make_base_resample_parser(), make_resample_seed_parser(), make_cv_parser()],
+        formatter_class=argparse.RawTextHelpFormatter
+    )
+
+    p_cv_good_default = sub_cv_estimator_mode.add_parser(
+        "good_default", 
         parents=[make_base_parser(), make_extra_base_parser(), make_base_resample_parser(), make_resample_seed_parser(), make_cv_parser()],
         formatter_class=argparse.RawTextHelpFormatter
     )
@@ -95,6 +108,7 @@ def parse_args(args):
     )
 
     p_cv_default.set_defaults(splitting_mode="cv", estimator_mode="default")
+    p_cv_good_default.set_defaults(splitting_mode="cv", estimator_mode="good_default")
     p_cv_tune.set_defaults(splitting_mode="cv", estimator_mode="tune")
     p_cv_ensemble.set_defaults(splitting_mode="cv", estimator_mode="ensemble")
     p_cv_family_ensemble.set_defaults(splitting_mode="cv", estimator_mode="family_ensemble")
