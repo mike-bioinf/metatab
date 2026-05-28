@@ -8,6 +8,7 @@ from metatab.metatab_utils.data_loader import DataLoader
 from metatab.metatab_utils.prediction.dataframe import PredictionDataframe
 from metatab.estimators.utils.pick import pick_estimator_class
 from metatab.estimators.estimators import DefaultEstimator
+from metatab.estimators.params.good_default import GOOD_DEFAULTS_MAP
 
 from metatab.cli.programs.resample.helper import (
     pick_splitter,
@@ -100,6 +101,10 @@ def main_default(pars: dict):
             early_stop_configuration=early_stop_conf
         )
 
+        # switch good default with library when requested
+        if pars["estimator_mode"] == "good_default":
+            estimator.fixed_params = GOOD_DEFAULTS_MAP[pars["estimator"]]
+
         t = time()
         estimator.fit(X_train, y_train)
         fit_time = time() - t
@@ -125,7 +130,8 @@ def main_default(pars: dict):
             "repetition": repetition,
             "fold": fold,
             **fit_preprocessing_dict,
-            "classes": le.classes_,
+            "map_classes": str({c: i for c, i in enumerate(le.classes_)}),
+            "classes": np.arange(le.classes_.size),
             "classes_counts": np.unique(y_train.to_numpy(), return_counts=True)[1],
             "y_test": y_test,
             "pred_proba": pred_proba,

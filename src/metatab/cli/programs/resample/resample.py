@@ -10,7 +10,7 @@ from metatab.cli.programs.resample.main_programs.main_autogluon import main_auto
 
 def main():
     pars = vars(parse_args(sys.argv[1:]))
-    if pars["estimator_mode"] == "default":
+    if pars["estimator_mode"] in ["default", "good_default"]:
         main_default(pars)
     elif pars["estimator_mode"] == "tune":
         main_tune(pars)

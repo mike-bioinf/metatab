@@ -18,6 +18,7 @@ from metatab.ensemble.family import FamilyEnsembleEstimator
 from metatab.ensemble.utils import BagCV
 from metatab.preprocessing.density_selector import DensityFeatureSelector
 from metatab.metalearning.load import query_surrogate_framework
+from metatab.estimators.params.good_default import GOOD_DEFAULTS_MAP
 
 from metatab.cli.helper import (
     adjust_io_paths_, 
@@ -173,7 +174,7 @@ def main():
         
         # get concrete estimator class
         estimator_class = pick_estimator_class(pars["estimator"], pars["estimator_mode"])
-        
+
         estimator: Estimator = estimator_class(
             preprocessing=pars["preprocessing"],
             seed=pars["seed"],
@@ -183,6 +184,10 @@ def main():
             tune_configuration=tune_conf,
             ensemble_configuration=ens_conf
         )
+
+        # set good defaults when requested
+        if pars["estimator_mode"] == "good_default":
+            estimator.fixed_params = GOOD_DEFAULTS_MAP[pars["estimator"]]
 
         estimator.fit(X, y_enc)
 

@@ -68,8 +68,10 @@ if TYPE_CHECKING:
 
 def pick_estimator_class(
     estimator: EstimatorType, 
-    mode: Literal["default", "tune", "ensemble"]
+    mode: Literal["default", "good_default", "tune", "ensemble"]
 ) -> Estimator:
+    # the default estimator classes are the same for both "default" and "good_default"
+    mode = "default" if mode == "good_default" else mode
     match (estimator, mode):
         case ("random_forest", "default"):
             return MyRandomForestClassifier
