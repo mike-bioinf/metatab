@@ -96,7 +96,7 @@ def main_tune(pars: dict):
     dict_hpo = defaultdict(list)
     hpo_filepath = output_dir / "hpo.txt"
 
-    if not pars["disable_additional_txt_output"]: 
+    if not pars["disable_additional_txt_output"] and not pars["skip_inference"]: 
         txt_folder = output_dir / "additional_txt_info"
         txt_folder.mkdir(exist_ok=True)
 
@@ -135,12 +135,41 @@ def main_tune(pars: dict):
         search_losses = estimator.get_search_losses()
         best_loss = silent_nanmin(search_losses)
         search_losses_dict = {f"loss_{i}": value_loss for i, value_loss in enumerate(search_losses)}
-    
+
+        # store hpo info
+        populate_dict_lists_(
+            dictionary=dict_hpo,
+            dataset=name_dataset,
+            estimator=pars["estimator"],
+            preprocessing=pars["preprocessing"],
+            algo=pars["tune_algo"],
+            n_iter=pars["tune_n_iter"],
+            n_cv_repeats=pars["tune_n_cv_repeats"],
+            n_cv_folds=pars["tune_n_cv_folds"],
+            splitting_mode=pars["splitting_mode"], 
+            repetition=repetition,
+            fold=fold,
+            refit_time=refit_time,
+            **best_hps,
+            best_loss=best_loss,
+            **search_losses_dict
+        )
+
+        if pars["save_estimators"]:
+            add_predict_attrs_to_estimator(estimator, le, X_train, y_train, name_dataset)
+            file = get_iteration_estimator_filepath(pars, repetition, fold)
+            estimator.save(file)
+            logger.debug(f"\t-Fitted model serialized at: {file}")
+
+        if pars["skip_inference"]:
+            logger.debug("\t-Skipped inference.\n")
+            continue
+        
         t = time()
         pred_proba = estimator.predict_proba(X_test)
         predict_time = time() - t
         logger.debug(f"\t-Inference time in minutes: {round(predict_time/60, 2)}\n")
-
+        
         iter_results = {
             "dataset": name_dataset,
             "predict_dataset": name_dataset,
@@ -165,28 +194,6 @@ def main_tune(pars: dict):
         }
 
         populate_dict_lists_(dict_results, **iter_results)
-    
-        populate_dict_lists_(
-            dictionary=dict_hpo,
-            dataset=name_dataset,
-            estimator=pars["estimator"],
-            preprocessing=pars["preprocessing"],
-            algo=pars["tune_algo"],
-            n_iter=pars["tune_n_iter"],
-            n_cv_repeats=pars["tune_n_cv_repeats"],
-            n_cv_folds=pars["tune_n_cv_folds"],
-            splitting_mode=pars["splitting_mode"], 
-            repetition=repetition,
-            fold=fold,
-            refit_time=refit_time,
-            **best_hps,
-            best_loss=best_loss,
-            **search_losses_dict
-            )
-
-        if pars["save_estimators"]:
-            add_predict_attrs_to_estimator(estimator, le, X_train, y_train, name_dataset)
-            estimator.save(get_iteration_estimator_filepath(pars, repetition, fold))
 
         if not pars["disable_additional_txt_output"]:
             txt_folder_iter = txt_folder / f"iter_{get_resample_iteration_signature(repetition, fold)}"
@@ -194,6 +201,12 @@ def main_tune(pars: dict):
             np.savetxt(txt_folder_iter / "predicted_probabilities.txt", pred_proba, delimiter="\t")
             np.savetxt(txt_folder_iter / "y_true.txt", y_test, fmt="%.1i", delimiter="\t")
 
+    # save hpo info
+    pd.DataFrame(dict_hpo).to_csv(hpo_filepath, sep="\t", index=False)
+
+    if pars["skip_inference"]:
+        logger.debug(f"Outputs created at {output_dir}")
+        return None    
 
     if not pars["disable_additional_txt_output"]:
         np.savetxt(txt_folder / "classes.txt", le.classes_, fmt="%.1000s", delimiter="\t")
@@ -204,5 +217,4 @@ def main_tune(pars: dict):
         df_pred_results.compute_metrics(multiclass="average", average_strategy="macro")
         df_pred_results.to_csv(results_filepath, sep="\t", index=False)
     
-    pd.DataFrame(dict_hpo).to_csv(hpo_filepath, sep="\t", index=False)
     logger.debug(f"Outputs created at {output_dir}")

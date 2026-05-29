@@ -53,11 +53,13 @@ def parse_args(args):
     # add subparser for estimator mode
     sub_estimator_mode = p.add_subparsers(required=True, title="Estimator Mode", description="valid subcommands")
     p_default = sub_estimator_mode.add_parser("default", parents=[make_base_parser(), make_extra_base_parser(), make_fit_parser()], formatter_class=RawTextHelpFormatter)
+    p_good_default = sub_estimator_mode.add_parser("good_default", parents=[make_base_parser(), make_extra_base_parser(), make_fit_parser()], formatter_class=RawTextHelpFormatter)
     p_tune = sub_estimator_mode.add_parser("tune", parents=[make_base_parser(), make_extra_base_parser(), make_fit_parser(), make_tune_parser()], formatter_class=RawTextHelpFormatter)
     p_ensemble = sub_estimator_mode.add_parser("ensemble", parents=[make_base_parser(), make_extra_base_parser(), make_fit_parser(), make_ensemble_parser()], formatter_class=RawTextHelpFormatter)
     p_family_ensemble = sub_estimator_mode.add_parser("family-ensemble", parents=[make_base_parser(), make_fit_parser(), make_family_ensemble_parser()], formatter_class=RawTextHelpFormatter)
     p_autogluon = sub_estimator_mode.add_parser("autogluon", parents=[make_base_parser(), make_autogluon_parser()], formatter_class=RawTextHelpFormatter)
     p_default.set_defaults(estimator_mode="default")
+    p_good_default.set_defaults(estimator_mode="good_default")
     p_tune.set_defaults(estimator_mode="tune")
     p_ensemble.set_defaults(estimator_mode="ensemble")
     p_family_ensemble.set_defaults(estimator_mode="family_ensemble")

@@ -52,7 +52,7 @@ class GoodDefaultParams:
     ES_LGBM_DEFAULT_PARAMS = {
         "n_estimators": 10000,
         "metric": "logloss_to_adjust",
-        "min_child_samples": 1,
+        "min_child_samples": 3,
         "verbose": -1,
         "deterministic": True,
         "force_col_wise": True

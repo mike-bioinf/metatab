@@ -49,7 +49,7 @@ def get_resample_iteration_signature(repeat: int | NAType, fold: int) -> str:
 
 
 def get_iteration_estimator_filepath(pars: dict, repeat: int | NAType, fold: int) -> str:
-    '''Get the filename made of the estimator name and current iteration info'''
+    '''Get the filepath made of the estimator name and current iteration info'''
     resample_iteration_signature = get_resample_iteration_signature(repeat, fold)
     filename = f"{pars["estimator"]}_{resample_iteration_signature}.pkl"
     return f"{pars["output_dir"]}/estimators/{filename}"

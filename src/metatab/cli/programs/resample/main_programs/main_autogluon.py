@@ -69,7 +69,7 @@ def main_autogluon(pars: dict):
     dict_results = defaultdict(list)
     df_pred_results = PredictionDataframe()
 
-    if not pars["disable_additional_txt_output"]: 
+    if not pars["disable_additional_txt_output"] and not pars["skip_inference"]: 
         txt_folder = output_dir / "additional_txt_info"
         txt_folder.mkdir(exist_ok=True)
 
@@ -117,7 +117,19 @@ def main_autogluon(pars: dict):
 
         logger.debug("\t-Estimator fitted on input data.")
         logger.debug(f"\t-Fit time in minutes: {round(fit_time/60, 2)}")
-        
+
+        if not pars["save_estimators"]:
+            shutil.rmtree(path_iteration)
+        else:
+            add_predict_attrs_to_estimator(autogluon_predictor, le, X_train_filt, y_train, name_dataset)
+            filepath = os.path.join(path_iteration, "estimator.pkl")
+            with open(filepath, "wb") as f: pickle.dump(autogluon_predictor, f)
+            logger.debug(f"\t-Fitted model serialized at: {filepath}")
+
+        if pars["skip_inference"]:
+            logger.debug("\t-Skipped inference.\n")
+            continue
+
         t = time()
         pred_proba = autogluon_predictor.predict_proba(X_test_filt, as_pandas=False)
         predict_time = time() - t
@@ -162,6 +174,10 @@ def main_autogluon(pars: dict):
     # remove the estimators folder
     if not pars["save_estimators"]:
         shutil.rmtree(path_estimators)
+
+    if pars["skip_inference"]:
+        logger.debug(f"Outputs created at {output_dir}")
+        return None
 
     if not pars["disable_additional_txt_output"]:
         np.savetxt(txt_folder / "classes.txt", le.classes_, fmt="%.1000s", delimiter="\t")

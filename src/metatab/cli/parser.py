@@ -101,6 +101,12 @@ def make_base_resample_parser() -> ArgumentParser:
                    The filenames follow two potential generic structure:
                    - {estimator}_{repeat}{fold} with the 'metatab-resample cv' subcommand;
                    - {estimator}_{number} with the 'metatab-resample holdout' subcommand."""))
+    
+    p.add_argument("--skip-inference", action="store_true", 
+                   help=h("""
+                    Allow to skip inference with trained models. 
+                    Useful when the objective is limited to storing the fitted models (see '--save-estimators').
+                    Be aware that some info normally contained in the prediction dataframe output are lost (i.e., fit time, preprocessing info)."""))
 
     p.add_argument("--disable-additional-txt-output", action="store_true", 
                    help=h("""

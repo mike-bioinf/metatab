@@ -76,7 +76,7 @@ def main_family_ensemble(pars: dict):
     rng_ensemble = np.random.default_rng(pars["seed_estimator"])
     configuration = get_ensemble_configuration(pars["ensemble_configuration"])
     
-    if not pars["disable_additional_txt_output"]: 
+    if not pars["disable_additional_txt_output"] and not pars["skip_inference"]: 
         txt_folder = output_dir / "additional_txt_info"
         txt_folder.mkdir(exist_ok=True)
     
@@ -114,6 +114,25 @@ def main_family_ensemble(pars: dict):
         logger.debug("\t-Ensemble fitted on input data.")
         logger.debug(f"\t-Fit time in minutes: {round(fit_time/60, 2)}")
         
+        df_ensemble_members_recap["ensemble_configuration"] = pars["ensemble_configuration"]
+        df_ensemble_members_recap["dataset"] = name_dataset
+        df_ensemble_members_recap["splitting_mode"] = pars["splitting_mode"]
+        df_ensemble_members_recap["repetition"] = repetition
+        df_ensemble_members_recap["fold"] = fold
+        list_dfs_ensemble_info.append(df_ensemble_members_recap)
+
+        if pars["save_estimators"]:
+            add_predict_attrs_to_estimator(ensemble, le, X_train, y_train, name_dataset)
+            ens_filepath = output_dir / "estimators" / f"ensemble_{iter_signature}.pkl"
+            ensemble.save(ens_filepath)
+            logger.debug(f"\t-Fitted model serialized at: {ens_filepath}")
+        else:
+            ensemble.delete_models_from_disk()
+
+        if pars["skip_inference"]:
+            logger.debug("\t-Skipped inference.\n")
+            continue
+
         t = time()
         pred_proba = ensemble.predict_proba(X_test)
         predict_time = time() - t
@@ -142,26 +161,19 @@ def main_family_ensemble(pars: dict):
 
         populate_dict_lists_(dict_results, **iter_results)
 
-        df_ensemble_members_recap["ensemble_configuration"] = pars["ensemble_configuration"]
-        df_ensemble_members_recap["dataset"] = name_dataset
-        df_ensemble_members_recap["splitting_mode"] = pars["splitting_mode"]
-        df_ensemble_members_recap["repetition"] = repetition
-        df_ensemble_members_recap["fold"] = fold
-        list_dfs_ensemble_info.append(df_ensemble_members_recap)
-
-        if pars["save_estimators"]:
-            add_predict_attrs_to_estimator(ensemble, le, X_train, y_train, name_dataset)
-            ens_filepath = output_dir / "estimators" / f"ensemble_{iter_signature}.pkl"
-            ensemble.save(ens_filepath)
-        else:
-            ensemble.delete_models_from_disk()
-
         if not pars["disable_additional_txt_output"]:
             txt_folder_iter = txt_folder / f"iter_{iter_signature}"
             txt_folder_iter.mkdir(exist_ok=True)
             np.savetxt(txt_folder_iter / "predicted_probabilities.txt", pred_proba, delimiter="\t")
             np.savetxt(txt_folder_iter / "y_true.txt", y_test, fmt="%.1i", delimiter="\t")
 
+
+    df_ensemble_info = pd.concat(list_dfs_ensemble_info, axis=0, ignore_index=True)
+    df_ensemble_info.to_csv(filepath_df_ensemble_info, sep="\t", index=False)
+    
+    if pars["skip_inference"]:
+        logger.debug(f"Outputs created at {output_dir}")
+        return None
 
     if not pars["disable_additional_txt_output"]:
         np.savetxt(txt_folder / "classes.txt", le.classes_, fmt="%.1000s", delimiter="\t")
@@ -171,8 +183,5 @@ def main_family_ensemble(pars: dict):
     if not df_pred_results.has_recovered:
         df_pred_results.compute_metrics(multiclass="average", average_strategy="macro")
         df_pred_results.to_csv(results_filepath, sep="\t", index=False)
-    
-    df_ensemble_info = pd.concat(list_dfs_ensemble_info, axis=0, ignore_index=True)
-    df_ensemble_info.to_csv(filepath_df_ensemble_info, sep="\t", index=False)
 
     logger.debug(f"Outputs created at {output_dir}")

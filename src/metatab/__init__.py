@@ -1,3 +1,10 @@
+## This resolve the sklearn and scipy incompatibility issues in the array API
+## This location happen to be imported first before other imports and therefore
+## the env variable is set first that sklearn is imported.
+## TODO: find a more robust way to enfsure this
+import os
+os.environ.setdefault("SCIPY_ARRAY_API", "1")
+
 from metatab.metatab_utils.package_data import get_example_data
 from metatab.ensemble.family import FamilyEnsembleEstimator
 from metatab.ensemble.configuration import UserEnsembleConfiguration, CollectionUserEnsembleConfiguration

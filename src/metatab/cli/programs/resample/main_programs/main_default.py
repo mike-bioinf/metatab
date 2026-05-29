@@ -79,7 +79,7 @@ def main_default(pars: dict):
     dict_results = defaultdict(list)
     df_pred_results = PredictionDataframe()
     
-    if not pars["disable_additional_txt_output"]: 
+    if not pars["disable_additional_txt_output"] and not pars["skip_inference"]: 
         txt_folder = output_dir / "additional_txt_info"
         txt_folder.mkdir(exist_ok=True)
 
@@ -111,8 +111,18 @@ def main_default(pars: dict):
         logger.debug("\t-Estimator fitted on input data.")
         logger.debug(f"\t-Fit time in minutes: {round(fit_time/60, 2)}")
         
-        fit_preprocessing_dict: dict = estimator.collect_fit_preprocessing_info()
+        if pars["save_estimators"]:
+            add_predict_attrs_to_estimator(estimator, le, X_train, y_train, name_dataset)
+            file = get_iteration_estimator_filepath(pars, repetition, fold)
+            estimator.save(file)
+            logger.debug(f"\t-Fitted model serialized at: {file}")
+
+        if pars["skip_inference"]:
+            logger.debug("\t-Skipped inference.\n")
+            continue
     
+        fit_preprocessing_dict: dict = estimator.collect_fit_preprocessing_info()
+        
         t = time()
         pred_proba = estimator.predict_proba(X_test)
         predict_time = time() - t
@@ -141,16 +151,15 @@ def main_default(pars: dict):
 
         populate_dict_lists_(dict_results, **iter_results)
 
-        if pars["save_estimators"]:
-            add_predict_attrs_to_estimator(estimator, le, X_train, y_train, name_dataset)
-            estimator.save(get_iteration_estimator_filepath(pars, repetition, fold))
-
         if not pars["disable_additional_txt_output"]:
             txt_folder_iter = txt_folder / f"iter_{get_resample_iteration_signature(repetition, fold)}"
             txt_folder_iter.mkdir(exist_ok=True)
             np.savetxt(txt_folder_iter / "predicted_probabilities.txt", pred_proba, delimiter="\t")
             np.savetxt(txt_folder_iter / "y_true.txt", y_test, fmt="%.1i", delimiter="\t")
     
+    if pars["skip_inference"]:
+        logger.debug(f"Outputs created at {output_dir}")
+        return None
 
     if not pars["disable_additional_txt_output"]:
         np.savetxt(txt_folder / "classes.txt", le.classes_, fmt="%.1000s", delimiter="\t")
