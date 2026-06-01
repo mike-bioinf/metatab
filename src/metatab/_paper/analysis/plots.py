@@ -601,3 +601,141 @@ def draw_stacked_bar_improvability(
     ax.set_xticklabels(x_order, rotation=45, ha="right")
     ax.set_ylabel("Improvability")
     return ax, full_imp
+
+
+
+def draw_win_rate_lolliplot(
+    ax: Axes,
+    df: pd.DataFrame,
+    win_column: str,
+    category_column: str,
+    stack_column: str | None = None, 
+    stack_modality: Literal["indipendent", "dependent"] = "indipendent",
+    stack_palette: dict | None = None,
+    stack_shape: dict | None = None
+) -> Axes:
+    '''
+    Draw a horizontal lollipop win-rate plot.
+
+    Parameters:
+        ax (Axes): Axes on which to draw the plot.
+        df (pd.DataFrame): Win dataframe with appropiate columns (see next).
+        win_column (str): Name of the column with the win info.
+        category_column (str): Name of the column with the categories to which win refers.
+        stack_column (str | None, optional): Name of the column containing grouping info.
+        stack_modalities (Literal["indipendent", "dependent"]):
+            When the stack column is provided how to stack graphically:
+            -"indipendent": lines are overlapped.
+            -"dependent": lines are consecutive.
+        stack_palette (dict | None, optional): Palette for stack categories.
+        stack_shape (dict | None, optional): Shapes for stack categories.
+    '''
+    cols = [category_column, win_column]
+    cols = append_if_not_none(cols, stack_column)
+    check_presence_cols(df, cols)
+
+    # get the order by sum indipendently of stacking and its modalities
+    order = (
+        df.groupby(category_column)[win_column]
+        .sum()
+        .sort_values(ascending=False)
+    )
+
+    categories = order.index.tolist()
+    y_pos = np.arange(len(categories))
+    cat_to_y = dict(zip(categories, y_pos))
+    
+    # derive stack order inside each category
+    stack_ranks = None
+    if stack_column is not None:
+        stack_order_df = (
+            df.groupby([category_column, stack_column])[win_column]
+            .sum()
+            .reset_index()
+        )
+
+        stack_ranks = (
+            stack_order_df
+            .sort_values([category_column, win_column], ascending=[True, False])
+            .groupby(category_column)[stack_column]
+            .apply(list)
+            .to_dict()
+        )
+
+
+    if stack_column is None:
+        for _, row in df.iterrows():
+            y = cat_to_y[row[category_column]]
+            x = row[win_column]
+
+            ax.hlines(
+                y=y,
+                xmin=0,
+                xmax=x,
+                linestyle="--",
+                linewidth=1.5,
+            )
+
+            ax.plot(x, y, "o")
+
+    else:
+        if stack_palette is None:
+            colors = ax._get_lines.prop_cycler
+            stack_values = df[stack_column].unique()
+            stack_palette = {
+                s: next(colors)["color"]
+                for s in stack_values
+            }
+        
+        if stack_shape is None:
+            stack_shape = {s: "o" for s in df[stack_column].unique()}
+
+        cumulative = {cat: 0.0 for cat in categories}
+
+        for cat in categories:
+            y = cat_to_y[cat]
+            ordered_stacks = stack_ranks.get(cat, [])
+
+            # draw best --> worst
+            for stack in ordered_stacks:
+                sub = df[
+                    (df[category_column] == cat) &
+                    (df[stack_column] == stack)
+                ]
+
+                color = stack_palette.get(stack, None)
+                shape = stack_shape.get(stack, "o")
+
+                for _, row in sub.iterrows():
+                    value = row[win_column]
+
+                    if stack_modality == "indipendent":
+                        start = 0
+                        end = value
+                    else:
+                        start = cumulative[cat]
+                        end = start + value
+                        cumulative[cat] = end
+
+                    ax.hlines(
+                        y=y,
+                        xmin=start,
+                        xmax=end,
+                        linestyle="--",
+                        color=color,
+                    )
+
+                    ax.plot(
+                        end,
+                        y,
+                        shape,
+                        color=color,
+                    )
+
+    ax.invert_yaxis()
+    ax.set_yticks(y_pos)
+    ax.set_yticklabels(categories)
+    ax.set_xlabel("Win")
+    ax.set_ylabel(category_column)
+    ax.grid(axis="x", alpha=0.3)
+    return ax
