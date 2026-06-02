@@ -212,7 +212,7 @@ def draw_scatter_diagonal_plot(
             Palette of colors to use for the hue column.
 
         map_style (dict | None, optional): 
-            sMap of shapes to use for the shape column.
+            Map of shapes to use for the shape column.
 
         top_left_anno (str | None, optional): 
             Text annotation to report on the top left corner of the plot

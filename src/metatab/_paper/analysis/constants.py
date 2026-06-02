@@ -45,6 +45,13 @@ PALETTE_CLASSIFIERS = {
     "AutoGluon": "#580D6D"
 }
 
+PALETTE_CROSS_CLASSIFIERS = {
+    "Default--CFE": "#166E38",
+    "HPO--CFE": "#166E38",
+    "Ensemble--CFE": "#166E38",
+    "AutoGluon": "#580D6D",
+}
+
 SHAPE_REGIMES = {
     "Default": "o",
     "HPO": "s",

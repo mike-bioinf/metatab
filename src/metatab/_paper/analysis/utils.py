@@ -3,6 +3,9 @@ from __future__ import annotations
 import pandas as pd
 from typing import Literal, Any, Callable, TYPE_CHECKING
 from pathlib import Path
+from matplotlib.lines import Line2D
+from matplotlib.patches import Patch
+from matplotlib.legend import Legend
 
 if TYPE_CHECKING:
     from autorank._util import RankResult
@@ -175,3 +178,77 @@ def save_autorank_results_to_excel(autorank_result: RankResult, path: str | Path
     autorank_methods_stats.to_excel(excel_writer)
     autorank_test_stats.to_excel(excel_writer, sheet_name="Sheet2", index=False)
     excel_writer.close()
+
+
+def get_legend_cross_classifiers(
+    palette_single_classifiers: dict,
+    palette_cross_classifiers: dict,
+    shape_map: dict,
+    fallback_marker: str = "o",
+) -> list:
+    '''
+    Build grouped legend handles for:
+    1) single classifiers (color-coded circles)
+    2) regimes (shape-coded, black)
+    3) cross classifiers (color + inferred shape)
+    
+    Returns list of handles that can be passed to "ax.legend()" calls.
+    '''
+    # --- section 1: single classifiers ---
+    single_handles = [
+        Line2D(
+            [0], [0],
+            marker="o",
+            color=color,
+            linestyle="none",
+            markersize=7,
+            label=label,
+        )
+        for label, color in palette_single_classifiers.items()
+    ]
+
+    # --- section 2: regimes (black + shapes) ---
+    regime_handles = [
+        Line2D(
+            [0], [0],
+            marker=marker,
+            color="black",
+            linestyle="none",
+            markersize=7,
+            label=label,
+        )
+        for label, marker in shape_map.items()
+    ]
+
+    # --- helper: infer shape for cross-classifier ---
+    def get_shape_for_cross(label: str) -> str:
+        for mode, marker in shape_map.items():
+            if label.startswith(mode):
+                return marker
+        return fallback_marker
+
+    # --- section 3: cross classifiers ---
+    cross_handles = [
+        Line2D(
+            [0], [0],
+            marker=get_shape_for_cross(label),
+            color=color,
+            linestyle="none",
+            markersize=7,
+            label=label,
+        )
+        for label, color in palette_cross_classifiers.items()
+    ]
+
+    spacer = Patch(visible=False, label="")
+
+    return (
+        [Patch(visible=False, label="Single Classifiers")]
+        + single_handles
+        + [spacer]
+        + [Patch(visible=False, label="Regime")]
+        + regime_handles
+        + [spacer]
+        + [Patch(visible=False, label="Cross Classifiers")]
+        + cross_handles
+    )
