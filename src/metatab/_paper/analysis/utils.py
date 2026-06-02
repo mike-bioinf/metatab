@@ -1,5 +1,12 @@
+from __future__ import annotations
+
 import pandas as pd
-from typing import Literal, Any, Callable
+from typing import Literal, Any, Callable, TYPE_CHECKING
+from pathlib import Path
+
+if TYPE_CHECKING:
+    from autorank._util import RankResult
+
 
 
 def enlist(x: Any | list, none_as_is = False) -> list:
@@ -147,3 +154,24 @@ def compute_aggregate_statistics(
         stats = pd.concat([stats, stats_secondary], axis=1)
 
     return stats
+
+
+def save_autorank_results_to_excel(autorank_result: RankResult, path: str | Path) -> None:
+    '''
+    Save the autorank results in a excel file.
+
+    Parameters:
+        autorank_result (RankResult): 
+            Autorank main object derived from "autorank" function.
+        path (str | Path):
+            Filepath of the resulting excel file.
+    '''
+    excel_writer = pd.ExcelWriter(path) 
+    autorank_test_stats = pd.DataFrame(
+        [[autorank_result.omnibus, autorank_result.pvalue, autorank_result.cd]],
+        columns=["omnibus_test", "omnibuos_pvalue", "nemenyi_cd"]
+    )
+    autorank_methods_stats = autorank_result.rankdf.drop(columns=["magnitude", "magnitude_above"])
+    autorank_methods_stats.to_excel(excel_writer)
+    autorank_test_stats.to_excel(excel_writer, sheet_name="Sheet2", index=False)
+    excel_writer.close()

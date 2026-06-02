@@ -406,7 +406,8 @@ def draw_stacked_bar_improvability(
     hline_kwargs: None | dict = None,
     palette: dict | None = None,
     p_values=None,
-    pvalue_alpha: float = 0.05
+    pvalue_alpha: float = 0.05,
+    legend_position: Literal["upper_left"] | None = None
 ) -> tuple[pd.DataFrame, Axes]:
     """
     Stacked overlapping bar chart of metric improvability over hue categories.
@@ -434,17 +435,20 @@ def draw_stacked_bar_improvability(
 
         type_improvability (Literal["gap", "tabarena"]):
             Type of improvability metric:
-            - "gap": mean across paired obs of the differences max(auc) minus model auc within paired obs.
-            - "tabarena": quantify the mean across paired obs of how much error you can recover by switching to the best method.
+            -"gap": mean across paired obs of the differences max(auc) minus model auc within paired obs.
+            -"tabarena": quantify the mean across paired obs of how much error you can recover by switching to the best method.
+
+        hline_x_hue_category (tuple[str, str] | None):
+            Tuple with the "x" and "hue" combination that should be plotted as horizontal line. 
+
+        hline_kwargs (dict | None, optional):
+            Keyword arguments forwarded to ax.axhline. Recognized extra keys:
+            - "label" (str): label shown in the legend for the hline.
+            If None, defaults to {"linestyle": "--", "linewidth": 2.5, "color": "black"}.
 
         palette (dict | None, optional):
             Colors for each hue level in the order they appear in hue_column.
             If None, uses matplotlib's default color cycle.
-
-        hline_kwargs (dict | None, optional):
-            Keyword arguments forwarded to ax.axhline. Recognized extra keys:
-                - "label" (str): label shown in the legend for the hline.
-            If None, defaults to {"linestyle": "--", "linewidth": 2.5, "color": "black"}.
 
         p_values (dict, optional):
             Significance annotations. Keys are (x_value, hue_a, hue_b) tuples,
@@ -456,9 +460,11 @@ def draw_stacked_bar_improvability(
             Significance thresold used for pvalues displaying.
             Ignored when p_values is None.
 
+        legend_position (Literal["upper_left"] | None, optional):
+            Where to put the legend.
+
     Returns:
-        tuple[Axes,pd.Series]: 
-        A tuple of the improvability values and the plotted axes.
+        tuple[Axes,pd.Series]: A tuple of the improvability values and the plotted axes.
     """
    # Defaults
     _hline_kwargs = {"linestyle": "--", "linewidth": 2.5, "color": "black"}
@@ -596,7 +602,14 @@ def draw_stacked_bar_improvability(
                 label=hline_label,
             )
         )
-    ax.legend(handles=handles, title=hue_column, fontsize=10, title_fontsize=11)
+
+    legend_kwargs = dict(handles=handles, title=hue_column, fontsize=10, title_fontsize=11)
+
+    if legend_position == "upper_left":
+        ax.legend(**legend_kwargs, loc="upper left", bbox_to_anchor=(1, 1))
+    else:
+        ax.legend(**legend_kwargs)
+    
     ax.set_xticks(x)
     ax.set_xticklabels(x_order, rotation=45, ha="right")
     ax.set_ylabel("Improvability")
@@ -633,6 +646,9 @@ def draw_win_rate_lolliplot(
     cols = [category_column, win_column]
     cols = append_if_not_none(cols, stack_column)
     check_presence_cols(df, cols)
+
+    # remove 0 values
+    df = df[df[win_column] != 0].copy()
 
     # get the order by sum indipendently of stacking and its modalities
     order = (
@@ -676,7 +692,7 @@ def draw_win_rate_lolliplot(
                 linewidth=1.5,
             )
 
-            ax.plot(x, y, "o")
+            ax.plot(x, y, "o", color="blue")
 
     else:
         if stack_palette is None:
