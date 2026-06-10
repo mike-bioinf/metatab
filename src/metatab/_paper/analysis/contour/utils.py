@@ -10,15 +10,6 @@ from scipy.spatial.distance import pdist
 from matplotlib.colors import Normalize, TwoSlopeNorm
 from dataclasses import dataclass
 
-VariableType = Literal["nominal", "ordinal", "continuous"]
-
-
-def is_categorical(series: pd.Series) -> bool:
-    return (
-        pd.api.types.is_object_dtype(series)
-        or pd.api.types.is_categorical_dtype(series)
-        or pd.api.types.is_string_dtype(series)
-    )
 
 
 def apply_ordinal_order(
@@ -43,41 +34,34 @@ def build_norm(
     a: np.ndarray,
     mode: Literal["none", "min_max", "quantile", "centered_0"],
     qrange=(2, 98),
-):
+) -> tuple[None | Normalize | TwoSlopeNorm, np.ndarray | None]:
+    '''
+    Return a tuple with:
+    1. The color normalizer or None when not requested.
+    2. The ticks position as a 1D array, when mode == "quantile", or None.
+    '''
     a = a[np.isfinite(a)]
+
     if len(a) == 0 or mode == "none":
-        return None
-    if mode == "min_max":
-        return Normalize(vmin=a.min(), vmax=a.max())
-    if mode == "quantile":
+        return None, None
+    
+    elif mode == "min_max":
+        return Normalize(vmin=a.min(), vmax=a.max()), None
+    
+    elif mode == "quantile":
         vmin, vmax = np.percentile(a, qrange)
-        return Normalize(vmin=vmin, vmax=vmax)
-    if mode == "centered_0":
+        return Normalize(vmin=vmin, vmax=vmax), None
+    
+    elif mode == "centered_0":
         vmax = np.percentile(a, qrange[1])
         vmin = np.percentile(a, qrange[0])
-        return TwoSlopeNorm(vmin=vmin, vcenter=0.0, vmax=vmax)
+        #vmin, vmax = a.min(), a.max()
+        norm = TwoSlopeNorm(vmin=vmin, vcenter=0.0, vmax=vmax)
+        ticks = norm.inverse(np.linspace(0, 1, 9))
+        return norm, ticks
+    
     raise ValueError(f"Unknown normalize_color: {mode}")
 
-
-## TODO: recheck
-def aggregate_for_norm(
-    df: pd.DataFrame,
-    x_column: str,
-    y_column: str,
-    loss_column: str,
-    x_type: VariableType,
-    y_type: VariableType,
-) -> np.ndarray:
-    if "continuous" in [x_type, y_type]:
-        return df[loss_column].to_numpy()
-    else:    
-        grid = df.pivot_table(
-            index=y_column, 
-            columns=x_column,
-            values=loss_column, 
-            aggfunc="mean",
-        )
-        return grid.values.ravel()
 
 
 def cluster_rows(
@@ -88,7 +72,8 @@ def cluster_rows(
     Reorder rows of a pivot grid by mean or correlation clustering.
     Returns the list of index to order the grid rows with.
     """
-    if len(grid) < 2:
+    # return the the actual order for 2 or less categories
+    if grid.shape[0] <= 2:
         return grid.index.tolist()
     
     if method == "mean":
@@ -106,38 +91,21 @@ def cluster_rows(
 @dataclass
 class SharedPlotState:
     norm: Normalize | TwoSlopeNorm | None = None
+    ticks: np.ndarray | None = None
     row_order: list | None = None
     col_order: list | None = None
 
 
-def compute_shared_state(
-    df: pd.DataFrame,
-    x_hp: str,
-    y_hp: str,
-    x_type: VariableType,
-    y_type: VariableType,
-    true_loss_column: str,
-    normalize_color: Literal["none", "min_max", "centered_0", "quantile"],
-    cluster_by: Literal["mean", "correlation"],
-    share_color_norm: bool,
-    share_clustering: bool,
-) -> SharedPlotState:
-    state = SharedPlotState()
-
-    if share_color_norm and normalize_color != "none":
-        true_vals = aggregate_for_norm(df, x_hp, y_hp, true_loss_column, x_type, y_type)
-        state.norm = build_norm(true_vals, normalize_color)
-
-    if share_clustering and "nominal" in (x_type, y_type):
-        true_grid = df.pivot_table(
-            index=y_hp, 
-            columns=x_hp,
-            values=true_loss_column, 
-            aggfunc="mean",
-        )
-        if y_type == "nominal":
-            state.row_order = cluster_rows(true_grid, method=cluster_by)
-        if x_type == "nominal":
-            state.col_order = cluster_rows(true_grid.T, method=cluster_by)
-
-    return state
+def compute_bin_edges(x):
+    '''
+    Compute the cell edges for each value in the array
+    by getting the half distance from its neighbours.
+    '''
+    x = np.asarray(x, dtype=float)
+    if len(x) == 1:
+        return np.array([x[0] - 0.5, x[0] + 0.5], dtype=float)
+    edges = np.empty(len(x) + 1, dtype=float)
+    edges[1:-1] = 0.5 * (x[:-1] + x[1:])
+    edges[0] = x[0] - 0.5 * (x[1] - x[0])
+    edges[-1] = x[-1] + 0.5 * (x[-1] - x[-2])
+    return edges
