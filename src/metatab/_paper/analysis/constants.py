@@ -108,7 +108,7 @@ T2D_DATASETS=[
     "Karlsson_2013",
     "Qin_2012"
 ]
-
+ 
 DISEASE_MAP = {
     **{ds:"CRC" for ds in CRC_DATASETS},
     **{ds:"IBD" for ds in IBD_DATASETS},
@@ -116,6 +116,8 @@ DISEASE_MAP = {
     **{ds:"CD" for ds in CD_DATASETS},
     **{ds:"T2D" for ds in T2D_DATASETS},
 }
+
+MULTI_DISEASE_DATASETS = list(DISEASE_MAP.keys())
 
 # Singleton diseases (only one dataset available)
 SINGLETON_DATASETS=[

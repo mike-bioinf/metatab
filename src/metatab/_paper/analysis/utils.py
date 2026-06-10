@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pandas as pd
+from pandas.api.types import is_categorical_dtype
 from typing import Literal, Any, Callable, TYPE_CHECKING
 from pathlib import Path
 from matplotlib.lines import Line2D
@@ -8,6 +9,9 @@ from matplotlib.patches import Patch
 from matplotlib.legend import Legend
 
 if TYPE_CHECKING:
+    from sklearn.pipeline import Pipeline
+    from sklearn.compose import ColumnTransformer
+    from sklearn.preprocessing import OneHotEncoder
     from autorank._util import RankResult
 
 
@@ -252,3 +256,164 @@ def get_legend_cross_classifiers(
         + [Patch(visible=False, label="Cross Classifiers")]
         + cross_handles
     )
+
+
+def _aggregate_df_search(
+    df_search: pd.DataFrame, 
+    groupby_column: str = "search_iter",
+    loss_column: str = "loss",
+    remove_groupby_column: bool = False
+) -> pd.DataFrame:
+    '''
+    Abstract the logic to aggregate the df search.
+    Apply mean aggregation on the loss column and first aggregation on the others.
+    Returns the aggregated dataframe.
+    '''
+    agg_dict = {}
+    for col in df_search.columns:
+        if col == loss_column:
+            agg_dict[col] = ["mean", "std"]
+        else:
+            agg_dict[col] = "first"
+
+    del agg_dict[groupby_column]
+    df_search_agg = df_search.groupby(groupby_column).agg(agg_dict).reset_index()
+
+    # flatten column multiindex
+    df_search_agg.columns = [
+        loss_column if c == (loss_column, "mean")
+        else f"std_{loss_column}" if c == (loss_column, "std")
+        else c[0]
+        for c in df_search_agg.columns
+    ]
+
+    if remove_groupby_column:
+        del df_search_agg[groupby_column]
+
+    return df_search_agg
+
+
+def load_search_data(path: str | Path) -> pd.DataFrame:
+    '''
+    Load the search data and automatically aggregate cv losses across cv iterations. 
+    Wants in input the path of the estimator folder containing files for each dataset.
+    Returns the aggregated search data.
+    '''
+    path = Path(path) if isinstance(path, str) else path
+    data = []
+    for f in path.iterdir():
+        d = pd.read_csv(f, sep="\t")
+        del d["fold"]
+        del d["repeat"]
+        d = _aggregate_df_search(
+            d,
+            groupby_column="search_iter",
+            remove_groupby_column=True
+        )
+        d["dataset"] = f.stem
+        data.append(d)
+    return pd.concat(data, axis=0, ignore_index=True)
+
+
+def load_complete_metadata(
+    path_actual_pred_losses: str | Path, 
+    path_search_data: str | Path
+) -> pd.DataFrame:
+    '''
+    Function that help to build the complete metadata for an estimator, 
+    i.e the dataset with true raw and z-normalized losses, predicted z-normalized losses and hps.
+
+    IMPORTANT: the function relies on the assumption that the order of hps configurations
+    for a (dataset, classifier) combination isn the same between the two sources.
+    This is not enforced or checked therefore be attentive.
+
+    Parameters:
+        path_actual_pred_losses (str | Path):
+            Path of the estimator file containing info for all datasets (es. ...ablation/rf_1500/catboost)
+        path_search_data (str | Path):
+            Path to the estimator folder containing files for each dataset (es. ...search_data/catboost).
+            Require the folder given in input to 'load_search_data'.
+
+    Returns:
+        pd.DataFrame: The complete metadata for the target estimator.
+    '''
+    df_sd = load_search_data(path_search_data)
+    df_losses = pd.read_csv(path_actual_pred_losses, sep="\t")
+    assert df_sd.shape[0] == df_losses.shape[0], "dataframes number of rows does not match"
+    d_merged =  pd.concat([df_sd.reset_index(drop=True), df_losses.reset_index(drop=True)], axis=1)
+    # remove duplicated columns
+    d_merged = d_merged.loc[:, ~d_merged.columns.duplicated()]
+    return d_merged
+
+
+def get_surrogate_feature_importance_scores(surrogate_pipe: Pipeline) -> pd.Series:
+    '''
+    Get the feature importance score from the surrogate.
+    It handles the one hot encoded scores by summing the categories scores.
+    '''
+    surrogate_model = surrogate_pipe[-1]
+
+    scores = pd.Series(
+        surrogate_model.forest_.feature_importances_,
+        index=surrogate_model.forest_.feature_names_in_,
+        name="importance",
+    )
+
+    column_transformer: ColumnTransformer = surrogate_pipe.named_steps["columntransformer"]
+
+    if "onehot" not in column_transformer.named_transformers_:
+        return scores.sort_values(ascending=False)
+
+    ohe: OneHotEncoder = column_transformer.named_transformers_["onehot"]
+    mapping = {}
+
+    # Build mapping from actual encoder output names to original features.
+    for feature_in, categories in zip(
+        ohe.feature_names_in_,
+        ohe.categories_
+    ):
+        for category in categories:
+            encoded_name = f"{feature_in}_{category}"
+            if encoded_name in scores.index:
+                mapping[encoded_name] = feature_in
+
+    return (
+        scores.rename(index=lambda feature: mapping.get(feature, feature))
+        .groupby(level=0)
+        .sum()
+        .sort_values(ascending=False)
+    )
+
+
+def save_plot(fig, filepath: str | Path) -> None:
+    '''
+    Save figure in png and svg.
+    The function does not require the extension in filepath.
+    '''
+    filepath = str(filepath) if isinstance(filepath, Path) else filepath
+    fig.savefig(f"{filepath}.svg", bbox_inches="tight")
+    fig.savefig(f"{filepath}.png", bbox_inches="tight")
+
+
+def save_boxplot_df_tests_to_excel(df_tests: pd.DataFrame, filepath: str | Path) -> None:
+    '''
+    Save in excel the df_tests returned by BoxPlotter.
+    Want the filepath with the extension.
+    '''
+    columns_to_drop = [
+        'correction_flag',
+        'correction_group',
+        'correction_strategy',
+        'mean_victory_1',
+        'mean_victory_2'
+    ]
+    df_tests.drop(columns=columns_to_drop).to_excel(filepath, index=False)
+
+
+def remove_unused_regime_classifier_categories(df: pd.DataFrame) -> pd.DataFrame:
+    '''Remove the unused categories in 'Regime' and 'Classifier' columns.'''
+    if is_categorical_dtype(df["Regime"]):
+        df["Regime"] = df["Regime"].cat.remove_unused_categories()
+    if is_categorical_dtype(df["Classifier"]):
+        df["Classifier"] = df["Classifier"].cat.remove_unused_categories()
+    return df
