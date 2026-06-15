@@ -224,7 +224,7 @@ def plot_nominal_ordinal(
     loss_column: str,
     *,
     ordinal_order: list | None = None,
-    cluster_by: Literal["mean", "correlation"] = "correlation",
+    cluster_by: Literal["mean", "correlation", "fix"] = "correlation",
     normalize_color: Literal["none", "min_max", "centered_0", "quantile"] = "min_max",
     sigma: float = 0,
     shared_state: None | SharedPlotState = None,
@@ -234,8 +234,8 @@ def plot_nominal_ordinal(
     as a heatmap.
 
     The nominal variable is placed on the rows and optionally reordered using
-    clustering based on either the mean loss or the similarity of
-    its loss profile across ordinal values. The ordinal variable is placed on
+    clustering based on either the mean loss or the similarity of its loss profile 
+    across ordinal values. The ordinal variable is placed on
     the columns and follows the user-specified ordinal order.
 
     Each cell represents the mean value of ``loss_column`` for a given
@@ -253,7 +253,7 @@ def plot_nominal_ordinal(
     # cluster nominal rows or take the shared, sort ordinal columns
     if shared_state is None:
         norm, ticks = build_norm(grid.values.ravel(), normalize_color)
-        nom_cats = cluster_rows(grid, method=cluster_by)
+        nom_cats = grid.index.tolist() if cluster_by == "fix" else cluster_rows(grid, cluster_by)
         shared_state = SharedPlotState(norm=norm, row_order=nom_cats, ticks=ticks)
 
     ord_cats = apply_ordinal_order(grid.columns.tolist(), ordinal_order)

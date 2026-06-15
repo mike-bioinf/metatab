@@ -51,7 +51,8 @@ MAP_ESTIMATOR = {
     "tabpfn": {
         "plot_function": plot_nominal_ordinal,
         "nominal_col": "model_path",
-        "ordinal_col": "softmax_temperature"
+        "ordinal_col": "softmax_temperature",
+        "cluster_by": "fix"
     },
 
     "random_forest": {
@@ -76,7 +77,7 @@ MAP_ESTIMATOR = {
         "continuous_col": "reg_alpha",
         "log_cont": True,
         "sigma": 1,
-        "cluster_by": "fix" ## we treat subsample as nominal
+        "cluster_by": "fix"
     },
 
     "es_catboost": {
