@@ -339,11 +339,20 @@ def load_complete_metadata(
     '''
     df_sd = load_search_data(path_search_data)
     df_losses = pd.read_csv(path_actual_pred_losses, sep="\t")
+    
     assert df_sd.shape[0] == df_losses.shape[0], "dataframes number of rows does not match"
-    d_merged =  pd.concat([df_sd.reset_index(drop=True), df_losses.reset_index(drop=True)], axis=1)
-    # remove duplicated columns
-    d_merged = d_merged.loc[:, ~d_merged.columns.duplicated()]
-    return d_merged
+    assert set(df_sd["dataset"]) == set(df_losses["dataset"]), "datasets does not match between search data and actual_pred data"
+    
+    # we assume same row order inside dataset block
+    df_sd["row_in_dataset"] = df_sd.groupby("dataset").cumcount()
+    df_losses["row_in_dataset"] = df_losses.groupby("dataset").cumcount()
+
+    df_merged = df_sd.merge(
+        df_losses,
+        on=["dataset", "row_in_dataset"]
+    ).drop(columns="row_in_dataset")
+
+    return df_merged
 
 
 def get_surrogate_feature_importance_scores(surrogate_pipe: Pipeline) -> pd.Series:
