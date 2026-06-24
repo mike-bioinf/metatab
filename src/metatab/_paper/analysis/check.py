@@ -2,7 +2,7 @@
 Set of functions to check the correctness of the results obtained with our programs.
 """
 import pandas as pd
-from metatab._paper.analysis.deprecated.utils import check_presence_cols
+from metatab._paper.analysis.utils import check_presence_cols
 
 
 

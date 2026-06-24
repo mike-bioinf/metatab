@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import pandas as pd
-from pandas.api.types import is_categorical_dtype
+from pandas.api.types import is_categorical_dtype, is_numeric_dtype
 from typing import Literal, Any, Callable, TYPE_CHECKING
 from pathlib import Path
 from matplotlib.lines import Line2D
@@ -401,14 +401,20 @@ def save_plot(fig, filepath: str | Path) -> None:
     '''
     filepath = str(filepath) if isinstance(filepath, Path) else filepath
     fig.savefig(f"{filepath}.svg", bbox_inches="tight")
-    fig.savefig(f"{filepath}.png", bbox_inches="tight")
+    fig.savefig(f"{filepath}.png", bbox_inches="tight", dpi=600)
 
 
-def save_boxplot_df_tests_to_excel(df_tests: pd.DataFrame, filepath: str | Path) -> None:
+def save_boxplot_df_tests_to_excel(
+    df_tests: pd.DataFrame, 
+    filepath: str | Path,
+    format_numeric_columns: bool = False,
+) -> None:
     '''
     Save in excel the df_tests returned by BoxPlotter.
     Want the filepath with the extension.
     '''
+    df_tests = df_tests.copy()
+
     columns_to_drop = [
         'correction_flag',
         'correction_group',
@@ -416,6 +422,22 @@ def save_boxplot_df_tests_to_excel(df_tests: pd.DataFrame, filepath: str | Path)
         'mean_victory_1',
         'mean_victory_2'
     ]
+
+    if format_numeric_columns:
+        pvalue_cols = ["pvalue", "corrected_pvalue"]
+        non_format_cols = ["test_statistic", "count_2_over_1", "count_1_over_2"]
+        
+        for col in pvalue_cols:
+            df_tests[col] = df_tests[col].apply(lambda x: "<0.001" if x < 0.001 else f"{x:.3f}")
+
+        numeric_cols = [
+            col for col in df_tests.columns
+            if col not in pvalue_cols + non_format_cols and is_numeric_dtype(df_tests[col])
+        ]
+
+        for col in numeric_cols:
+            df_tests[col] = df_tests[col].map("{:.2f}".format)
+
     df_tests.drop(columns=columns_to_drop).to_excel(filepath, index=False)
 
 
