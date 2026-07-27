@@ -311,7 +311,7 @@ If you use MetaTab in your research, please cite:
 ```bibtex
 @software{metatab,
   author = {Avagliano Michele, Rodner Erik, and Pasolli Edoardo},
-  title = {MetaTab: a toolkit and benchmark of tabular learners for metagenomic case-control classification},
+  title = {MetaTab: a toolkit and benchmark for tabular machine learning in metagenomic case-control classification},
   year = {2026},
   url = {https://github.com/mike-bioinf/metatab}
 }
