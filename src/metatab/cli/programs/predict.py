@@ -47,7 +47,13 @@ from metatab.estimators.estimators import (
     MyEnsembledESLGBMClassifier,
     MyTabPFNClassifier,
     MyTunedTabPFNClassifier,
-    MyEnsembledTabPFNClassifier
+    MyEnsembledTabPFNClassifier,
+    MyRealMLPClassifier,
+    MyTunedRealMLPClassifier,
+    MyEnsembledRealMLPClassifier,
+    MyTabMClassifier,
+    MyTunedTabMClassifier,
+    MyEnsembledTabMClassifier
 )
 
 
@@ -83,6 +89,12 @@ def check_is_estimator_object(obj) -> None:
             MyTabPFNClassifier,
             MyTunedTabPFNClassifier,
             MyEnsembledTabPFNClassifier,
+            MyRealMLPClassifier,
+            MyTunedRealMLPClassifier,
+            MyEnsembledRealMLPClassifier,
+            MyTabMClassifier,
+            MyTunedTabMClassifier,
+            MyEnsembledTabMClassifier,
             FamilyEnsembleEstimator,
             TabularPredictor
         )
