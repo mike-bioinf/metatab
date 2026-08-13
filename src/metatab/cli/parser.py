@@ -216,7 +216,7 @@ def make_ensemble_parser() -> ArgumentParser:
                    help="""Ensemble name. The ensemble members are nominated as '{name}_m{number}'.""")
 
     # TODO: add link where to find info
-    p.add_argument("--ensemble-algo", choices=["random", "meta"], default="meta",
+    p.add_argument("--ensemble-algo", choices=["random", "meta"], default="random",
                     help=h("""
                     How to derive the hps configurations to ensemble.
                     The meta option enables a metalearning powered procedure, where the points are suggested
