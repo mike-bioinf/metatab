@@ -436,7 +436,7 @@ def save_boxplot_df_tests_to_excel(
         ]
 
         for col in numeric_cols:
-            df_tests[col] = df_tests[col].map("{:.2f}".format)
+            df_tests[col] = df_tests[col].round(3)
 
     df_tests.drop(columns=columns_to_drop).to_excel(filepath, index=False)
 
