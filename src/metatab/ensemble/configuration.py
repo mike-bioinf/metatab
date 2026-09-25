@@ -9,7 +9,7 @@ from metatab.metatab_utils.device import check_device_estimator_combination
 from metatab.preprocessing.types import PreprocessingStrategy
 from metatab.metalearning.types import MetaStrategy, MetaStrategyParams
 from metatab.estimators.utils.types import TunableEstimatorType
-from metatab.estimators.utils.general import check_meta_tuning_options, check_validation_set_options
+from metatab.estimators.utils.general import check_validation_set_options
 
 from metatab.estimators.utils.constants import (
     NON_EARLY_STOPPED_ESTIMATORS,
@@ -48,7 +48,6 @@ class UserEnsembleConfiguration(BaseModel):
             
         preprocessing (PreprocessingStrategy):
             Preprocessing strategy to use.
-            Use "estimator_default" to apply the estimator default preprocessing.
 
         tune_space (str): 
             Hyperparameter space to use.
@@ -167,7 +166,6 @@ class UserEnsembleConfiguration(BaseModel):
         check_device_estimator_combination(self.device, self.estimator)
         if self.algo == "meta": 
             check_meta_strategy_params(self.meta_strategy, self.meta_strategy_params, safe_none_params=True)
-            check_meta_tuning_options(self.estimator, self.preprocessing, self.tune_space)
         return self
 
 
@@ -221,7 +219,7 @@ class CollectionUserEnsembleConfiguration:
             data = json.load(f)
         return cls([UserEnsembleConfiguration(**conf_data) for conf_data in data.values()])
 
-
+    ## REVIEW: adapt this to varying preprocessing
     @classmethod
     def create_predefined_collection(cls, wildcard: str) -> "CollectionUserEnsembleConfiguration":
         '''
@@ -271,7 +269,7 @@ class CollectionUserEnsembleConfiguration:
                     algo=ensemble_algo,
                     n_members=n_members,
                     estimator=estimator,
-                    preprocessing="estimator_default",
+                    preprocessing="base",
                     tune_space="default",
                     early_stop_on_validation_set=estimator not in NON_EARLY_STOPPED_ESTIMATORS
                 )

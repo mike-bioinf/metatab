@@ -46,7 +46,7 @@ def main():
     dfs = [pd.read_csv(file, sep="\t") for file in Path(pars["datasets_folder"]).iterdir()]
     logger.info(f"Loaded {len(dfs)} datasets in memory.")
 
-    tune_space = pick_estimator_tune_space(pars["estimator"], space="c0")
+    tune_space = pick_estimator_tune_space(pars["estimator"])
     surrogate_model: Pipeline = joblib.load(pars["surrogate_model"])
     hp_sampler = HyperoptRandomSampler(follow_hyperopt_fmin=False)
     target_feature = pars["target_feature"]
@@ -61,9 +61,6 @@ def main():
     # create df metafeatures
     df_mfs = pd.DataFrame(dfs_mfs)
     df_mfs.columns = pd.MultiIndex.from_arrays([groups, df_mfs.columns], names=["group", "feature"])
-    
-    # add preprocessing info 
-    df_mfs[("preprocessing", "preprocessing")] = "density_filter" if pars["estimator"] == "tabpfn" else "base"
 
     # clean datasets from memory
     del dfs_mfs
@@ -78,6 +75,11 @@ def main():
         df_point = pd.DataFrame([hp_point] * df_mfs.shape[0])
         df_point.columns = pd.MultiIndex.from_arrays([["hps"] * df_point.shape[1], df_point.columns])
         df_point_mfs = pd.concat([df_point, df_mfs], axis=1)
+        
+        # add a variable preprocessing in order to average its influence
+        ## REVIEW: complete with final list of preprocessing and set the right number in integers 
+        # remember that 'high' must be equal to number of options + 1
+        df_point_mfs = df_point_mfs[("preprocessing", "preprocessing")] = [][rng_permutations.integers(0, 5)]
 
         map_sensitivity[f"point_{i}"] = compute_feature_sensitivity_map(
             model=surrogate_model,

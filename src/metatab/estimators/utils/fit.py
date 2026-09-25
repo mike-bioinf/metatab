@@ -28,8 +28,8 @@ def fit_with_early_stop_on_validation_set(
  ) -> Pipeline | tuple[Pipeline, float]:
     '''
     Utility to fit an estimator with early stop on a validation set.
-    The estimator must implement the early stop capability at its 
-    fit interface, following a GBDT-like API ("eval_set-like" parameter).
+    The estimator must implement the early stop capability in its fit interface, 
+    following a GBDT-like API ("eval_set-like" parameter).
 
     Parameters:
         pipe (Pipeline): 

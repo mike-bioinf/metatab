@@ -94,10 +94,10 @@ def main():
 
     y_col = pars["column_metric"]
     if y_col not in meta_data.columns:
-        raise ValueError(f"'{y_col}'column_metric not found in meta_data.")
+        raise ValueError(f"'{y_col}' 'column_metric' not found in metadata.")
     
     if meta_data[y_col].isna().any():
-        raise ValueError("NA in column_metric.")
+        raise ValueError("NA in 'column_metric'.")
     
     preprocessor = get_encoding_scheme(pars["estimator"])
     surrogate_rf = SurrogateRandomForestRegressor(n_jobs=pars["nthreads"], random_state=pars["seed"])

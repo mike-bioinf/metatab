@@ -17,7 +17,7 @@ from metatab.metatab_utils.exceptions import TimiLimitError
 from metatab.estimators.utils.fit import fit_with_early_stop_on_validation_set, set_params_into_clf
 from metatab.hp_search.point_corrector import PointCorrector
 from metatab.metalearning.acquisition_funcs import compute_upper_confidence_bound
-from metatab.metalearning.utils import check_meta_strategy, check_meta_strategy_params, get_estimator_n_candidate_points
+from metatab.metalearning.utils import check_meta_strategy, check_meta_strategy_params
 from metatab.metalearning.sampler import HyperoptRandomSampler
 from metatab.metalearning.metafeatures import CustomMFE
 from metatab.metalearning.metadata_evaluator import MetadataEvaluator
@@ -27,7 +27,7 @@ from metatab.metatab_utils.general import ensure_or_create
 if TYPE_CHECKING:
     from sklearn.pipeline import Pipeline
     from metatab.estimators.utils.types import TunableEstimatorType
-    from metatab.preprocessing.types import ResolvedPreprocessingStrategy
+    from metatab.preprocessing.types import PreprocessingStrategy
     from metatab.metalearning.types import MetaStrategy, MetaStrategyParams
     from metatab.metatab_utils.types import XType, YType
 
@@ -67,7 +67,7 @@ class EnsembleEstimator:
             String estimator type. 
             Info needed in meta-optimization (`meta` algo).
             
-        preprocessing (ResolvedPreprocessingStrategy):
+        preprocessing (PreprocessingStrategy):
             Type of preprocessing used for the pipe object.
             Info needed in meta-optimization (`meta` algo).
 
@@ -174,7 +174,7 @@ class EnsembleEstimator:
         save_path: str | Path,
         pipe: Pipeline,
         type_estimator: TunableEstimatorType,
-        preprocessing: ResolvedPreprocessingStrategy,
+        preprocessing: PreprocessingStrategy,
         params_distributions: dict,
         early_stop_on_validation_set: bool, 
         eval_set_parameter: str = "eval_set",
@@ -441,7 +441,7 @@ class EnsembleEstimator:
 
     def _get_hps_configurations(self, X: XType, y: YType) -> list[dict]:
         sampler = HyperoptRandomSampler()
-        point_corrector = PointCorrector()
+        point_corrector = PointCorrector(apply_hypeopt_corrections=True, estimator=self.type_estimator)
         mfe = CustomMFE()
         
         if self.algo == "random":
@@ -457,7 +457,7 @@ class EnsembleEstimator:
             metafeatures["preprocessing"] = self.preprocessing
             
             if self.meta_candidate_points is None:
-                n_candidate_points = max(get_estimator_n_candidate_points(self.type_estimator), self.n_members) \
+                n_candidate_points = max(1500, self.n_members) \
                     if self.meta_strategy_params is None \
                     else self.meta_strategy_params.n_candidate_points
                 
@@ -531,12 +531,4 @@ class EnsembleEstimator:
                     seed=self.seed if self.meta_strategy_params is None else self.meta_strategy_params.seed
                 )
 
-        return [
-            point_corrector.correct_point(
-                point, 
-                apply_hypeopt_corrections=True, 
-                estimator=self.type_estimator,
-                estimator_corrections="all"
-            )
-            for point in points
-        ]
+        return [point_corrector.correct_point(point) for point in points]

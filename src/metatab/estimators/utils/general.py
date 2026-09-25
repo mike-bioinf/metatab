@@ -1,18 +1,15 @@
 from __future__ import annotations
 
-import warnings
 import numpy as np
 import pandas as pd
 from typing import Any, TYPE_CHECKING, Literal
 from copy import deepcopy
 from numpy.random import RandomState
-from metatab.estimators.params.utils import DEFAULT_ESTIMATORS_TUNE_SPACES
 from metatab.estimators.utils.constants import EARLY_STOPPED_ESTIMATORS
 
 if TYPE_CHECKING:
     from metatab.metatab_utils.types import XType, YType
     from metatab.estimators.utils.types import EstimatorType
-    from metatab.preprocessing.types import PreprocessingStrategy
 
 
 
@@ -76,36 +73,6 @@ def update_dict(
     dictionary = deepcopy(dictionary) if copy else dictionary
     dictionary[name_key] = value
     return dictionary
-
-
-
-def check_meta_tuning_options(
-    estimator: EstimatorType, 
-    preprocessing: PreprocessingStrategy, 
-    tune_space: str
-) -> None:
-    '''
-    General check on meta-tuning related options:
-    - checks that the meta-tuning option is requested with the right HPs space.
-    - send a warning when the preprocessing option is not suggested for meta-tuning. 
-    '''
-    estimator_default_space = DEFAULT_ESTIMATORS_TUNE_SPACES[estimator][0]
-
-    if tune_space not in ["default", estimator_default_space]:
-        raise ValueError(
-            "'meta' algo can be used only with the estimator default space" + 
-            f" ({estimator} --> {estimator_default_space})."
-        )
-
-    if (
-        (estimator == "tabpfn" and preprocessing not in ["estimator_default", "density_filter"]) or
-        (estimator != "tabpfn" and preprocessing not in ["estimator_default", "base"])    
-    ):
-        warnings.warn(
-            "Metalearning is LESS effective when the following estimator-preprocessing couples are NOT respected:" +
-            " tabpfn --> density_filter," +
-            " others estimators --> base."
-        )
 
 
 

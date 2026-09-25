@@ -7,7 +7,7 @@ class DefaultParams:
     the parameters controlling the early stop procedure for some estimators.
     '''
     
-    RANDOM_FOREST_DEFAULT_PARAMS = {}
+    RF_DEFAULT_PARAMS = {}
 
     EXTRA_TREES_DEFAULT_PARAMS = {}
 

@@ -10,7 +10,6 @@ from metatab.estimators.utils.general import check_predict_features
 from metatab.estimators.core.configurations import TuneConfiguration, EarlyStopConfiguration
 from metatab.estimators.utils.general import learn_sklearn_features_attributes
 from metatab.estimators.params.utils import pick_estimator_tune_space
-from metatab.estimators.utils.general import check_meta_tuning_options
 
 if TYPE_CHECKING:
     from sklearn.pipeline import Pipeline
@@ -27,6 +26,8 @@ class MetaTuneInitializer:
         n_iter: int = 1,
         n_cv_repeats: int = 1,
         n_cv_folds: int = 5, 
+        preprocessing: PreprocessingStrategy = "base",
+        tune_preprocessing: bool = False,
         seed: int = 0,
         n_threads: int = 1,
         device: Literal["cpu", "cuda", "auto"] = "auto",
@@ -36,9 +37,7 @@ class MetaTuneInitializer:
         meta_strategy_params: None | MetaStrategyParams = None,
         meta_surrogate_model: None | Pipeline = None,
         meta_seed: int = 42,
-        preprocessing: PreprocessingStrategy = "estimator_default",
-        algo: Literal["meta"] = "meta",
-        tune_space: Literal["default"] = "default"
+        algo: Literal["meta"] = "meta"
     ):
         '''
         The meta tuned estimators are backed by a meta-learning framework that suggests,
@@ -69,11 +68,9 @@ class MetaTuneInitializer:
 
 
         ### User Note:
-            We highly suggest to NOT preprocess the microbial profiles apart expressing them in the 
-            "relative" format (i.e rows summing to 1). This is because we automatically select the 
-            most appropiate preprocessing scheme according to the classifier.
-            In addition we learn the data metafeatures before preprocessing. 
-            Therefore a custom pre-preprocessing can potentially hurt performance.
+            We highly suggest to NOT preprocess the microbial profiles with custom logic.
+            We learn the data metafeatures before preprocessing, 
+            and therefore a custom pre-preprocessing can potentially hurt performance.
 
         
         Parameters:
@@ -86,6 +83,13 @@ class MetaTuneInitializer:
             n_cv_repeats (int, optional):
                 Number of times the inner cross-validation is repeated for each hyperparameter configuration.
             
+            preprocessing (PreprocessingStrategy, optional):
+                Preprocessing strategy to apply. 
+
+            tune_preprocessing (bool, optional):
+                Whether tune the preprocessing.
+                Overwrites 'preprocessing' parameter when enabled.
+
             seed (int, optional):
                 Random seed controlling classifier randomness and the inner cross-validation procedure.
 
@@ -141,18 +145,9 @@ class MetaTuneInitializer:
                 - If the number exceeds 1500, "new" points are drawn in addition 
                 to the prior points.
 
-            preprocessing (PreprocessingStrategy, optional):
-                Preprocessing strategy to apply. 
-                Is highly suggested to leave "estimator_default",
-                since other options could affect performance negatively.
-                See the user note above for details.
-
             algo (Literal["meta"]):
                 Must be "meta". Can be ignored by users.
-            
-            tune_space (Literal["default"]):
-                Must be "default". Can be ignored by users.
-
+        
                 
         ## Attributes:
 
@@ -182,6 +177,8 @@ class MetaTuneInitializer:
         self.n_iter=n_iter
         self.n_cv_repeats=n_cv_repeats
         self.n_cv_folds=n_cv_folds
+        self.preprocessing=preprocessing
+        self.tune_preprocessing=tune_preprocessing
         self.seed=seed
         self.n_threads=n_threads
         self.device=device
@@ -191,9 +188,7 @@ class MetaTuneInitializer:
         self.meta_seed=meta_seed
         self.build_df_search=build_df_search
         self.raise_error_during_search=raise_error_during_search
-        self.preprocessing=preprocessing
         self.algo=algo
-        self.tune_space=tune_space
 
 
 class StandardTuneInitializer:
@@ -203,8 +198,8 @@ class StandardTuneInitializer:
         n_cv_repeats: int = 1,
         n_cv_folds: int = 5, 
         algo: Literal["random", "tpe"] = "tpe",
-        tune_space: str = "default",
-        preprocessing: PreprocessingStrategy = "estimator_default",
+        preprocessing: PreprocessingStrategy = "base",
+        tune_preprocessing: bool = False,
         seed: int = 0,
         n_threads: int = 1,
         device: Literal["cpu", "cuda", "auto"] = "auto",
@@ -215,7 +210,6 @@ class StandardTuneInitializer:
         Optimize classifier hyperparameters via inner cross-validation.
 
         Parameters:
-
             n_iter (int, optional):
                 Number of search iterations (number of hyperparameter configurations evaluated).
 
@@ -230,17 +224,14 @@ class StandardTuneInitializer:
                 - "random": purely random search.
                 - "tpe": Tree-structured Parzen Estimator. Performs an initial random warm-up of 20 iterations,
                   so at least 30 iterations are recommended for effective optimization.
-
-            tune_space (str, optional):
-                Pre-defined tuning space to use. 
-                Use strings like "c{integer}" to select a specific space. 
-                For non-GBDT classifiers, only "default" or "c0" should be used. 
-                The default is recommended, as this parameter may be deprecated in the future 
-                and internal tests showed no major performance differences among alternative spaces.
                 
             preprocessing (PreprocessingStrategy, optional):
                 Preprocessing strategy to apply.
                 Custom preprocessing cannot currently be applied within the inner cross-validation procedure.
+
+            tune_preprocessing (bool, optional):
+                Whether to tune the preprocessing strategy.
+                When enabled overwrites the 'preprocessing' parameter.
 
             seed (int, optional):
                 Random seed controlling classifier randomness and the inner cross-validation procedure.
@@ -297,8 +288,8 @@ class StandardTuneInitializer:
         self.n_cv_repeats=n_cv_repeats
         self.n_cv_folds=n_cv_folds
         self.algo=algo
-        self.tune_space=tune_space
         self.preprocessing=preprocessing
+        self.tune_preprocessing=tune_preprocessing
         self.seed=seed
         self.n_threads=n_threads
         self.device=device
@@ -325,22 +316,13 @@ class BaseTune(ClassifierMixin, BaseEstimator):
 
         if self.algo in ["random", "tpe"]:
             meta_tune_parameters = {}
-        
         elif self.algo == "meta":
-            # only this check is necessary here
-            check_meta_tuning_options(
-                estimator=self.type_estimator,
-                preprocessing=self.preprocessing,
-                tune_space=self.tune_space
-            )
-
             meta_tune_parameters = {
                 "meta_strategy": self.meta_strategy,
                 "meta_strategy_params": self.meta_strategy_params,
                 "meta_surrogate_model": self.meta_surrogate_model,
                 "meta_seed": self.meta_seed
             }
-
         else:
             raise ValueError(f"Unsupported algo: '{self.algo}'")
         
@@ -349,7 +331,7 @@ class BaseTune(ClassifierMixin, BaseEstimator):
             n_iter=self.n_iter,
             n_cv_repeats=self.n_cv_repeats,
             n_cv_folds=self.n_cv_folds,
-            params_distributions=pick_estimator_tune_space(self.type_estimator, self.tune_space),
+            params_distributions=pick_estimator_tune_space(self.type_estimator),
             raise_error_during_search=self.raise_error_during_search,
             build_df_search=self.build_df_search,
             refit_with_best_hps=True,
@@ -358,6 +340,7 @@ class BaseTune(ClassifierMixin, BaseEstimator):
 
         estimator: TunedEstimator = self.myclass(
             preprocessing=self.preprocessing,
+            vary_preprocessing=self.tune_preprocessing,
             seed=self.seed,
             n_threads=self.n_threads,
             device=self.device,

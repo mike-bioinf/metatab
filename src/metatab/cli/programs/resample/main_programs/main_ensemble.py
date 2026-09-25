@@ -8,7 +8,6 @@ from metatab.metatab_utils.data_loader import DataLoader
 from metatab.metatab_utils.prediction.dataframe import PredictionDataframe
 from metatab.estimators.utils.pick import pick_estimator_class
 from metatab.estimators.estimators import EnsembledEstimator
-from metatab.estimators.utils.general import check_meta_tuning_options
 from metatab.metalearning.load import query_surrogate_framework
 
 from metatab.cli.programs.resample.helper import (
@@ -43,13 +42,6 @@ def main_ensemble(pars: dict):
     check_device(pars)
     check_early_stop_parameters(pars)
     check_holdout_train_size(pars)
-
-    if pars["ensemble_algo"] == "meta":
-        check_meta_tuning_options(
-            pars["estimator"],
-            pars["preprocessing"],
-            pars["ensemble_space"]
-        )
 
     adjust_io_paths_(pars, "input_data", "output_dir")
     manage_output_path(pars, "output_dir", True)
@@ -120,6 +112,7 @@ def main_ensemble(pars: dict):
         # we pass different seeds to maximize resample entropy
         estimator: EnsembledEstimator = estimator_class(
             preprocessing=pars["preprocessing"],
+            vary_preprocessing=pars["vary_preprocessing"],
             seed=int(rng_estimator.integers(0, 2**32)),
             n_threads=pars["nthreads"],
             device=pars["device"],

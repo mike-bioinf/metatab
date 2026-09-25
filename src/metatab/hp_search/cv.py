@@ -7,9 +7,11 @@ from typing import TYPE_CHECKING, Literal
 from sklearn.model_selection import RepeatedStratifiedKFold
 from sklearn.metrics import log_loss
 from metatab.estimators.utils.fit import fit_with_early_stop_on_validation_set, set_params_into_clf
+from metatab.preprocessing.preprocessing import create_classification_pipeline
 
 if TYPE_CHECKING:
-    from sklearn.pipeline import Pipeline
+    from metatab.estimators.utils.types import Classifier
+    from metatab.preprocessing.types import PreprocessingStrategy
 
 
 
@@ -18,9 +20,14 @@ class CrossValidator:
     Handles the execution of the cross-validation procedure.
     
     Parameters:
-        pipe (Pipeline):
-            Pipeline object with a classifier as head,
-            which hps have to be optimized.
+        classifier_cls (Classifier): Classifier class
+                    
+        preprocessing (PreprocessingStrategy):
+            Data preprocessing strategy.
+
+        tune_preprocessing (bool):
+            Whether tune the preprocessing.
+            Overwrites 'preprocessing' parameter indication when true.
 
         clf_random_state_parameter (str):
             Name of the classifier random state parameter.
@@ -55,7 +62,9 @@ class CrossValidator:
     '''
     def __init__(
         self,
-        pipe: Pipeline,
+        classifier_cls: Classifier,
+        preprocessing: PreprocessingStrategy,
+        tune_preprocessing: bool,
         clf_random_state_parameter: str,
         early_stop_on_validation_set: bool,
         eval_set_parameter: str | None,
@@ -66,7 +75,9 @@ class CrossValidator:
         n_repeats: int, 
         seed: int
     ):
-        self.pipe=pipe
+        self.classifier_cls=classifier_cls
+        self.preprocessing=preprocessing
+        self.tune_preprocessing=tune_preprocessing
         self.clf_random_state_parameter=clf_random_state_parameter
         self.early_stop_on_validation_set=early_stop_on_validation_set
         self.eval_set_parameter=eval_set_parameter
@@ -76,6 +87,8 @@ class CrossValidator:
         self.n_folds=n_folds
         self.n_repeats=n_repeats
         self.seed=seed
+        # we crete the pipeline when the preprocessing is fixed otherwise None
+        self.pipe = None if self.tune_preprocessing else create_classification_pipeline(classifier_cls, preprocessing)
 
 
     def fit(
@@ -101,6 +114,8 @@ class CrossValidator:
             A tuple of the aggregated cv performances and the collected cv info. 
             The second term is None if `collect_info` is False.
         '''
+        params = deepcopy(params)
+        
         skf = RepeatedStratifiedKFold(
             n_splits=self.n_folds, 
             n_repeats=self.n_repeats, 
@@ -115,12 +130,20 @@ class CrossValidator:
             repeat = iter_idx // self.n_folds
             fold = iter_idx - (self.n_folds * repeat)
 
-            # we create a copy of the pipe at each cv round
-            # to avoid specific classifier implementation problems
-            # related to fitting multiple times the same instance.
-            # (for example for catboost is not possible to set the parameters on a fitted instance)
-            pipe = deepcopy(self.pipe)
-            set_params_into_clf(pipe, params)
+            if self.pipe:
+                # we create a copy of the pipe at each cv round
+                # to avoid specific classifier implementation problems
+                # related to fitting multiple times the same instance.
+                # for example for catboost is not possible to set new parameters on a fitted instance.
+                pipe = deepcopy(self.pipe)
+            else:
+                # we must remove the preprocessing from params
+                pipe = create_classification_pipeline(
+                    classifier_cls=self.classifier_cls,
+                    preprocessing=params["preprocessing"]
+                )
+            
+            set_params_into_clf(pipe, {k:v for k,v in params.items() if k != "preprocessing"})
 
             # we overwrite the classifier seed in order to maximize model entropy inside cv, 
             # while assuring uniformity between different cv runs.

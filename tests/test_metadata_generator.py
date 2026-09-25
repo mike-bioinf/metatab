@@ -5,7 +5,7 @@ from metatab.hp_search.point_corrector import PointCorrector
 from metatab.metalearning.sampler import HyperoptRandomSampler
 from metatab.metalearning.metadata_generator import MetadataGenerator
 from metatab.metalearning.metafeatures import CustomMFE
-from metatab.estimators.params import TuningParams
+from metatab.estimators.params.space import TuningParams
 
 
 
@@ -13,7 +13,7 @@ from metatab.estimators.params import TuningParams
 def test_that_metadata_generator_works():
     generator = MetadataGenerator(
         sampler=HyperoptRandomSampler(follow_hyperopt_fmin=False),
-        point_corrector=PointCorrector(),
+        point_corrector=PointCorrector(apply_hypeopt_corrections=True, estimator="lgbm"),
         mfe=CustomMFE(seed=0)
     )
     
@@ -21,7 +21,7 @@ def test_that_metadata_generator_works():
     X = pd.DataFrame(X)
     y = pd.Series(y)
 
-    metadata, points = generator.fit(X, y, TuningParams.LGMB_C0, seed=0).generate(
+    metadata, points = generator.fit(X, y, TuningParams.LGMB, seed=0).generate(
         n_points=5, 
         set_metagroups_in_index=True
     )

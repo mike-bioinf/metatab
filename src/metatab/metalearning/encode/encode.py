@@ -55,7 +55,7 @@ COLUMN_TRANSFORMER_FIXED_PARAMS = {
     "verbose_feature_names_out": False
 }
 
-
+## REVIEW: complete this with new preprocessing
 PREPROCESSING_COLUMN_TRANSFORMER = (
     "preprocessing_column", 
     OneHotEncoder(

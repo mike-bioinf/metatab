@@ -1,5 +1,6 @@
 from sklearn.ensemble import RandomForestClassifier
-from metatab.estimators.params import TuningParams, DefaultParams
+from metatab.estimators.params.space import TuningParams
+from metatab.estimators.params.default import DefaultParams
 from metatab.metatab_utils.types import XType, YType
 
 from metatab.estimators.core import (
@@ -17,7 +18,7 @@ class MyRandomForestClassifier(DefaultEstimatorMixin, AbstractBaseEstimator):
     Attributes:
         estimator_ (Pipeline): Fitted pipeline object.
     '''
-    fixed_params = DefaultParams.RANDOM_FOREST_DEFAULT_PARAMS
+    fixed_params = DefaultParams.RF_DEFAULT_PARAMS
 
     def fit(self, X: XType, y: YType) -> "MyRandomForestClassifier":
         self.estimator_ = super().fit_estimator(
@@ -37,7 +38,7 @@ class MyTunedRandomForestClassifier(TunedEstimatorMixin, AbstractBaseEstimator):
     Attributes:
         estimator_ (SearchCV): Fitted SearchCV object.    
     '''
-    fixed_params = TuningParams.RANDOM_FOREST_FIXED_PARAMS 
+    fixed_params = TuningParams.RF_FIXED_PARAMS 
     
     def fit(self, X: XType, y: YType) -> "MyTunedRandomForestClassifier":
         self.estimator_ = super().fit_estimator(
@@ -58,7 +59,7 @@ class MyEnsembledRandomForestClassifier(EnsembleEstimatorMixin, AbstractBaseEsti
     Attributes:
         estimator_ (EnsembleEstimator): Fitted EnsembleEstimator object.
     '''
-    fixed_params = TuningParams.RANDOM_FOREST_FIXED_PARAMS
+    fixed_params = TuningParams.RF_FIXED_PARAMS
     
     def fit(self, X: XType, y: YType) -> "MyEnsembledRandomForestClassifier":
         self.estimator_ = super().fit_estimator(

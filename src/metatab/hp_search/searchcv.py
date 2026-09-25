@@ -5,32 +5,31 @@ import joblib
 import numpy as np
 import pandas as pd
 from pathlib import Path
-from copy import deepcopy
 from functools import partial
 from typing import Literal, TYPE_CHECKING
-from sklearn.pipeline import Pipeline
 from hyperopt import STATUS_OK, STATUS_FAIL, tpe, rand, fmin, space_eval
 from hyperopt.pyll.stochastic import sample
 from metatab.estimators.utils.fit import fit_with_early_stop_on_validation_set, set_params_into_clf
-from metatab.estimators.params import HPS_MIXED_TYPED
+from metatab.estimators.utils.general import add_prefix_to_params_when_absent
 from metatab.metalearning.metafeatures import CustomMFE
 from metatab.metalearning.load import query_surrogate_framework
 from metatab.metalearning.acquisition_funcs import compute_upper_confidence_bound
 from metatab.metalearning.sampler import HyperoptRandomSampler
 from metatab.metalearning.metadata_generator import MetadataGenerator
 from metatab.metalearning.metadata_evaluator import MetadataEvaluator
-from metatab.metalearning.utils import check_meta_strategy, check_meta_strategy_params, get_estimator_n_candidate_points
+from metatab.metalearning.utils import check_meta_strategy, check_meta_strategy_params
 from metatab.metatab_utils.general import add_broadcasted_objects_as_column
 from metatab.hp_search.point_corrector import PointCorrector
 from metatab.hp_search.cv import CrossValidator
 from metatab.hp_search.config import ConfigSearchCV
+from metatab.estimators.params.space import HPS_MIXED_TYPED, add_preprocessing_to_cls_search_space
+from metatab.preprocessing.preprocessing import create_classification_pipeline
 
 if TYPE_CHECKING:
-    from metatab.preprocessing.types import ResolvedPreprocessingStrategy
+    from metatab.preprocessing.types import PreprocessingStrategy
     from metatab.estimators.utils.types import Classifier, TunableEstimatorType
     from metatab.metalearning.types import MetaStrategy, MetaStrategyParams
     from metatab.metatab_utils.types import XType, YType
-
 
 
 
@@ -48,26 +47,34 @@ class SearchCV:
     
 
     Parameters:
-        pipe (Pipeline):
-            Pipeline object headed by a classifier which hps have to be optimized.
+        classifier_cls (Classifier):
+            Classifier class
         
         type_estimator (TunableEstimatorType):
-            String estimator type of the classifier head. 
+            String reporting the estimator type. 
             Info needed in meta-optimization (`meta` algo).
             
-        preprocessing (ResolvedPreprocessingStrategy):
-            Type of preprocessing used for the pipe object.
-            Info needed in meta-optimization (`meta` algo).
-        
-        algo (Literal["random", "tpe", "meta"]): Searching algorithm to use.
-        
-        params_distributions (dict): Search space.
+        preprocessing (PreprocessingStrategy):
+            Data preprocessing strategy to use.
 
-        n_iter (int): Number of search iterations.
+        tune_preprocessing (bool):
+            Whether tune the preprocessing.
+            Overwrites 'preprocessing' parameter indication when true.
         
-        n_cv_folds (int): Number of cv folds.
+        algo (Literal["random", "tpe", "meta"]): 
+            Searching algorithm to use.
+        
+        params_distributions (dict): 
+            HP search space.
 
-        n_cv_repeats (int): Number of cv repeats.
+        n_iter (int): 
+            Number of search iterations.
+        
+        n_cv_folds (int): 
+            Number of cv folds.
+
+        n_cv_repeats (int): 
+            Number of cv repeats.
         
         seed (int): 
             Seed for reproducibility.
@@ -172,9 +179,10 @@ class SearchCV:
     def __init__(
         self,
         *,
-        pipe: Pipeline,
+        classifier_cls: Classifier,        
         type_estimator: TunableEstimatorType,
-        preprocessing: ResolvedPreprocessingStrategy,
+        preprocessing: PreprocessingStrategy,
+        tune_preprocessing: bool,
         algo: Literal["random", "tpe", "meta"],
         params_distributions: dict,
         n_iter: int,
@@ -195,9 +203,10 @@ class SearchCV:
         build_df_search: None | bool = None,
         refit_with_best_hps: None | bool = None
     ):
-        self.pipe=pipe
+        self.classifier_cls=classifier_cls
         self.type_estimator=type_estimator
         self.preprocessing=preprocessing
+        self.tune_preprocessing=tune_preprocessing
         self.algo=algo
         self.params_distributions=params_distributions
         self.random_state_parameter=random_state_parameter
@@ -209,25 +218,11 @@ class SearchCV:
         self.early_stop_on_validation_set=early_stop_on_validation_set
         self.eval_set_parameter=eval_set_parameter
         self.validation_set_size=validation_set_size
-        self.fit_classifier_kwargs=fit_classifier_kwargs if fit_classifier_kwargs else {}
+        self.fit_classifier_kwargs=fit_classifier_kwargs
         self.meta_surrogate_model=meta_surrogate_model
         self.meta_strategy=meta_strategy
         self.meta_strategy_params=meta_strategy_params
         self.meta_seed=meta_seed
-        
-        self.cross_validator=CrossValidator(
-            pipe=pipe,
-            clf_random_state_parameter=random_state_parameter,
-            early_stop_on_validation_set=early_stop_on_validation_set,
-            eval_set_parameter=eval_set_parameter,
-            validation_set_size=validation_set_size,
-            fit_classifier_kwargs=self.fit_classifier_kwargs, # here we must always pass a dict
-            metric=metric_to_minimize,
-            n_folds=n_cv_folds,
-            n_repeats=n_cv_repeats,
-            seed=seed
-        )
-
         # controlled by ConfigSearchCV
         self.raise_error_during_search: bool = ConfigSearchCV.get_setting(raise_error_during_search, "raise_error_during_search")
         self.build_df_search: bool = ConfigSearchCV.get_setting(build_df_search, "build_df_search")        
@@ -236,13 +231,38 @@ class SearchCV:
 
 
     def fit(self, X: XType, y: YType) -> "SearchCV":
-        '''Performs HPO. Returns the instance. '''
+        '''
+        Performs HPO. 
+        Returns the instance.
+        '''
+        fit_classifier_kwargs = add_prefix_to_params_when_absent(self.fit_classifier_kwargs, f"{self.classifier_cls.__name__.lower()}__") \
+            if self.fit_classifier_kwargs \
+            else {}
+
+        space = add_preprocessing_to_cls_search_space(self.params_distributions) \
+            if self.tune_preprocessing \
+            else self.params_distributions
+
+        cross_validator = CrossValidator(
+            classifier_cls=self.classifier_cls,
+            preprocessing=self.preprocessing,
+            tune_preprocessing=self.tune_preprocessing,
+            clf_random_state_parameter=self.random_state_parameter,
+            early_stop_on_validation_set=self.early_stop_on_validation_set,
+            eval_set_parameter=self.eval_set_parameter,
+            validation_set_size=self.validation_set_size,
+            fit_classifier_kwargs=fit_classifier_kwargs,
+            metric=self.metric_to_minimize,
+            n_folds=self.n_cv_folds,
+            n_repeats=self.n_cv_repeats,
+            seed=self.seed
+        )
+
+        point_corrector = PointCorrector(apply_hypeopt_corrections=True, estimator=self.type_estimator)
+
         self._X = X if isinstance(X, np.ndarray) else X.to_numpy()
         self._y = y if isinstance(y, np.ndarray) else y.to_numpy()
 
-        self._point_corrector = PointCorrector()
-        self._set_point_to_model_corrections()
-        
         self._dfs_info_iter: list[pd.DataFrame] = []
         self.search_losses_: list[float] = []
 
@@ -252,27 +272,34 @@ class SearchCV:
         if self.n_iter == 1:
             # we append nan since we do not evaluate the loss
             self.search_losses_.append(np.nan)
-            self.build_df_search = False
+            can_df_search_be_built = False
+        else:
+            can_df_search_be_built = True
 
         if self.algo == "meta":
             check_meta_strategy(self.meta_strategy)
             check_meta_strategy_params(self.meta_strategy, self.meta_strategy_params, safe_none_params=True)
-            self._fit_with_meta_points()
-        
+            self._fit_with_meta_points(space, cross_validator, point_corrector)
         elif self.algo in ["random", "tpe"]:
-            self._fit_with_standard_algo()
-
+            self._fit_with_standard_algo(space, cross_validator, point_corrector)
         else:
             raise ValueError("Unsupported optimization algorithm.")
         
-        if self.build_df_search:
+        if self.build_df_search and can_df_search_be_built:
             self.df_search_ = self._build_df_search()
 
         # we refit on the original X and y to not influence sklearn expection
         # about the fit datatype which is checked at predict time 
         if self.refit_with_best_hps:
-            best_estimator = deepcopy(self.pipe)
-            set_params_into_clf(best_estimator, self.best_params_)   
+            if self.tune_preprocessing:
+                best_preprocessing = self.best_params_["preprocessing"]
+                best_cls_params = {k:v for k,v in self.best_params_.items() if k != "preprocessing"}
+            else:
+                best_preprocessing = self.preprocessing
+                best_cls_params = self.best_params_
+ 
+            best_estimator = create_classification_pipeline(self.classifier_cls, best_preprocessing)
+            set_params_into_clf(best_estimator, best_cls_params)   
             
             if self.early_stop_on_validation_set:
                 self.best_estimator_, self.refit_time_ = fit_with_early_stop_on_validation_set(
@@ -282,44 +309,53 @@ class SearchCV:
                     seed=self.seed,
                     validation_set_size=self.validation_set_size,
                     eval_set_parameter=self.eval_set_parameter,
-                    fit_classifier_kwargs=self.fit_classifier_kwargs,
+                    fit_classifier_kwargs=fit_classifier_kwargs,
                     return_fit_time=True
                 )
             else:
                 start_refit_time = time.time()
-                self.best_estimator_ = best_estimator.fit(X, y, **self.fit_classifier_kwargs)
+                self.best_estimator_ = best_estimator.fit(X, y, **fit_classifier_kwargs)
                 self.refit_time_ = time.time() - start_refit_time
             
         return self
 
 
 
-    def _fit_with_meta_points(self) -> None:
+    def _fit_with_meta_points(
+        self, 
+        space: dict,
+        cross_validator: CrossValidator,
+        point_corrector: PointCorrector
+    ) -> None:
         '''
         Optimize using the meta-inferred points only.        
         Set the `best_params_` attribute.
         '''
-        n_candidate_points = max(get_estimator_n_candidate_points(self.type_estimator), self.n_iter) \
+        n_candidate_points = max(1500, self.n_iter) \
             if self.meta_strategy_params is None \
             else self.meta_strategy_params.n_candidate_points
         
         meta_generator = MetadataGenerator(
             sampler=HyperoptRandomSampler(),
-            point_corrector=PointCorrector(),
+            point_corrector=point_corrector,
             mfe=CustomMFE(),
         )
 
         meta_generator.fit(
             X=self._X,
             y=self._y,
-            hp_space=self.params_distributions,
+            hp_space=space,
             seed=self.meta_seed 
         )
 
+        # add the desired preprocessing when is not optimized
+        mfe_extract_kwargs = None \
+            if self.tune_preprocessing \
+            else {"add_features": {"preprocessing": self.preprocessing}}
+
         metadata, candidate_points = meta_generator.generate(
             n_points=n_candidate_points,
-            # add the preprocessing to the meta-data
-            mfe_extract_kwargs = {"add_features": {"preprocessing": self.preprocessing}}
+            mfe_extract_kwargs = mfe_extract_kwargs
         )
 
         # use the input model or use the default
@@ -387,28 +423,32 @@ class SearchCV:
 
         # we do not evaluate the single point since is the best by definition
         if len(points) == 1:
-            self.best_params_ = self._point_corrector.correct_point(
-                points[0],
-                **self._point_to_model_corrections
-            )
+            self.best_params_ = point_corrector.correct_point(points[0])
             return None
 
         for point in points:
-            _ = self._fit_point(point, returns_type="simple")
+            _ = self._fit_point(
+                point,
+                cross_validator=cross_validator,
+                point_corrector=point_corrector,
+                returns_type="simple"
+            )
 
         losses = np.array(self.search_losses_)
 
         if np.isnan(losses).all():
             raise ValueError("All search iterations have failed.")
         
-        self.best_params_ = self._point_corrector.correct_point(
-            points[np.nanargmin(losses)],
-            **self._point_to_model_corrections
-        )
+        self.best_params_ = point_corrector.correct_point(points[np.nanargmin(losses)])
 
 
     
-    def _fit_with_standard_algo(self) -> None:
+    def _fit_with_standard_algo(
+        self, 
+        space: dict, 
+        cross_validator: CrossValidator, 
+        point_corrector: PointCorrector
+    ) -> None:
         '''
         Optimize HPs with the random or tpe algo.
         Set the `best_params_` attribute.
@@ -416,9 +456,8 @@ class SearchCV:
         # with n_iter to 1 the sampling is always random 
         # and the drawn point is the best by definition
         if self.n_iter == 1:
-            self.best_params_ = self._point_corrector.correct_point(
-                point=sample(self.params_distributions, np.random.default_rng(self.seed)),
-                **self._point_to_model_corrections
+            self.best_params_ = point_corrector.correct_point(
+                point=sample(space, np.random.default_rng(self.seed)),
             )
             return None
 
@@ -435,11 +474,16 @@ class SearchCV:
         else:
             raise ValueError("Unsupported optimization algorithm.")
 
-        fit_point_fn = partial(self._fit_point, returns_type="hyperopt")
+        fit_point_fn = partial(
+            self._fit_point, 
+            returns_type="hyperopt",
+            cross_validator=cross_validator,
+            point_corrector=point_corrector
+        )
 
         best = fmin(
             fn=fit_point_fn,
-            space=self.params_distributions,
+            space=space,
             algo=algo_fn,
             max_evals=self.n_iter,
             trials=None,
@@ -448,16 +492,15 @@ class SearchCV:
         )
 
         # hyperopt tracks the uncorrected params
-        self.best_params_ = self._point_corrector.correct_point(
-            space_eval(self.params_distributions, best),
-            **self._point_to_model_corrections
-        )
+        self.best_params_ = point_corrector.correct_point(space_eval(space, best))
 
 
 
     def _fit_point(
         self, 
         params: dict,
+        cross_validator: CrossValidator,
+        point_corrector: PointCorrector,
         returns_type: Literal["hyperopt", "simple"]
     ) -> dict | float:
         '''
@@ -472,15 +515,10 @@ class SearchCV:
                 compatible info, in the second only the loss.
         '''
         try:
-            params_to_model = self._point_corrector.correct_point(
-                params, 
-                **self._point_to_model_corrections
-            )
-
-            loss, df_cv_info = self.cross_validator.fit(
+            loss, df_cv_info = cross_validator.fit(
                 X=self._X, 
                 y=self._y,
-                params=params_to_model,
+                params=point_corrector.correct_point(params),
                 agg="mean",
                 collect_info=self.build_df_search
             )
@@ -538,21 +576,6 @@ class SearchCV:
                 }
             else:
                 return np.nan
-
-
-
-    def _set_point_to_model_corrections(self) -> None:
-        '''Sets the instructions that the PointCollector must follow for each estimator'''
-        if self.type_estimator == "tabpfn":
-            self._point_to_model_corrections = {
-                "apply_hypeopt_corrections": True,
-                "estimator": "tabpfn",
-                "estimator_corrections": "all"
-            }
-        else:
-            self._point_to_model_corrections = {
-                "apply_hypeopt_corrections": True
-            }
 
 
 

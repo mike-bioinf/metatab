@@ -10,12 +10,6 @@ if TYPE_CHECKING:
 
 
 
-def get_estimator_n_candidate_points(type_estimator: TunableEstimatorType) -> int:
-    '''Get the default number of meta candidate points for each estimator'''
-    # for now every estimator uses 1500 points
-    return 1500
-
-
 @dataclass
 class BestMetaStrategyParams:
     '''

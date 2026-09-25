@@ -22,7 +22,7 @@ class DensityFeatureSelector(SelectorMixin, BaseEstimator):
             Desired number of columns. Must be a integer in [0, inf].
             If 0 all columns are filtered, if inf all columns are kept.
 
-        strategy (Literal["exact", "oversample", "undersample"]):
+        strategy (Literal["exact", "oversample", "undersample"], optional):
             - exact: select exactly "n_target_cols" columns. 
             The ties are arbitrarily broken, even though the results 
             are consistent with a fixed input.
@@ -62,7 +62,7 @@ class DensityFeatureSelector(SelectorMixin, BaseEstimator):
     def __init__(
         self, 
         n_target_cols: int,
-        strategy: Literal["exact", "oversample", "undersample"],
+        strategy: Literal["exact", "oversample", "undersample"] = "undersample",
         on_empty: Literal["select_all", "error"] = "select_all"
     ):
         self.n_target_cols = n_target_cols

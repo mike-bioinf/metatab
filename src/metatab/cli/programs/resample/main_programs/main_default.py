@@ -94,6 +94,7 @@ def main_default(pars: dict):
         # we pass different seeds to maximize resample entropy
         estimator: DefaultEstimator = estimator_class(
             preprocessing=pars["preprocessing"],
+            vary_preprocessing=False,
             seed=int(rng_estimator.integers(0, 2**32)),
             n_threads=pars["nthreads"],
             device=pars["device"],

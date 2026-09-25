@@ -1,7 +1,8 @@
 import warnings
 from functools import partial
 from lightgbm import LGBMClassifier
-from metatab.estimators.params import TuningParams, DefaultParams
+from metatab.estimators.params.space import TuningParams
+from metatab.estimators.params.default import DefaultParams
 from metatab.metatab_utils.types import XType, YType
 
 from metatab.estimators.core import (

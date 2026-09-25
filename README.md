@@ -1,3 +1,5 @@
+###REVIEW: change according to changes
+
 # MetaTab
 
 A comprehensive classification framework for microbial taxonomic profiles.
@@ -104,7 +106,7 @@ metatab-fit default \
     --input-mode df \
     --target-feature "Group" \
     --estimator random_forest \
-    --preprocessing estimator_default \
+    --preprocessing base \
     --seed 42 \
     --nthreads 1 \
     --create-outdir
@@ -118,7 +120,7 @@ metatab-fit tune \
     --estimator es_lgbm \
     --validation-set-size 0.3 \
     --early-stop-rounds 10 \
-    --preprocessing estimator_default \
+    --preprocessing base \
     --tune-algo random \
     --tune-n-iter 10 \
     --tune-n-cv-repeats 1 \
@@ -134,7 +136,7 @@ metatab-fit ensemble \
     --input-mode df \
     --target-feature "Group" \
     --estimator extra_trees \
-    --preprocessing estimator_default \
+    --preprocessing base \
     --ensemble-algo meta \
     --ensemble-n-members 8 \
     --ensemble-time-limit 600 \
@@ -182,7 +184,7 @@ metatab-resample cv ensemble \
     --input-mode df \
     --target-feature "Group" \
     --estimator extra_trees \
-    --preprocessing estimator_default \
+    --preprocessing base \
     --ensemble-algo random \
     --ensemble-n-members 8 \
     --ensemble-time-limit 600 \
@@ -238,7 +240,7 @@ rf_0 = UserEnsembleConfiguration(
     algo="random",
     n_members=2,
     estimator="random_forest",
-    preprocessing="estimator_default",
+    preprocessing="base",
     tune_space="default",
     early_stop_on_validation_set=False,
 )
@@ -248,7 +250,7 @@ es_xgb_0 = UserEnsembleConfiguration(
     algo="random",
     n_members=2,
     estimator="es_xgb",
-    preprocessing="estimator_default",
+    preprocessing="base",
     tune_space="default",
     early_stop_on_validation_set=True,
     validation_set_size=0.2

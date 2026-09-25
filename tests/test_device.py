@@ -19,7 +19,7 @@ def test_that_cuda_does_not_work_with_incompatible_estimators():
             algo="random",
             n_members=1,
             estimator="random_forest",
-            preprocessing="estimator_default",
+            preprocessing="base",
             tune_space="default",
             early_stop_on_validation_set=False,
             device="cuda"
@@ -37,7 +37,7 @@ def test_that_device_auto_option_works_correctly():
         algo="random",
         n_members=1,
         estimator="random_forest",
-        preprocessing="estimator_default",
+        preprocessing="base",
         tune_space="default",
         early_stop_on_validation_set=False,
         device="auto"

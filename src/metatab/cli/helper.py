@@ -130,7 +130,7 @@ def build_tune_configuration(pars: dict) -> TuneConfiguration:
         n_iter=pars["tune_n_iter"],
         n_cv_repeats=pars["tune_n_cv_repeats"],
         n_cv_folds=pars["tune_n_cv_folds"],
-        params_distributions=pick_estimator_tune_space(pars["estimator"], pars["tune_space"]),
+        params_distributions=pick_estimator_tune_space(pars["estimator"]),
         meta_surrogate_model=pars["tune_meta_surrogate_model"],
         meta_strategy=pars["tune_meta_strategy"]
     )
@@ -142,7 +142,7 @@ def build_ensemble_configuration(pars: dict) -> EnsembleConfiguration:
         algo=pars["ensemble_algo"],
         n_members=pars["ensemble_n_members"],
         save_path=pars["output_dir"] / "models",
-        params_distributions=pick_estimator_tune_space(pars["estimator"], pars["ensemble_space"]),
+        params_distributions=pick_estimator_tune_space(pars["estimator"]),
         meta_strategy=pars["ensemble_meta_strategy"],
         meta_surrogate_model=pars["ensemble_meta_surrogate_model"],
         time_limit=pars["ensemble_time_limit"],

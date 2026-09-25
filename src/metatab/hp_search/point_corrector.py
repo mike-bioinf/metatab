@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 import sys
-from typing import Literal, Callable, TYPE_CHECKING
+from typing import Callable, TYPE_CHECKING
 from copy import deepcopy
 from tabpfn.model_loading import _user_cache_dir
-from metatab.metatab_utils.general import enlist
 
 if TYPE_CHECKING:
     from metatab.estimators.utils.types import TunableEstimatorType
@@ -28,7 +27,6 @@ ESTIMATOR_SUPPORTED_CORRECTIONS: dict[str, dict[str, Callable[[dict], dict]]] = 
 }
 
 
-
 class PointCorrector:
     '''
     Utility class to apply corrections to hyperparameter points sampled during tuning.
@@ -39,72 +37,47 @@ class PointCorrector:
 
     All corrections are applied to a deep copy of the input dictionary.
     Even when no corrections are applied, a copy is returned.
+
+    Parameters:
+        apply_hypeopt_corrections (bool, optional): 
+            Whether to apply the hyperopt general corrections to the point.
+        
+        estimator (TunableEstimatorType | None, optional):
+            Needed to select the right set of corrections.
+            If None no estimator-specific corrections are applied.
     '''
-    def correct_point(
+    def __init__(
         self,
-        point: dict,
         apply_hypeopt_corrections: bool = False,
-        estimator: TunableEstimatorType | None = None,
-        estimator_corrections: str | list[str] | Literal["all"] | None = None
+        estimator: TunableEstimatorType | None = None
     ):
+        self.apply_hypeopt_corrections=apply_hypeopt_corrections
+        self.estimator=estimator
+
+    
+    def correct_point(self, point: dict):
         '''
-        Apply the specified corrections to a hyperparameter point.       
+        Apply corrections to HP point.       
         The hyperopt corrections are always applied first.
 
         Parameters:
             point (dict): 
-                HPs point on which the corrections are applied.
-            
-            apply_hypeopt_corrections (bool, optional): 
-                Whether to apply the hyperopt general corrections to the point.
-            
-            estimator: (TunableEstimatorType | None, optional):
-                The type of estimator to which the point refers.
-                This info is needed to select the right set of corrections.
-            
-            estimator_corrections (str | list[str] | Literal["all"] | None, optional):
-                Specifies which estimator-specific corrections to apply.
-                They are available in a pre-defined map. In detail:
-                -"all": apply all supported corrections for the given estimator.
-                -str: name of the single correction.
-                -list[str]: list of correction names.
-                -None: no corrections is applied.
+                HP point on which apply the corrections.
 
         Returns:
-            dict: The corrected copy of the point.
-        '''
-        self._check_ambiguous_estimator_setting(estimator, estimator_corrections)
-        
+            dict: The corrected point. Returns always a deepcopy.
+        '''        
         # the changes are applied on the copy
         point = deepcopy(point)
         
-        if apply_hypeopt_corrections:
+        if self.apply_hypeopt_corrections:
             point = self._apply_hyperopt_corrections(point)
-         
+     
         # apply estimator corrections
-        if estimator is not None:
-            selected_estimator_corrections = ESTIMATOR_SUPPORTED_CORRECTIONS.get(estimator, {})
-            
-            # select the desired corrections
-            if estimator_corrections != "all":
-                estimator_corrections = enlist(estimator_corrections)
-
-                # check for not supported corrections
-                for correction in estimator_corrections:
-                    if correction not in selected_estimator_corrections.keys():
-                        raise KeyError(
-                            f"'{correction}' is not a pre-defined correction for '{estimator}' estimator."
-                        )
-
-                selected_estimator_corrections = {
-                    k:v
-                    for k, v in selected_estimator_corrections.items()
-                    if k in estimator_corrections
-                }
-
-            # apply corrections
-            for correct_func in selected_estimator_corrections.values():
-                point = correct_func(point)
+        if self.estimator is not None and self.estimator in ESTIMATOR_SUPPORTED_CORRECTIONS.keys():
+            for set_correction in ESTIMATOR_SUPPORTED_CORRECTIONS[self.estimator]:
+                for correction_func in set_correction.values():
+                    point = correction_func(point)
 
         return point
 
@@ -131,16 +104,3 @@ class PointCorrector:
                 point[param_to_convert] = list(point[param_to_convert])
 
         return point
-
-
-    @staticmethod
-    def _check_ambiguous_estimator_setting(estimator, estimator_corrections) -> None:
-        '''Validate that estimator-related parameters are consistent'''
-        if estimator is None and estimator_corrections is not None:
-            raise ValueError(
-                "Ambiguous estimator-related settings. `estimator` is None but `estimator_corrections` are set."
-            )
-        if estimator is not None and estimator_corrections is None:
-            raise ValueError(
-                "Ambiguous estimator-related settings. `estimator_corrections` is None but `estimator` is set."
-            )

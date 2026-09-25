@@ -1,16 +1,18 @@
 from __future__ import annotations
 
 from typing import Literal, TYPE_CHECKING
-from metatab.preprocessing.utils import resolve_preprocessing_info
 
 if TYPE_CHECKING:
     from sklearn.pipeline import Pipeline
     from sklearn.decomposition import PCA
-    from metatab.preprocessing import DensityFeatureSelector  
+    from metatab.preprocessing.preprocessing import DensityFeatureSelector  
     from metatab.preprocessing.types import PreprocessingStrategy
 
 
-
+## REVIEW: 
+# This is broken since now the preprocessing can vary
+# Therefore one could recover info from the pipeline itself.
+# We could also consider or removing this retrivial altogether
 def collect_fit_preprocessing_info(
     pipe: Pipeline,
     preprocessing: PreprocessingStrategy,
@@ -48,8 +50,6 @@ def collect_fit_preprocessing_info(
         else:
             raise ValueError("Unsupported value for 'return_on_classifier' parameter.")
     
-    preprocessing = resolve_preprocessing_info(preprocessing)
-
     # from here we deal with a deep pipeline
     if preprocessing == "pca":
         return _collect_from_pca_preprocessing(pipe, wrap_into_list)

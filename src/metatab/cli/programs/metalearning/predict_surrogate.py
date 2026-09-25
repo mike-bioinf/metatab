@@ -140,6 +140,7 @@ def main():
                 continue
             else:
                 raise
+            
         X = m.drop(columns=pars["loss_column"])
         y = m[pars["loss_column"]]
         preds, uncertainty = s.predict(X)

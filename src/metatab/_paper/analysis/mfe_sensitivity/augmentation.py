@@ -145,12 +145,12 @@ def main():
     
     logger.info(f"Using {pars["surrogate_model"]} surrogate model on {dataset_name}")
 
-    tune_space = pick_estimator_tune_space(pars["estimator"], space="c0")
+    tune_space = pick_estimator_tune_space(pars["estimator"])
     surrogate_model: Pipeline = joblib.load(pars["surrogate_model"])
 
     metadata_generator = MetadataGenerator(
         sampler=HyperoptRandomSampler(),
-        point_corrector=PointCorrector(),
+        point_corrector=PointCorrector(apply_hypeopt_corrections=True, estimator=pars["estimator"]),
         mfe=CustomMFE()
     )
 

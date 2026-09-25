@@ -10,7 +10,6 @@ from metatab.estimators.utils.general import learn_sklearn_features_attributes
 from metatab.estimators.utils.general import check_predict_features
 from metatab.estimators.core.configurations import EarlyStopConfiguration, EnsembleConfiguration
 from metatab.estimators.params.utils import pick_estimator_tune_space
-from metatab.estimators.utils.general import check_meta_tuning_options
 
 if TYPE_CHECKING:
     import numpy as np
@@ -38,7 +37,7 @@ class MetaEnsembleInitializer:
         meta_strategy_params: None | MetaStrategyParams = None,
         meta_surrogate_model: None | str | Path = None,
         meta_seed: int = 42,
-        preprocessing: PreprocessingStrategy = "estimator_default",
+        preprocessing: PreprocessingStrategy = "base",
         tune_space: Literal["default"] = "default"
     ):
         '''
@@ -66,7 +65,7 @@ class MetaEnsembleInitializer:
         The selected points are then used to build the ensemble. 
 
         
-        ### User Note:
+        ### User Note: ###REVIEW: adjust this
             We highly suggest to NOT preprocess the microbial profiles apart 
             expressing them in the "relative" format (i.e rows summing to 1). 
             This is because we automatically select the most appropiate preprocessing scheme for the classifier.
@@ -147,6 +146,7 @@ class MetaEnsembleInitializer:
                 - If the number exceeds 1500, "new" points are drawn in addition 
                 to the prior points.
             
+            ## REVIEW: adjust doc
             preprocessing (PreprocessingStrategy, optional):
                 Preprocessing strategy to apply. 
                 Is highly suggested to leave "estimator_default",
@@ -219,7 +219,7 @@ class StandardEnsembleInitializer:
         save_path: str | Path,
         name: str = "random_ens",
         n_members: int = 16,
-        preprocessing: PreprocessingStrategy = "estimator_default",
+        preprocessing: PreprocessingStrategy = "base",
         tune_space: str = "default",
         seed: int = 0,
         time_limit: int = 10_000_000,
@@ -361,13 +361,6 @@ class BaseEnsemble(ClassifierMixin, BaseEstimator):
         if self.type_ensemble == "random":
             meta_ensemble_parameters = {}
         else:
-            # only this check is necessary here
-            check_meta_tuning_options(
-                estimator=self.type_estimator,
-                preprocessing=self.preprocessing,
-                tune_space=self.tune_space
-            )
-
             meta_ensemble_parameters = {
                 "meta_strategy": self.meta_strategy,
                 "meta_strategy_params": self.meta_strategy_params,
@@ -380,7 +373,7 @@ class BaseEnsemble(ClassifierMixin, BaseEstimator):
             algo=self.type_ensemble,
             n_members=self.n_members,
             save_path=self.save_path,
-            params_distributions=pick_estimator_tune_space(self.type_estimator, self.tune_space),
+            params_distributions=pick_estimator_tune_space(self.type_estimator),
             time_limit=self.time_limit,
             log=self.log,
             raise_error_fit_member=self.raise_error_fit_member,

@@ -5,7 +5,8 @@ import pandas as pd
 from typing import TYPE_CHECKING, Literal
 from sklearn.utils.validation import check_is_fitted
 from pytabkit import TabM_D_Classifier
-from metatab.estimators.params import DefaultParams, TuningParams
+from metatab.estimators.params.space import TuningParams
+from metatab.estimators.params.default import DefaultParams
 from metatab.estimators.core.configurations import EarlyStopConfiguration
 
 from metatab.estimators.core import (
@@ -153,8 +154,7 @@ class MyTabMClassifier(DefaultEstimatorMixin, AbstractBaseEstimator):
             is_early_stopped=True,
             early_stop_rounds_parameter=None, # we use fixed patience
             n_threads_parameter="n_threads",
-            device_parameter="device",
-            density_feature_selector_strategy="undersample" # to speed up
+            device_parameter="device"
         )
         return self
     
@@ -167,7 +167,7 @@ class MyTunedTabMClassifier(TunedEstimatorMixin, AbstractBaseEstimator):
     Attributes:
         estimator_ (SearchCV): Fitted SearchCV object.
     '''
-    fixed_params = TuningParams.TABM_C0
+    fixed_params = TuningParams.TABM_FIXED_PARAMS
 
     def fit(self, X: XType, y: YType) -> "MyTunedTabMClassifier":
         self.estimator_ = super().fit_estimator(
@@ -179,8 +179,7 @@ class MyTunedTabMClassifier(TunedEstimatorMixin, AbstractBaseEstimator):
             is_early_stopped=True,
             early_stop_rounds_parameter=None, # we use fixed patience
             n_threads_parameter="n_threads",
-            device_parameter="device",
-            density_feature_selector_strategy="undersample" # to speed up.
+            device_parameter="device"
         )
         return self
     
@@ -193,7 +192,7 @@ class MyEnsembledTabMClassifier(EnsembleEstimatorMixin, AbstractBaseEstimator):
     Attributes:
         estimator_ (EnsembleEstimator): Fitted EnsembleEstimator object.
     '''
-    fixed_params = TuningParams.TABM_C0
+    fixed_params = TuningParams.TABM_FIXED_PARAMS
 
     def fit(self, X: XType, y: YType) -> "MyEnsembledTabMClassifier":
         self.estimator_ = super().fit_estimator(
@@ -205,7 +204,6 @@ class MyEnsembledTabMClassifier(EnsembleEstimatorMixin, AbstractBaseEstimator):
             is_early_stopped=True,
             early_stop_rounds_parameter=None, # we use fixed patience
             n_threads_parameter="n_threads",
-            device_parameter="device",
-            density_feature_selector_strategy="undersample" # to speed up.
+            device_parameter="device"
         )
         return self

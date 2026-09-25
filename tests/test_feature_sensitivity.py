@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 from copy import deepcopy
 from sklearn.datasets import make_classification
-from metatab.estimators.params import TuningParams
+from metatab.estimators.params.space import TuningParams
 from metatab.hp_search.point_corrector import PointCorrector
 from metatab.metalearning.metadata_generator import MetadataGenerator
 from metatab.metalearning.sampler import HyperoptRandomSampler
@@ -52,11 +52,11 @@ def test_that_compute_feature_sensitivity_map_works(create_multi_index_dataframe
     
     generator = MetadataGenerator(
         sampler=HyperoptRandomSampler(follow_hyperopt_fmin=False),
-        point_corrector=PointCorrector(),
+        point_corrector=PointCorrector(apply_hypeopt_corrections=True, estimator="lgbm"),
         mfe=CustomMFE()
     )
 
-    metadata, _ = generator.fit(X, y, TuningParams.LGMB_C0, 0).generate(
+    metadata, _ = generator.fit(X, y, TuningParams.LGMB, 0).generate(
         n_points=5,
         mfe_extract_kwargs={"add_features": {"preprocessing": "base"}},
         set_metagroups_in_index=True

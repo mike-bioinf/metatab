@@ -11,7 +11,6 @@ from sklearn.preprocessing import LabelEncoder
 from autogluon.tabular import TabularPredictor
 from metatab.metatab_utils.data_loader import DataLoader
 from metatab.metatab_utils.general import create_unique_column_name
-from metatab.estimators.utils.general import check_meta_tuning_options
 from metatab.estimators.utils.pick import pick_estimator_class
 from metatab.estimators.estimators import Estimator
 from metatab.ensemble.family import FamilyEnsembleEstimator
@@ -82,14 +81,16 @@ def main():
         (pars["estimator_mode"] == "tune" and pars["tune_algo"] == "meta") or
         (pars["estimator_mode"] == "ensemble" and pars["ensemble_algo"] == "meta")
     ):
-        space_attr = "ensemble_space" if pars["estimator_mode"] == "ensemble" else "tune_space"
-        check_meta_tuning_options(
-            pars["estimator"], 
-            pars["preprocessing"], 
-            pars[space_attr]
-        )
-        # this is to avoid the first download inside the fit call inflating times
+        # avoid the first download inside the fit call inflating execution times
         query_surrogate_framework(pars["estimator"])
+
+    if (
+        (pars["estimator_mode"] == "tune" and pars["tune_preprocessing"]) or
+        (pars["estimator_mode"] == "ensemble" and pars["vary_preprocessing"])
+    ):
+        vary_preprocessing = True
+    else:
+        vary_preprocessing = False
     
     adjust_io_paths_(pars, "input_data", "output_dir")
     manage_output_path(pars, "output_dir", True)
@@ -134,6 +135,10 @@ def main():
     
     elif pars["estimator_mode"] == "autogluon":
         y_enc.name = pars["target_feature"] if pars["input_mode"] == "df" else create_unique_column_name(X, "_target_")
+
+        ## REVIEW: add preprocessing here. 
+        # Check whether the preprocessing strategy do not trasform along columns.
+        # Selection and row-wise transformation have low and no leak respectively (we allow the low leak for selection).
         
         density_selector = DensityFeatureSelector(
             n_target_cols=pars["n_columns_density_filter"],
@@ -179,6 +184,7 @@ def main():
             seed=pars["seed"],
             n_threads=pars["nthreads"],
             device=pars["device"],
+            vary_preprocessing=vary_preprocessing,
             early_stop_configuration=early_stop_conf,
             tune_configuration=tune_conf,
             ensemble_configuration=ens_conf

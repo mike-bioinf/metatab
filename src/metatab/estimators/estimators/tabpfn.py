@@ -1,6 +1,7 @@
 import warnings
 from tabpfn import TabPFNClassifier
-from metatab.estimators.params import DefaultParams, TuningParams
+from metatab.estimators.params.space import TuningParams
+from metatab.estimators.params.default import DefaultParams
 from metatab.hp_search.tabpfn_search_space import download_and_return_tabpfn_checkpoints, TABPFN_CHECKPOINTS
 from metatab.metatab_utils.types import XType, YType
 
@@ -50,8 +51,7 @@ class MyTabPFNClassifier(DefaultEstimatorMixin, AbstractBaseEstimator):
             y=y,
             classifier_cls=TabPFNClassifier,
             type_estimator="tabpfn",
-            device_parameter="device",
-            density_feature_selector_strategy="undersample" # to speed up and be consistent with the tuned estimator
+            device_parameter="device"
         )
         return self
     
@@ -76,8 +76,7 @@ class MyTunedTabPFNClassifier(TunedEstimatorMixin, AbstractBaseEstimator):
             classifier_cls=TabPFNClassifier,
             type_estimator="tabpfn",
             is_tuned=True,
-            device_parameter="device",
-            density_feature_selector_strategy="undersample" # to speed up.
+            device_parameter="device"
         )
         return self
 
@@ -102,7 +101,6 @@ class MyEnsembledTabPFNClassifier(EnsembleEstimatorMixin, AbstractBaseEstimator)
             classifier_cls=TabPFNClassifier,
             type_estimator="tabpfn",
             is_ensembled=True,
-            device_parameter="device",
-            density_feature_selector_strategy="undersample" # to speed up.
+            device_parameter="device"
         )
         return self

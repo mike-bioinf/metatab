@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 from functools import partial
 from sklearn.datasets import make_classification
-from metatab.estimators.params import TuningParams
+from metatab.estimators.params.space import TuningParams
 from metatab.hp_search.point_corrector import PointCorrector
 from metatab.metalearning.metadata_evaluator import MetadataEvaluator
 from metatab.metalearning.sampler import HyperoptRandomSampler
@@ -105,11 +105,11 @@ def test_metadata_evaluator_works_in_real_scenario():
 
     meta_generator = MetadataGenerator(
         sampler=HyperoptRandomSampler(),
-        point_corrector=PointCorrector(),
+        point_corrector=PointCorrector(apply_hypeopt_corrections=True, estimator="lgbm"),
         mfe=CustomMFE()
     )
 
-    meta_generator.fit(X, y, TuningParams.LGMB_C0, seed=0)
+    meta_generator.fit(X, y, TuningParams.LGMB, seed=0)
 
     metadata, candidate_points = meta_generator.generate(
         n_points=10,

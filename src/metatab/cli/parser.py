@@ -58,11 +58,10 @@ def make_extra_base_parser() -> ArgumentParser:
                    Fraction of training data to use as validation for early stop. Must be a float in (0, 1).
                    This option is ignored when a non early stoppable estimator is used."""))
 
-    p.add_argument("-p", "--preprocessing", default="estimator_default", 
-                    choices=["estimator_default", "base", "density_filter", "pca", "no"],
+    p.add_argument("-p", "--preprocessing", default="base", 
+                    choices=["base", "density_filter", "pca", "no"],
                     help=h("""
                     Data preprocessing strategy:
-                    -estimator_default: Automatically select one of following options according to the estimator used.
                     -base: Filtering of constant features.
                     -density_filter: The number of columns is reduced to 500 (approximately) keeping only the most dense features.
                     -pca: PCA preprocessing retaining the N principal components explaining the 95 percent of the variance.
@@ -152,25 +151,13 @@ def make_holdout_parser() -> ArgumentParser:
 def make_tune_parser() -> ArgumentParser:
     p = ArgumentParser(add_help=False, formatter_class=RawTextHelpFormatter)
 
-    # TODO: add link where to find info
     p.add_argument("--tune-algo", choices=["random", "tpe", "meta"], default="tpe",
                    help=h("""
                     Optimization algorithm to use. Possible options are 'random', 'tpe'(default) and 'meta'.
-                   The meta option enables a metalearning powered tuning, where the points are suggested
-                   by a surrogate model trained on our tuning prior.Three important notes:
-                   1. The tuning prior is generated on a collection of 32 real datasets (see paper for details).
-                   Therefore this strategy should NOT be used on these datasets to avoid leakage and overoptimistic results.
-                   2. The tuning prior is generate only considering the default '--tune-space' for every estimator.
-                   An error will be raised if an alternative space is requested.
-                   3. Is highly suggested to use the 'estimator_default' preprocessing when meta optimizing 
-                   since the tuning prior has been generated only considering this option. 
-                   Selecting a different preprocessing can greatly hurt performance."""))
-    
-    # TODO: add reference to spaces
-    p.add_argument("--tune-space", default="default", 
-                   help=h(
-                    """Pre-defined HPs space to use. They follow the schema 'c{number}' (i.e 'c0').
-                   The wildcard 'default' can be used to select the default one for every estimator."""))
+                   The 'meta' option enables a metalearning-guided HP optimization, where the points are suggested
+                   by a surrogate model trained on our optimization prior.
+                   The tuning prior is generated on a collection of 32 real datasets (see paper for details).
+                   Therefore this strategy should NOT be used on these datasets to avoid leakage and overoptimistic results."""))
     
     p.add_argument("--tune-n-iter", type=int, default=100, 
                    help=h("""
@@ -186,6 +173,11 @@ def make_tune_parser() -> ArgumentParser:
 
     p.add_argument("--tune-n-cv-folds", type=int, default=5, 
                    help="""Number of folds used in the inner cross-validation during hyperparameter tuning. Defaults to 5.""")
+
+    p.add_argument("--tune-preprocessing", action="store_true",
+                   help=h("""
+                   Tune the data-preprocessing along the classifier hyperparameters.
+                   When enabled it overwrites the 'preprocessing' option."""))
     
     p.add_argument("--tune-meta-surrogate-model", default=None,
                    help=h("""
@@ -238,6 +230,11 @@ def make_ensemble_parser() -> ArgumentParser:
     p.add_argument("--ensemble-n-members", default=16, type=int, help="Number of ensemble members.")
 
     p.add_argument("--ensemble-time-limit", type=int, default="10000000", help="Time limit for ensembling.")
+
+    p.add_argument("--vary-preprocessing", action="store_true", 
+                   help=h("""
+                   Vary the data-preprocessing along classifier hyperparameters for ensemble members.
+                   When enabled it overwrites the 'preprocessing' option."""))
 
     p.add_argument("--ensemble-meta-surrogate-model", default=None,
                    help=h("""

@@ -17,7 +17,7 @@ class DefaultEstimatorMixin:
 
     Requirements:
     - Concrete class must define the `estimator_` attribute (Pipeline instance).
-    - Concrete class MUST inherit from both TunedEstimatorMixin AND AbstractBaseEstimator.
+    - Concrete class MUST inherit from both DefaultEstimatorMixin AND AbstractBaseEstimator.
     '''
     if TYPE_CHECKING:
         estimator_ : Pipeline

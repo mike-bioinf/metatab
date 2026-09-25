@@ -4,7 +4,7 @@ from sklearn.datasets import load_iris
 from sklearn.pipeline import make_pipeline
 from hyperopt.pyll.stochastic import sample
 from lightgbm import LGBMClassifier
-from metatab.estimators.params import TuningParams
+from metatab.estimators.params.space import TuningParams
 from metatab.estimators.estimators.lgbm import ignore_lgbm_feature_name_warning
 from metatab.hp_search.cv import CrossValidator
 
@@ -33,7 +33,7 @@ def create_cross_validator() -> CrossValidator:
 @ignore_lgbm_feature_name_warning
 def fit_cross_validator(cross_validator: CrossValidator) -> tuple[float, pd.DataFrame, CrossValidator]:
     X, y = load_iris(return_X_y=True, as_frame=False)
-    lgbm_tune_space = TuningParams.LGMB_C0
+    lgbm_tune_space = TuningParams.LGMB
     params = sample(lgbm_tune_space, rng=np.random.default_rng(0))
     loss, df_info = cross_validator.fit(X, y, params, "sum", True)
     return loss, df_info, cross_validator
