@@ -14,6 +14,7 @@ import pandas as pd
 from pathlib import Path
 from typing import TYPE_CHECKING
 from metatab.cli.helper import create_logger
+from metatab.preprocessing import PREPROCESSING_OPTIONS
 from metatab.metalearning.metafeatures import CustomMFE
 from metatab.metalearning.sampler import HyperoptRandomSampler
 from metatab.metalearning.feature_sensitivity import compute_feature_sensitivity_map
@@ -75,11 +76,8 @@ def main():
         df_point = pd.DataFrame([hp_point] * df_mfs.shape[0])
         df_point.columns = pd.MultiIndex.from_arrays([["hps"] * df_point.shape[1], df_point.columns])
         df_point_mfs = pd.concat([df_point, df_mfs], axis=1)
-        
         # add a variable preprocessing in order to average its influence
-        ## REVIEW: complete with final list of preprocessing and set the right number in integers 
-        # remember that 'high' must be equal to number of options + 1
-        df_point_mfs = df_point_mfs[("preprocessing", "preprocessing")] = [][rng_permutations.integers(0, 5)]
+        df_point_mfs[("preprocessing", "preprocessing")] = [PREPROCESSING_OPTIONS][rng_permutations.integers(0, 7)]
 
         map_sensitivity[f"point_{i}"] = compute_feature_sensitivity_map(
             model=surrogate_model,

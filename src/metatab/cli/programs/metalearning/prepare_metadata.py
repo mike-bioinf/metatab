@@ -111,7 +111,6 @@ def main():
                 else:
                     search_data_agg["preprocessing"] = pars["preprocessing"]
 
-                
                 # save
                 path_out = path_estimator_out / name_dataset_file
                 search_data_agg.to_csv(path_out, sep="\t", index=False)

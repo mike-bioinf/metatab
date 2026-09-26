@@ -15,7 +15,7 @@ if TYPE_CHECKING:
     from sklearn.pipeline import Pipeline
     from metatab.estimators.estimators import TunedEstimator
     from metatab.metalearning.types import MetaStrategy, MetaStrategyParams
-    from metatab.preprocessing.types import PreprocessingStrategy
+    from metatab.preprocessing import PreprocessingStrategy
     from metatab.metatab_utils.types import XType, YType
 
 

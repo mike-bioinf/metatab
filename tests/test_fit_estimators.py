@@ -6,12 +6,7 @@ from typing import Literal
 from sklearn.datasets import load_iris
 from metatab.estimators.estimators import Estimator
 from metatab.hp_search.searchcv import SearchCV
-
-from tests.conftest import (
-    ESTIMATOR_TUNE_CONFIGS, 
-    ESTIMATOR_ALL_CONFIGS,
-    #get_alternative_estimator_file_names
-)
+from tests.conftest import ESTIMATOR_TUNE_CONFIGS, ESTIMATOR_ALL_CONFIGS
 
 
 
@@ -28,11 +23,9 @@ def try_test_model_on_iris(estimator_path: Path):
         assert False, f"Problem when loading and/or using the '{estimator_filename}' model."
 
 
-
 def check_nan_in_hpo_losses(estimator_path: Path) -> None:
     if verify_presence_nan_in_hpo_losses(estimator_path, returns="bool"):
         raise ValueError(f"Found np.nan values in the search losses of the model: {estimator_path}")
-
 
 
 def verify_presence_nan_in_hpo_losses(
@@ -65,9 +58,8 @@ def verify_presence_nan_in_hpo_losses(
         result [is_nan_present, number_of_nans]
     else:
         raise ValueError(f"returns cannot be equal to '{returns}'.")
-    
+        
     return result
-
 
 
 @pytest.mark.parametrize("fitted_model", list(ESTIMATOR_ALL_CONFIGS.keys()))
@@ -79,7 +71,6 @@ def test_fitted_estimators_on_iris(fitted_model, fit_estimators_on_iris):
     try_test_model_on_iris(fit_estimators_on_iris / fitted_model)
 
 
-
 @pytest.mark.parametrize("fitted_tuned_model", ESTIMATOR_TUNE_CONFIGS.keys())
 def test_nan_values_in_search_losses(fitted_tuned_model, fit_estimators_on_iris):
     '''
@@ -87,13 +78,3 @@ def test_nan_values_in_search_losses(fitted_tuned_model, fit_estimators_on_iris)
     This is a good general indication whether the tune space is set up correctly.
     '''
     check_nan_in_hpo_losses(fit_estimators_on_iris / fitted_tuned_model)
-
-
-## README: we commented out the fitting process of the alternative tune spaces since repeated multiple times and expensive computationally
-# @pytest.mark.parametrize("fitted_alternative_tuned_model", get_alternative_estimator_file_names())
-# def test_nan_values_in_search_losses_for_alternative_tune_spaces(fitted_alternative_tuned_model, fit_estimators_alternative_tune_configs):
-#     '''
-#     Test that in the tuning process of the alternative spaces no point evaluation fails.
-#     This is a good general indication whether the tune space is set up correctly.
-#     '''
-#     check_nan_in_hpo_losses(fit_estimators_alternative_tune_configs / fitted_alternative_tuned_model)

@@ -70,7 +70,7 @@ TEST_TUNE_CONFIGURATION = TuneConfiguration(
     n_cv_repeats=1,
     n_cv_folds=2,
     meta_strategy="best",
-    params_distributions="" ## will be overwritten
+    params_distributions="" ## is overwritten
 )
 
 
@@ -78,8 +78,8 @@ TEST_ENSEMBLE_CONFIGURATION = EnsembleConfiguration(
     name="test",
     algo="random",
     n_members=1,
-    save_path="", ## will be overwritten
-    params_distributions="", ## will be overwritten
+    save_path="", ## is overwritten
+    params_distributions="", ## is overwritten
     raise_error_void_ensemble=False,
     log=50
 )
@@ -172,6 +172,7 @@ def _fit_estimator(
     
     estimator = estimator(
         preprocessing="base",
+        vary_preprocessing=False,
         seed=0,
         n_threads=4,
         device="auto",

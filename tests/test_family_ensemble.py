@@ -11,17 +11,13 @@ def factory_user_ensemble_configuration(**kwargs) -> UserEnsembleConfiguration:
         n_members=1,
         estimator="random_forest",
         preprocessing="base",
-        tune_space="c0",
         meta_strategy="best",
         meta_strategy_params=None,
         early_stop_on_validation_set=False
     )
-    
     uec_dict = uec.model_dump()
-
     for k, v in kwargs.items():
         uec_dict[k] = v
-    
     return UserEnsembleConfiguration(**uec_dict)
 
 

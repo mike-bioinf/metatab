@@ -12,7 +12,7 @@ from metatab.hp_search.searchcv import SearchCV
 from metatab.ensemble.single import EnsembleEstimator
 from metatab.metatab_utils.general import ensure_or_create, asdict_shallow
 from metatab.estimators.utils.general import add_prefix_to_params_when_absent
-from metatab.preprocessing.preprocessing import create_classification_pipeline
+from metatab.preprocessing import create_classification_pipeline
 
 from metatab.metatab_utils.device import (
     check_device_estimator_combination, 
@@ -22,7 +22,7 @@ from metatab.metatab_utils.device import (
 )
 
 if TYPE_CHECKING:
-    from metatab.preprocessing.types import PreprocessingStrategy
+    from metatab.preprocessing import PreprocessingStrategy
     from metatab.metatab_utils.types import XType, YType    
     from metatab.estimators.utils.types import Classifier, EstimatorType
 
@@ -212,19 +212,6 @@ class AbstractBaseEstimator(ABC):
 
         callbacks_on_fixed_params = ensure_or_create(callbacks_on_fixed_params, list)
         params = self._apply_callbacks_on_fixed_params(params, callbacks_on_fixed_params, y)
-
-        ## REVIEW: TO DELEGATE
-        # pipe = create_classifier_pipeline(
-        #     preprocessing=resolved_preprocessing,
-        #     classifier_cls=classifier_cls,
-        #     classifier_params=params,
-        #     type_estimator=type_estimator
-        # )
-
-        # fit_classifier_kwargs = add_prefix_to_params_when_absent(
-        #     params_dict=ensure_or_create(fit_classifier_kwargs, dict),
-        #     string=f"{pipe.steps[-1][0]}__"
-        # )
         
         if is_ensembled or is_tuned:
             val_set_size = self.early_stop_configuration.validation_set_size\
@@ -249,20 +236,21 @@ class AbstractBaseEstimator(ABC):
             )
             return estimator.fit(X, y)
         
-        # elif is_ensembled:
-        #     # EnsembleEstimator address both early stop and normal scenarios   
-        #     estimator = EnsembleEstimator(
-        #         pipe=pipe,
-        #         type_estimator=type_estimator,
-        #         preprocessing=self.preprocessing,
-        #         seed=self.seed,
-        #         fit_classifier_kwargs=fit_classifier_kwargs,
-        #         early_stop_on_validation_set=is_early_stopped,
-        #         validation_set_size=val_set_size,
-        #         eval_set_parameter=eval_set_parameter,
-        #         **asdict_shallow(self.ensemble_configuration)
-        #     )
-        #     return estimator.fit(X, y)
+        elif is_ensembled:
+            # EnsembleEstimator address both early stop and normal scenarios   
+            estimator = EnsembleEstimator(
+                classifier_cls=classifier_cls,
+                type_estimator=type_estimator,
+                preprocessing=self.preprocessing,
+                vary_preprocessing=self.vary_preprocessing,
+                seed=self.seed,
+                fit_classifier_kwargs=fit_classifier_kwargs,
+                early_stop_on_validation_set=is_early_stopped,
+                validation_set_size=val_set_size,
+                eval_set_parameter=eval_set_parameter,
+                **asdict_shallow(self.ensemble_configuration)
+            )
+            return estimator.fit(X, y)
 
         else:
             pipe = create_classification_pipeline(classifier_cls, self.preprocessing)

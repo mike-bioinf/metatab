@@ -3,7 +3,6 @@ from __future__ import annotations
 import numpy as np
 from typing import TYPE_CHECKING
 from sklearn.utils.validation import check_is_fitted
-from metatab.preprocessing.collect import collect_fit_preprocessing_info
 
 if TYPE_CHECKING:
     from metatab.hp_search.searchcv import SearchCV
@@ -38,15 +37,6 @@ class TunedEstimatorMixin:
         self._check_estimator_is_refitted()
         return self.estimator_.refit_time_
     
-
-    def collect_fit_preprocessing_info(self) -> dict:
-        check_is_fitted(self, "estimator_")
-        self._check_estimator_is_refitted()
-        return collect_fit_preprocessing_info(
-            self.estimator_.best_estimator_,
-            self.preprocessing,
-        )
-
 
     def predict(self, X: XType) -> np.ndarray:
         check_is_fitted(self, "estimator_")

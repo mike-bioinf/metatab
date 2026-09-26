@@ -2,6 +2,7 @@ import numpy as np
 from hyperopt import hp
 from hyperopt.pyll.base import scope
 from metatab.hp_search.tabpfn_search_space import TABPFN_TUNE_SPACE
+from metatab.preprocessing import PREPROCESSING_OPTIONS
 
 
 
@@ -25,7 +26,7 @@ def add_preprocessing_to_cls_search_space(cls_search_space: dict) -> dict:
     '''
     return {
         **cls_search_space, 
-        "preprocessing": hp.choice("preprocessing", ["no", "base"]) ##REVIEW: add updated preprocessing options
+        "preprocessing": hp.choice("preprocessing", PREPROCESSING_OPTIONS)
     }
 
 

@@ -7,11 +7,11 @@ from typing import TYPE_CHECKING, Literal
 from sklearn.model_selection import RepeatedStratifiedKFold
 from sklearn.metrics import log_loss
 from metatab.estimators.utils.fit import fit_with_early_stop_on_validation_set, set_params_into_clf
-from metatab.preprocessing.preprocessing import create_classification_pipeline
+from metatab.preprocessing import create_classification_pipeline
 
 if TYPE_CHECKING:
     from metatab.estimators.utils.types import Classifier
-    from metatab.preprocessing.types import PreprocessingStrategy
+    from metatab.preprocessing import PreprocessingStrategy
 
 
 

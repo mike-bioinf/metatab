@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 from sklearn.utils.validation import check_is_fitted
-from metatab.preprocessing.collect import collect_fit_preprocessing_info
 
 if TYPE_CHECKING:
     import numpy as np
@@ -50,14 +49,3 @@ class EnsembleEstimatorMixin:
             "failed_hps_confs_": self.estimator_.failed_hps_confs_,
             "df_members_": self.estimator_.df_members_
         }
-
-    
-    def collect_fit_preprocessing_info(self) -> dict:
-        check_is_fitted(self, "estimator_")
-        # this check is useful also in this case
-        self.estimator_._check_on_predict_calls()
-        model = self.estimator_._save_path / f"{self.estimator_.successful_members_[0]}.pkl"
-        return collect_fit_preprocessing_info(
-            self.estimator_._try_load_model(model), 
-            self.preprocessing
-        )

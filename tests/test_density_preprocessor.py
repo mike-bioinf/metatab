@@ -1,8 +1,7 @@
 import pytest
 import numpy as np
 import pandas as pd
-from metatab.preprocessing.density_selector import DensityFeatureSelector
-
+from metatab.preprocessing import DensityFeatureSelector
 
 
 def create_mock_data_for_density_selection(as_frame: bool = False) -> pd.DataFrame | np.ndarray:
@@ -21,17 +20,13 @@ def create_mock_data_for_density_selection(as_frame: bool = False) -> pd.DataFra
         "c": c
     })
 
-    if not as_frame:
-        data = data.to_numpy()
-
+    if not as_frame: data = data.to_numpy()
     return data
-
 
 
 def test_density_feature_selector_is_functional_with_dataframes():
     df = create_mock_data_for_density_selection(as_frame=True)
     dfs = DensityFeatureSelector(n_target_cols=1, strategy="exact")
-
     try:
         dfs.fit(df)
         dfs.transform(df)
@@ -40,11 +35,9 @@ def test_density_feature_selector_is_functional_with_dataframes():
         assert False, "DensityFeatureSelector has problems with pandas dataframes."
 
 
-
 def test_density_feature_selector_is_functional_with_arrays():
     array = create_mock_data_for_density_selection(as_frame=False)
     dfs = DensityFeatureSelector(n_target_cols=1, strategy="exact")
-    
     try:
         dfs.fit(array)
         dfs.transform(array)
@@ -53,14 +46,12 @@ def test_density_feature_selector_is_functional_with_arrays():
         assert False, "DensityFeatureSelector has problems with numpy arrays."
 
 
-
 def test_density_feature_selector_set_output_api_is_working():
     X = create_mock_data_for_density_selection(as_frame=True)
     density_selector = DensityFeatureSelector(n_target_cols=3, strategy="oversample").set_output(transform="pandas")
     X_trans = density_selector.fit_transform(X)
     assert isinstance(X_trans, pd.DataFrame), "DensityFeatureSelector set_output API is not returning dataframes when requested."
     assert X_trans.columns.to_list() == ["b0", "b1", "b2", "c"], "DensityFeatureSelector set_output API is returning the wrong names/order-names"
-
 
 
 def test_density_feature_selector_on_empty_mechanism_is_working():
@@ -73,7 +64,6 @@ def test_density_feature_selector_on_empty_mechanism_is_working():
     density_selector = DensityFeatureSelector(n_target_cols=0, strategy="oversample", on_empty="select_all").set_output(transform="pandas")
     X_trans = density_selector.fit_transform(X)
     assert X_trans.columns.to_list() == X.columns.to_list(), "DensityFeatureSelector 'select_all' option of on_empty mechanism is not working."
-
 
 
 def test_exact_selection_is_reproducible():
@@ -95,7 +85,6 @@ def test_exact_selection_is_reproducible():
             assert selected_cols[i] == selected_cols[j], "exact strategy does not ensure reproducibile selection with ties."
 
 
-
 def test_oversample_selection_is_working():
     '''
     We test whether the oversample strategy is selecting all ties.
@@ -109,7 +98,6 @@ def test_oversample_selection_is_working():
     density_selector = DensityFeatureSelector(n_target_cols=1, strategy="oversample")
     X_trans = density_selector.fit_transform(X)
     assert X_trans.shape[1] == 1, "oversample strategy is not working with n_target of 1"
-
 
 
 def test_undersample_selection_is_working():

@@ -11,11 +11,10 @@ from metatab.hp_search.cv import CrossValidator
 
 
 def create_cross_validator() -> CrossValidator:
-    lgbm_fixed_params = TuningParams.LGBM_FIXED_PARAMS
-    pipe = make_pipeline(LGBMClassifier(**lgbm_fixed_params))
-
-    cross_validator = CrossValidator(
-        pipe=pipe,
+    return CrossValidator(
+        classifier_cls=LGBMClassifier,
+        preprocessing="base",
+        tune_preprocessing=False,
         clf_random_state_parameter="random_state",
         early_stop_on_validation_set=False,
         eval_set_parameter=None,
@@ -26,8 +25,6 @@ def create_cross_validator() -> CrossValidator:
         n_repeats=1,
         seed=0
     )
-
-    return cross_validator
 
 
 @ignore_lgbm_feature_name_warning
@@ -46,7 +43,6 @@ def test_cross_validator_fitting_procedure_not_raise_expections():
 def test_cross_validator_works_as_expected():
     _, df_info, _ = fit_cross_validator(create_cross_validator())
     assert df_info.shape[0] == 3, "Wrong number of rows for df_info"
-
     try:
         for col in ["repeat", "fold", "loss"]:
             if col not in df_info.columns:

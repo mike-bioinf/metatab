@@ -11,6 +11,7 @@ from hyperopt import STATUS_OK, STATUS_FAIL, tpe, rand, fmin, space_eval
 from hyperopt.pyll.stochastic import sample
 from metatab.estimators.utils.fit import fit_with_early_stop_on_validation_set, set_params_into_clf
 from metatab.estimators.utils.general import add_prefix_to_params_when_absent
+from metatab.estimators.params.space import HPS_MIXED_TYPED, add_preprocessing_to_cls_search_space
 from metatab.metalearning.metafeatures import CustomMFE
 from metatab.metalearning.load import query_surrogate_framework
 from metatab.metalearning.acquisition_funcs import compute_upper_confidence_bound
@@ -22,11 +23,10 @@ from metatab.metatab_utils.general import add_broadcasted_objects_as_column
 from metatab.hp_search.point_corrector import PointCorrector
 from metatab.hp_search.cv import CrossValidator
 from metatab.hp_search.config import ConfigSearchCV
-from metatab.estimators.params.space import HPS_MIXED_TYPED, add_preprocessing_to_cls_search_space
-from metatab.preprocessing.preprocessing import create_classification_pipeline
+from metatab.preprocessing import create_classification_pipeline
 
 if TYPE_CHECKING:
-    from metatab.preprocessing.types import PreprocessingStrategy
+    from metatab.preprocessing import PreprocessingStrategy
     from metatab.estimators.utils.types import Classifier, TunableEstimatorType
     from metatab.metalearning.types import MetaStrategy, MetaStrategyParams
     from metatab.metatab_utils.types import XType, YType

@@ -149,8 +149,7 @@ def parse_args(args):
                    which requires the package python API for decoding."""))
     
     return p.parse_args(args)
-
-
+    
 
 
 def main():
@@ -189,14 +188,19 @@ def main():
     classes = estimator._info_predict_program_["classes"]
     classes_counts = estimator._info_predict_program_["classes_counts"]
     fit_features = estimator._info_predict_program_["fit_features"]
+    fit_preprocessing_info = estimator._info_predict_program_["preprocessing"]
+    fit_vary_preprocessing_info = estimator._info_predict_program_["vary_preprocessing"]
+
+    # resolve preprocessing info to report in output
+    if fit_preprocessing_info is None:
+        out_preprocessing_info = None
+    elif fit_vary_preprocessing_info:
+        out_preprocessing_info = "variable"
+    else:
+        out_preprocessing_info = fit_preprocessing_info
 
     # encode y
     y_enc = le.transform(y)
-
-    if isinstance(estimator, (FamilyEnsembleEstimator, TabularPredictor)):
-        fit_preprocessing_dict = {}
-    else:
-        fit_preprocessing_dict = estimator.collect_fit_preprocessing_info()
     
     # uniform feature space when requested
     if pars["x_uniform"]:
@@ -213,7 +217,7 @@ def main():
         else estimator.predict_proba(X)
 
     pdf = PredictionDataframe()
-
+    
     pdf.build_from_data(
         dataset=fit_dataset_name,
         y_test=y_enc,
@@ -223,8 +227,7 @@ def main():
         classes_counts=classes_counts,
         save_path=None,
         predict_dataset=predict_dataset_name,
-        preprocessing=getattr(estimator, "preprocessing", None),
-        **fit_preprocessing_dict
+        preprocessing=out_preprocessing_info
     )
     
     pdf.compute_metrics(multiclass="average", average_strategy="macro")

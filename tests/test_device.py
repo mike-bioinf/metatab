@@ -8,7 +8,14 @@ from metatab.estimators.estimators.rf import MyRandomForestClassifier
 
 def test_that_cuda_does_not_work_with_incompatible_estimators():
     X, y = make_classification()
-    rf = MyRandomForestClassifier(preprocessing="base", seed=0, n_threads=1, device="cuda")
+
+    rf = MyRandomForestClassifier(
+        preprocessing="base",
+        vary_preprocessing=False,
+        seed=0,
+        n_threads=1, 
+        device="cuda"
+    )
 
     with pytest.raises(expected_exception=DeviceError):
         rf.fit(X, y)
@@ -20,7 +27,6 @@ def test_that_cuda_does_not_work_with_incompatible_estimators():
             n_members=1,
             estimator="random_forest",
             preprocessing="base",
-            tune_space="default",
             early_stop_on_validation_set=False,
             device="cuda"
         )
@@ -29,7 +35,15 @@ def test_that_cuda_does_not_work_with_incompatible_estimators():
 ## test for no error
 def test_that_device_auto_option_works_correctly():
     X, y = make_classification(n_samples=10, n_features=4)
-    rf = MyRandomForestClassifier(preprocessing="base", seed=0, n_threads=1, device="auto")
+    
+    rf = MyRandomForestClassifier(
+        preprocessing="base", 
+        vary_preprocessing=False, 
+        seed=0, 
+        n_threads=1, 
+        device="auto"
+    )
+    
     rf.fit(X, y)
 
     UserEnsembleConfiguration(
@@ -38,7 +52,6 @@ def test_that_device_auto_option_works_correctly():
         n_members=1,
         estimator="random_forest",
         preprocessing="base",
-        tune_space="default",
         early_stop_on_validation_set=False,
         device="auto"
     )

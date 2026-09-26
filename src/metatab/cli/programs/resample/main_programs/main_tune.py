@@ -87,6 +87,7 @@ def main_tune(pars: dict):
     df_pred_results = PredictionDataframe()
     dict_hpo = defaultdict(list)
     hpo_filepath = output_dir / "hpo.txt"
+    preprocessing_in_out = "variable" if pars["tune_preprocessing"] else pars["preprocessing"]
 
     if not pars["disable_additional_txt_output"]: 
         txt_folder = output_dir / "additional_txt_info"
@@ -122,7 +123,6 @@ def main_tune(pars: dict):
         logger.debug("\t-Estimator fitted on input data.")
         logger.debug(f"\t-Fit time in minutes: {round(fit_time/60, 2)}")
         
-        fit_preprocessing_dict: dict = estimator.collect_fit_preprocessing_info()
         best_hps = estimator.get_best_hps()
         refit_time = estimator.get_refit_time()
         search_losses = estimator.get_search_losses()
@@ -143,11 +143,10 @@ def main_tune(pars: dict):
             "tune_algo": pars["tune_algo"],
             "tune_n_iter": pars["tune_n_iter"],
             "n_threads": pars["nthreads"],
-            "preprocessing": pars["preprocessing"],
+            "preprocessing": preprocessing_in_out,
             "splitting_mode": pars["splitting_mode"],
             "repetition": repetition,
             "fold": fold,
-            **fit_preprocessing_dict,
             "map_classes": str({c: i for c, i in enumerate(le.classes_)}),
             "classes": np.arange(le.classes_.size),
             "classes_counts": np.unique(y_train.to_numpy(), return_counts=True)[1],
@@ -163,7 +162,6 @@ def main_tune(pars: dict):
             dictionary=dict_hpo,
             dataset=name_dataset,
             estimator=pars["estimator"],
-            preprocessing=pars["preprocessing"],
             algo=pars["tune_algo"],
             n_iter=pars["tune_n_iter"],
             n_cv_repeats=pars["tune_n_cv_repeats"],
@@ -175,10 +173,22 @@ def main_tune(pars: dict):
             **best_hps,
             best_loss=best_loss,
             **search_losses_dict
-            )
+        )
+
+        # when we tune the preprocessing it is already added to 'dict_hpo' via 'best_hps'
+        if not pars["tune_preprocessing"]:
+            populate_dict_lists_(dict_hpo, preprocessing=pars["preprocessing"])
 
         if pars["save_estimators"]:
-            add_predict_attrs_to_estimator(estimator, le, X_train, y_train, name_dataset)
+            add_predict_attrs_to_estimator(
+                estimator=estimator, 
+                label_encoder=le, 
+                X_train=X_train, 
+                y_train=y_train, 
+                fit_dataset_name=name_dataset, 
+                preprocessing=pars["preprocessing"], 
+                vary_preprocessing=pars["tune_preprocessing"]
+            )
             estimator.save(get_iteration_estimator_filepath(pars, repetition, fold))
 
         if not pars["disable_additional_txt_output"]:

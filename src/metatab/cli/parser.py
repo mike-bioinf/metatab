@@ -58,14 +58,18 @@ def make_extra_base_parser() -> ArgumentParser:
                    Fraction of training data to use as validation for early stop. Must be a float in (0, 1).
                    This option is ignored when a non early stoppable estimator is used."""))
 
-    p.add_argument("-p", "--preprocessing", default="base", 
-                    choices=["base", "density_filter", "pca", "no"],
+    p.add_argument("-p", "--preprocessing", default="base",
+                    choices=["base", "log", "clr", "rclr", "ilr", "arcsin", "rss"],
                     help=h("""
                     Data preprocessing strategy:
                     -base: Filtering of constant features.
-                    -density_filter: The number of columns is reduced to 500 (approximately) keeping only the most dense features.
-                    -pca: PCA preprocessing retaining the N principal components explaining the 95 percent of the variance.
-                    -no: No preprocessing is applied."""))
+                    -log: Log transformation.
+                    -clr: Centered log-ratio tranformation.
+                    -rclr: Robust centered log-ratio transformation.
+                    -ilr: Isometric log ratio transformation.
+                    -arcsin: Arcsine square root transformation.
+                    -rss: Robust scaling.
+                    log, clr, and ilr transformation uses psedocounts to manage zeros."""))
     
     p.add_argument("--device", choices=["cpu", "cuda", "auto"], default="auto",
                     help=h("""
@@ -207,25 +211,13 @@ def make_ensemble_parser() -> ArgumentParser:
     p.add_argument("--ensemble-name", default="ens", 
                    help="""Ensemble name. The ensemble members are nominated as '{name}_m{number}'.""")
 
-    # TODO: add link where to find info
     p.add_argument("--ensemble-algo", choices=["random", "meta"], default="random",
                     help=h("""
                     How to derive the hps configurations to ensemble.
-                    The meta option enables a metalearning powered procedure, where the points are suggested
-                    by a surrogate model trained on our tuning prior. Three important notes:
-                    1. The tuning prior is generated on a collection of 32 real datasets (see paper for details).
-                    Therefore this strategy should NOT be used on these datasets to avoid leakage and overoptimistic results.
-                    2. The tuning prior is generate only considering the default '--ensemble-space' for every estimator.
-                    An error will be raised if an alternative space is requested.
-                    3. Is highly suggested to use the 'estimator_default' preprocessing when meta optimizing 
-                    since the tuning prior has been generated only considering this option. 
-                    Selecting a different preprocessing can greatly hurt performance."""))
-    
-    # TODO: add reference to spaces
-    p.add_argument("--ensemble-space", default="default",
-                   help=h("""
-                   Pre-defined HPs space to use. They follow the schema 'c{number}' (i.e 'c0').
-                   The wildcard 'default' can be used to select the default one for every estimator."""))
+                    The meta option enables a metalearning powered procedure, 
+                    where the points are suggested by a surrogate model trained on our tuning prior.
+                    The tuning prior is generated on a collection of 32 real datasets (see paper for details).
+                    Therefore this strategy should NOT be used on these datasets to avoid leakage and overoptimistic results."""))
 
     p.add_argument("--ensemble-n-members", default=16, type=int, help="Number of ensemble members.")
 

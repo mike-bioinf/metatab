@@ -9,7 +9,6 @@ from metatab.estimators.params.space import TuningParams
 
 
 
-
 def test_that_metadata_generator_works():
     generator = MetadataGenerator(
         sampler=HyperoptRandomSampler(follow_hyperopt_fmin=False),

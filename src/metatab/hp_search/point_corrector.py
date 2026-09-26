@@ -67,17 +67,16 @@ class PointCorrector:
         Returns:
             dict: The corrected point. Returns always a deepcopy.
         '''        
-        # the changes are applied on the copy
+        # we correct the copy
         point = deepcopy(point)
         
         if self.apply_hypeopt_corrections:
             point = self._apply_hyperopt_corrections(point)
      
         # apply estimator corrections
-        if self.estimator is not None and self.estimator in ESTIMATOR_SUPPORTED_CORRECTIONS.keys():
-            for set_correction in ESTIMATOR_SUPPORTED_CORRECTIONS[self.estimator]:
-                for correction_func in set_correction.values():
-                    point = correction_func(point)
+        if self.estimator and self.estimator in ESTIMATOR_SUPPORTED_CORRECTIONS.keys():
+            for _, correction_func in ESTIMATOR_SUPPORTED_CORRECTIONS[self.estimator].items():
+                point = correction_func(point)
 
         return point
 

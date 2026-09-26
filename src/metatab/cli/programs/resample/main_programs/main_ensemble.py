@@ -87,6 +87,7 @@ def main_ensemble(pars: dict):
     dict_results = defaultdict(list)
     list_dfs_ensemble_info = []
     filepath_df_ensemble_info = output_dir / "ensemble.txt"
+    preprocessing_in_out = "variable" if pars["vary_preprocessing"] else pars["preprocessing"]
 
     if not pars["disable_additional_txt_output"]: 
         txt_folder = output_dir / "additional_txt_info"
@@ -122,12 +123,11 @@ def main_ensemble(pars: dict):
 
         estimator.fit(X_train, y_train)
         fit_time = estimator.estimator_.fit_time_
+        df_ensemble_members_recap = estimator.estimator_.df_members_
+
         logger.debug("\t-Ensemble fitted on input data.")
         logger.debug(f"\t-Fit time in minutes: {round(fit_time/60, 2)}")
         
-        fit_preprocessing_dict: dict = estimator.collect_fit_preprocessing_info()
-        df_ensemble_members_recap = estimator.estimator_.df_members_
-    
         t = time()
         pred_proba = estimator.predict_proba(X_test)
         predict_time = time() - t
@@ -142,11 +142,10 @@ def main_ensemble(pars: dict):
             "ensemble_algo": pars["ensemble_algo"],
             "ensemble_n_members": pars["ensemble_n_members"],
             "n_threads": pars["nthreads"],
-            "preprocessing": pars["preprocessing"],
+            "preprocessing": preprocessing_in_out,
             "splitting_mode": pars["splitting_mode"],
             "repetition": repetition,
             "fold": fold,
-            **fit_preprocessing_dict,
             "map_classes": str({c: i for c, i in enumerate(le.classes_)}),
             "classes": np.arange(le.classes_.size),
             "classes_counts": np.unique(y_train.to_numpy(), return_counts=True)[1],
@@ -160,7 +159,6 @@ def main_ensemble(pars: dict):
 
         df_ensemble_members_recap["dataset"] = name_dataset
         df_ensemble_members_recap["estimator"] = pars["estimator"]
-        df_ensemble_members_recap["preprocessing"] = pars["preprocessing"]
         df_ensemble_members_recap["algo"] = pars["ensemble_algo"]
         df_ensemble_members_recap["n_members"] = pars["ensemble_n_members"]
         df_ensemble_members_recap["splitting_mode"] = pars["splitting_mode"]
@@ -169,7 +167,15 @@ def main_ensemble(pars: dict):
         list_dfs_ensemble_info.append(df_ensemble_members_recap)
 
         if pars["save_estimators"]:
-            add_predict_attrs_to_estimator(estimator, le, X_train, y_train, name_dataset)
+            add_predict_attrs_to_estimator(
+                estimator=estimator, 
+                label_encoder=le, 
+                X_train=X_train, 
+                y_train=y_train, 
+                fit_dataset_name=name_dataset, 
+                preprocessing=pars["preprocessing"], 
+                vary_preprocessing=pars["vary_preprocessing"]
+            )
             estimator.save(get_iteration_estimator_filepath(pars, repetition, fold))
         else:
             estimator.estimator_.delete_models_from_disk()

@@ -29,6 +29,7 @@ if TYPE_CHECKING:
     from sklearn.preprocessing import LabelEncoder
     from metatab.estimators.estimators import Estimator
     from metatab.ensemble.family import FamilyEnsembleEstimator
+    from metatab.preprocessing import PreprocessingStrategy
     from autogluon.tabular import TabularPredictor
 
 
@@ -164,7 +165,9 @@ def add_predict_attrs_to_estimator(
     label_encoder: LabelEncoder,
     X_train: pd.DataFrame,
     y_train: pd.Series,
-    fit_dataset_name: str
+    fit_dataset_name: str,
+    preprocessing: PreprocessingStrategy | None = None,
+    vary_preprocessing: bool | None = None
 ) -> None:
     '''
     Add to the estimator object the info needed by the predict program.
@@ -176,7 +179,9 @@ def add_predict_attrs_to_estimator(
         classes = label_encoder.classes_,
         classes_counts = np.unique(y_train.to_numpy(), return_counts=True)[1],
         fit_dataset_name = fit_dataset_name,
-        fit_features = X_train.columns.to_numpy()
+        fit_features = X_train.columns.to_numpy(),
+        preprocessing = preprocessing,
+        vary_preprocessing = vary_preprocessing
     )
 
 
@@ -227,7 +232,6 @@ def create_logger(stream) -> logging.Logger:
     logger.addHandler(stream_handler)
     logger.propagate = False
     return logger
-
 
 
 def h(text: str) -> str:

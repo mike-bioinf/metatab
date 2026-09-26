@@ -33,6 +33,7 @@ from copy import deepcopy
 from sklearn.preprocessing import OrdinalEncoder, OneHotEncoder
 from sklearn.feature_selection import VarianceThreshold
 from sklearn.compose import ColumnTransformer
+from metatab.preprocessing import PREPROCESSING_OPTIONS
 from metatab.metalearning.encode.transformers import NanToNone, ColToStr, InfToNan
 from metatab.estimators.utils.types import TunableEstimatorType
 
@@ -55,12 +56,12 @@ COLUMN_TRANSFORMER_FIXED_PARAMS = {
     "verbose_feature_names_out": False
 }
 
-## REVIEW: complete this with new preprocessing
+
 PREPROCESSING_COLUMN_TRANSFORMER = (
     "preprocessing_column", 
     OneHotEncoder(
-        categories=[["no", "base", "pca", "density_filter"]], 
-        handle_unknown="ignore",  # to maintain model functionality when we add more preprocessig options
+        categories=[PREPROCESSING_OPTIONS], 
+        handle_unknown="ignore", # to maintain model functionality when we add more preprocessig options
         sparse_output=False
     ),
     ["preprocessing"]

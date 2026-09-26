@@ -15,7 +15,7 @@ from metatab.estimators.utils.pick import pick_estimator_class
 from metatab.estimators.estimators import Estimator
 from metatab.ensemble.family import FamilyEnsembleEstimator
 from metatab.ensemble.utils import BagCV
-from metatab.preprocessing.density_selector import DensityFeatureSelector
+from metatab.preprocessing import DensityFeatureSelector
 from metatab.metalearning.load import query_surrogate_framework
 
 from metatab.cli.helper import (
@@ -135,10 +135,6 @@ def main():
     
     elif pars["estimator_mode"] == "autogluon":
         y_enc.name = pars["target_feature"] if pars["input_mode"] == "df" else create_unique_column_name(X, "_target_")
-
-        ## REVIEW: add preprocessing here. 
-        # Check whether the preprocessing strategy do not trasform along columns.
-        # Selection and row-wise transformation have low and no leak respectively (we allow the low leak for selection).
         
         density_selector = DensityFeatureSelector(
             n_target_cols=pars["n_columns_density_filter"],
@@ -181,10 +177,10 @@ def main():
         
         estimator: Estimator = estimator_class(
             preprocessing=pars["preprocessing"],
+            vary_preprocessing=vary_preprocessing,
             seed=pars["seed"],
             n_threads=pars["nthreads"],
             device=pars["device"],
-            vary_preprocessing=vary_preprocessing,
             early_stop_configuration=early_stop_conf,
             tune_configuration=tune_conf,
             ensemble_configuration=ens_conf
@@ -201,7 +197,9 @@ def main():
         label_encoder=le,
         X_train=X,
         y_train=y_enc,
-        fit_dataset_name=fit_dataset_name
+        fit_dataset_name=fit_dataset_name,
+        preprocessing=pars.get("preprocessing", None),
+        vary_preprocessing=vary_preprocessing
     )
 
     out_filepath = pars["output_dir"] / "estimator.pkl"
