@@ -63,6 +63,9 @@ class EnsembleEstimator:
 
         classifier_cls (Classifier):
             Classifier class.
+
+        classifier_fixed_params (dict):
+            Dict of classifier hps that are kept fix during ensembling.
         
         type_estimator (TunableEstimatorType):
             String estimator type. 
@@ -177,6 +180,7 @@ class EnsembleEstimator:
         n_members: int,
         save_path: str | Path,
         classifier_cls: Classifier,
+        classifier_fixed_params: dict,
         type_estimator: TunableEstimatorType,
         preprocessing: PreprocessingStrategy,
         vary_preprocessing: bool,
@@ -202,6 +206,7 @@ class EnsembleEstimator:
         self.n_members=n_members
         self.save_path=save_path
         self.classifier_cls=classifier_cls
+        self.classifier_fixed_params=classifier_fixed_params
         self.type_estimator=type_estimator
         self.preprocessing=preprocessing
         self.vary_preprocessing=vary_preprocessing
@@ -239,7 +244,10 @@ class EnsembleEstimator:
         self._save_path = self.save_path if isinstance(self.save_path, Path) else Path(self.save_path)
         self._save_path.mkdir(parents=True, exist_ok=True)
         
-        fit_classifier_kwargs = add_prefix_to_params_when_absent(self.fit_classifier_kwargs, f"{self.classifier_cls.__name__.lower()}__") \
+        fit_classifier_kwargs = add_prefix_to_params_when_absent(
+            self.fit_classifier_kwargs, 
+            f"{self.classifier_cls.__name__.lower()}__"
+        ) \
             if self.fit_classifier_kwargs \
             else {}
 
@@ -276,6 +284,8 @@ class EnsembleEstimator:
                     cls_conf = hp_conf
 
                 pipe = create_classification_pipeline(self.classifier_cls, member_preprocessing)
+                # add fixed and sampled hps
+                set_params_into_clf(pipe, self.classifier_fixed_params, set_tabpfn_inference_config=False)
                 set_params_into_clf(pipe, cls_conf)
             
                 if self.early_stop_on_validation_set:

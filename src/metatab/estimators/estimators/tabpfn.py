@@ -2,7 +2,7 @@ import warnings
 from tabpfn import TabPFNClassifier
 from metatab.estimators.params.space import TuningParams
 from metatab.estimators.params.default import DefaultParams
-from metatab.hp_search.tabpfn_search_space import download_and_return_tabpfn_checkpoints, TABPFN_CHECKPOINTS
+from metatab.estimators.params.tabpfn_space import download_and_return_tabpfn_checkpoints, TABPFN_CHECKPOINTS
 from metatab.metatab_utils.types import XType, YType
 
 from metatab.estimators.core import (

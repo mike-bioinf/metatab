@@ -69,7 +69,7 @@ def make_extra_base_parser() -> ArgumentParser:
                     -ilr: Isometric log ratio transformation.
                     -arcsin: Arcsine square root transformation.
                     -rss: Robust scaling.
-                    log, clr, and ilr transformation uses psedocounts to manage zeros."""))
+                    log, clr, and ilr transformations manage zeros using pseudocounts."""))
     
     p.add_argument("--device", choices=["cpu", "cuda", "auto"], default="auto",
                     help=h("""
@@ -308,7 +308,7 @@ def make_autogluon_parser() -> ArgumentParser:
                    Useful to allow autogluon to fit tabpfn and other foundational models with a limited feature window.
                    The default value of 500 is choosen based on the feature limit window of tabpfn and mitra models.
                    If a number greater than the actual number of columns is used, then all columns are selected (no filtering).
-                   Note: autogluon skip the foundational models when the number of features is not within their feature limits. 
+                   Note: autogluon skip the foundation models when the number of features is not within their feature limits. 
                    Note that these models are run only with the most performant presets. 
                    So with lower quality presets the filtering process can be skipped.
                    See autogluon documentation for detailed info about the presets."""))

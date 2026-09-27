@@ -1,7 +1,7 @@
 import numpy as np
 from hyperopt import hp
 from hyperopt.pyll.base import scope
-from metatab.hp_search.tabpfn_search_space import TABPFN_TUNE_SPACE
+from metatab.estimators.params.tabpfn_space import TABPFN_TUNE_SPACE
 from metatab.preprocessing import PREPROCESSING_OPTIONS
 
 

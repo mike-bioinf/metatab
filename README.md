@@ -1,5 +1,3 @@
-###REVIEW: change according to changes
-
 # MetaTab
 
 A comprehensive classification framework for microbial taxonomic profiles.
@@ -12,7 +10,7 @@ A comprehensive classification framework for microbial taxonomic profiles.
 - **Metalearning options**: Provides metalearning capabilities to guide HPO
 - **Hierarchical Post Hoc Ensembling**: Enables building inner and/or cross model ensembles of model ensembles
 - **Multiple CLI Fitting Strategies**: Supports whole-dataset, holdout, and cross-validation fitting strategies via CLI on custom datasets
-- **Basic Preprocessing Support**: Supports a limited suite of data preprocessing options
+- **Preprocessing Support**: Supports a suite of data preprocessing options tailored for microbial profiles
 
 
 ## Installation
@@ -68,7 +66,7 @@ The pickled estimator needed by this program can be obtained from:
 ### Quick usage guide
 - Use metatab-resample to train and evaluate models under CV or holdout resampling.
 - Use metatab-fit to train a model on the full dataset.
-- Use metatab-predict to use a trained model to new, external data.
+- Use metatab-predict to use a trained model to infer on external data.
 
 
 ### Note on metatab-fit and metatab-resample input data
@@ -92,6 +90,14 @@ which provides a convenient way to load and parse these files into pandas DataFr
 By default, the same information is also written in the non-encoded form in additional text files. 
 The creation of these additional redundant outputs can be avoided via the "--disable-additional-txt-output" flag.
 
+
+### Data preprocessing
+MetaTab support seven different data preprocessing strategies commonly used in metagenomic analysis (see paper for more info).
+In HPO-based regimes is possible to tune the preprocessing strategy along the classifier hyperparameters by enabling the
+'--tune-preprocessing' flag. Similarly in ememble-based regimes is possible to vary the preprocessing 
+for the ensemble members by enabling the '--vary-preprocessing' flag.
+For AutoGluon is not possible to use these strategies since it relies on its internal preprocessing machinery.
+
 ```bash
 # consult help pages for detailed info
 metatab-resample cv tune --help
@@ -106,12 +112,12 @@ metatab-fit default \
     --input-mode df \
     --target-feature "Group" \
     --estimator random_forest \
-    --preprocessing base \
+    --preprocessing "base" \
     --seed 42 \
     --nthreads 1 \
     --create-outdir
 
-# Fit a tuned model on a dataset
+# Fit a tuned model on a dataset using the "log" preprocessing strategy
 metatab-fit tune \
     --input-data "${example_dataset_path}" \
     --output-dir "path/of/your/output-directory" \
@@ -120,7 +126,25 @@ metatab-fit tune \
     --estimator es_lgbm \
     --validation-set-size 0.3 \
     --early-stop-rounds 10 \
-    --preprocessing base \
+    --preprocessing "log" \
+    --tune-algo random \
+    --tune-n-iter 10 \
+    --tune-n-cv-repeats 1 \
+    --tune-n-cv-folds 5 \
+    --nthreads 1 \
+    --create-outdir
+
+
+# Fit a tuned pipeline (classifier + preprocessing) on a dataset 
+metatab-fit tune \
+    --input-data "${example_dataset_path}" \
+    --output-dir "path/of/your/output-directory" \
+    --input-mode df \
+    --target-feature "Group" \
+    --estimator es_lgbm \
+    --validation-set-size 0.3 \
+    --early-stop-rounds 10 \
+    --tune-preprocessing \
     --tune-algo random \
     --tune-n-iter 10 \
     --tune-n-cv-repeats 1 \
@@ -154,7 +178,7 @@ metatab-fit family-ensemble \
     --nthreads 1 \
     --create-outdir
 
-# Use a fitted model to obtain predictions and performance metrics on a second dataset
+# Use a fitted model to obtain predictions and performance metrics on a dataset
 metatab-predict \
     --file-estimator "path/fitted/estimator_file" \
     --input-data "${example_dataset_path}" \
@@ -170,7 +194,7 @@ metatab-fit autogluon \
     --output-dir "path/of/your/output-directory" \
     --input-mode df \
     --target-feature "Group" \
-    --preset extreme_quality \
+    --preset medium_quality \
     --time-limit 600 \
     --eval-metric log_loss \
     --nthreads 1 \
@@ -240,8 +264,6 @@ rf_0 = UserEnsembleConfiguration(
     algo="random",
     n_members=2,
     estimator="random_forest",
-    preprocessing="base",
-    tune_space="default",
     early_stop_on_validation_set=False,
 )
 
@@ -250,8 +272,6 @@ es_xgb_0 = UserEnsembleConfiguration(
     algo="random",
     n_members=2,
     estimator="es_xgb",
-    preprocessing="base",
-    tune_space="default",
     early_stop_on_validation_set=True,
     validation_set_size=0.2
 )
@@ -281,17 +301,17 @@ pdf = PredictionDataframe()
 
 ## Available Models
 
-| Model | Default | Tuned  | Ensembled |
-|-------|---------|-------------|----------------|
-| Extra Trees | ✅ | ✅ | ✅ |
-| Random Forest | ✅ | ✅ | ✅ |
-| XGBoost | ✅ | ✅ | ✅ |
-| LightGBM | ✅ | ✅ | ✅ |
-| CatBoost | ✅ | ✅ | ✅ |
-| TabM | ✅ | ✅ | ✅ |
-| RealMLP | ✅ | ✅ | ✅ |
-| TabPFN v2 | ✅ | ✅ | ✅ |
-| AutoGluon | ✅ | N/A* | N/A* |
+| Model | Default | Tuned  | Ensembled | Meta-tuned | Meta-ensembled |
+|-------|---------|--------|-----------|------------|----------------|
+| Extra Trees | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Random Forest | ✅ | ✅ | ✅ | ✅ | ✅ |
+| XGBoost | ✅ | ✅ | ✅ | ✅ | ✅ |
+| LightGBM | ✅ | ✅ | ✅ | ✅ | ✅ |
+| CatBoost | ✅ | ✅ | ✅ | ✅ | ✅ |
+| TabM | ✅ | ✅ | ✅ | ✅ | ✅ |
+| RealMLP | ✅ | ✅ | ✅ | ✅ | ✅ |
+| TabPFN v2 | ✅ | ✅ | ✅ | ✅ | ✅ |
+| AutoGluon | ✅ | N/A* | N/A* | N/A* | N/A* |
 
 *N/A: Model handles tuning and ensembling internally.
 

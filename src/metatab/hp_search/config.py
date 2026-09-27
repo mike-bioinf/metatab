@@ -1,7 +1,6 @@
 from typing import Any
 
 
-
 class ConfigSearchCV:
     '''
     Class that holds the globally configurable settings for SearchCV instances.

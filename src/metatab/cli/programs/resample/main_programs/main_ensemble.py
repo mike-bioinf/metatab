@@ -65,10 +65,7 @@ def main_ensemble(pars: dict):
     X, y = dl.X, dl.y
     name_dataset = dl.generic_dataset_name
     
-    logger.debug(
-        f"\nLaunching {pars["ensemble_algo"]} ensembled {pars["estimator"]}" + 
-        f" with {pars["ensemble_space"]} space on {name_dataset}!"
-    )
+    logger.debug(f"\nLaunching {pars["ensemble_algo"]} ensembled {pars["estimator"]} on {name_dataset}!")
 
     # y encoding
     le = LabelEncoder()
@@ -138,7 +135,6 @@ def main_ensemble(pars: dict):
             "predict_dataset": name_dataset,
             "estimator": pars["estimator"],
             "estimator_mode": pars["estimator_mode"],
-            "ensemble_space": pars["ensemble_space"],
             "ensemble_algo": pars["ensemble_algo"],
             "ensemble_n_members": pars["ensemble_n_members"],
             "n_threads": pars["nthreads"],

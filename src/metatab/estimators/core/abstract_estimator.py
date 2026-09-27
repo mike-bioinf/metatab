@@ -12,6 +12,7 @@ from metatab.hp_search.searchcv import SearchCV
 from metatab.ensemble.single import EnsembleEstimator
 from metatab.metatab_utils.general import ensure_or_create, asdict_shallow
 from metatab.estimators.utils.general import add_prefix_to_params_when_absent
+from metatab.estimators.utils.fit import set_params_into_clf
 from metatab.preprocessing import create_classification_pipeline
 
 from metatab.metatab_utils.device import (
@@ -114,14 +115,11 @@ class AbstractBaseEstimator(ABC):
         fit_classifier_kwargs: None | dict = None
     ) ->  Pipeline | SearchCV | EnsembleEstimator:
         '''
-        Utility that abstracts the `fit` logic of concrete estimators.
-        This function centralizes the repeated steps of preparing 
-        and fitting the internal estimator involving:
-        - Completing the `fixed_params` attribute of concrete estimators.
-        - Creating the inner pipeline.
-        - Fitting the inner estimator using the appropriate strategy.
+        Utility that abstracts the high-level 'fit' logic of concrete estimators.
+        In particular, it centralizes the repeated steps involving:
+        - completion of the `fixed_params` attribute of concrete estimators.
+        - fit the appropiate inner estimator accordin to the training strategy.
         
-
         Parameters:
             X (XType): Data to fit.
 
@@ -192,26 +190,26 @@ class AbstractBaseEstimator(ABC):
         resolved_device = resolve_device(self.device, type_estimator)
         if resolved_device == "cuda": check_cuda_is_available()
         check_device_estimator_combination(resolved_device, type_estimator)
-
         self._check_tune_ensemble_flags(is_tuned, is_ensembled)
         self._check_early_stop_inputs(is_early_stopped, eval_set_parameter)
 
-        params = deepcopy(self.fixed_params)
+        # refine a copy of fixed params
+        fixed_params = deepcopy(self.fixed_params)
 
         if random_state_parameter: 
-            params[random_state_parameter] = self.seed
+            fixed_params[random_state_parameter] = self.seed
         
         if n_threads_parameter: 
-            params[n_threads_parameter] = self.n_threads
+            fixed_params[n_threads_parameter] = self.n_threads
 
         if device_parameter:
-            params[device_parameter] = resolved_device
+            fixed_params[device_parameter] = resolved_device
         
         if is_early_stopped and early_stop_rounds_parameter: 
-            params[early_stop_rounds_parameter] = self.early_stop_configuration.early_stop_rounds
+            fixed_params[early_stop_rounds_parameter] = self.early_stop_configuration.early_stop_rounds
 
         callbacks_on_fixed_params = ensure_or_create(callbacks_on_fixed_params, list)
-        params = self._apply_callbacks_on_fixed_params(params, callbacks_on_fixed_params, y)
+        fixed_params = self._apply_callbacks_on_fixed_params(fixed_params, callbacks_on_fixed_params, y)
         
         if is_ensembled or is_tuned:
             val_set_size = self.early_stop_configuration.validation_set_size\
@@ -222,6 +220,7 @@ class AbstractBaseEstimator(ABC):
             # SearchCV address both early stop and normal scenarios    
             estimator = SearchCV(
                 classifier_cls=classifier_cls,
+                classifier_fixed_params=fixed_params,
                 type_estimator=type_estimator,
                 preprocessing=self.preprocessing,
                 tune_preprocessing=self.vary_preprocessing,
@@ -240,6 +239,7 @@ class AbstractBaseEstimator(ABC):
             # EnsembleEstimator address both early stop and normal scenarios   
             estimator = EnsembleEstimator(
                 classifier_cls=classifier_cls,
+                classifier_fixed_params=fixed_params,
                 type_estimator=type_estimator,
                 preprocessing=self.preprocessing,
                 vary_preprocessing=self.vary_preprocessing,
@@ -254,7 +254,13 @@ class AbstractBaseEstimator(ABC):
 
         else:
             pipe = create_classification_pipeline(classifier_cls, self.preprocessing)
-            fit_classifier_kwargs = add_prefix_to_params_when_absent(fit_classifier_kwargs, f"{classifier_cls.__name__.lower()}__") \
+            # set refined fixed params
+            set_params_into_clf(pipe, fixed_params, set_tabpfn_inference_config=False)
+            
+            fit_classifier_kwargs = add_prefix_to_params_when_absent(
+                fit_classifier_kwargs, 
+                f"{classifier_cls.__name__.lower()}__"
+            ) \
                 if fit_classifier_kwargs \
                 else {}
 

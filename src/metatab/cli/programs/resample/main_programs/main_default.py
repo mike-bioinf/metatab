@@ -142,7 +142,7 @@ def main_default(pars: dict):
                 y_train=y_train, 
                 fit_dataset_name=name_dataset, 
                 preprocessing=pars["preprocessing"], 
-                vary_preprocessing=pars["tune_preprocessing"]
+                vary_preprocessing=False
             )
             estimator.save(get_iteration_estimator_filepath(pars, repetition, fold))
 

@@ -13,6 +13,7 @@ from metatab.hp_search.cv import CrossValidator
 def create_cross_validator() -> CrossValidator:
     return CrossValidator(
         classifier_cls=LGBMClassifier,
+        classifier_fixed_params={},
         preprocessing="base",
         tune_preprocessing=False,
         clf_random_state_parameter="random_state",

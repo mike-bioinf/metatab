@@ -21,6 +21,9 @@ class CrossValidator:
     
     Parameters:
         classifier_cls (Classifier): Classifier class
+
+        classifier_fixed_params (dict):
+            Dict of classifier hps that are kept fix during HPO.
                     
         preprocessing (PreprocessingStrategy):
             Data preprocessing strategy.
@@ -63,6 +66,7 @@ class CrossValidator:
     def __init__(
         self,
         classifier_cls: Classifier,
+        classifier_fixed_params: dict,
         preprocessing: PreprocessingStrategy,
         tune_preprocessing: bool,
         clf_random_state_parameter: str,
@@ -76,6 +80,7 @@ class CrossValidator:
         seed: int
     ):
         self.classifier_cls=classifier_cls
+        self.classifier_fixed_params=classifier_fixed_params
         self.preprocessing=preprocessing
         self.tune_preprocessing=tune_preprocessing
         self.clf_random_state_parameter=clf_random_state_parameter
@@ -87,8 +92,6 @@ class CrossValidator:
         self.n_folds=n_folds
         self.n_repeats=n_repeats
         self.seed=seed
-        # we crete the pipeline when the preprocessing is fixed otherwise None
-        self.pipe = None if self.tune_preprocessing else create_classification_pipeline(classifier_cls, preprocessing)
 
 
     def fit(
@@ -113,9 +116,7 @@ class CrossValidator:
             tuple[float,pd.DataFrame|None]:
             A tuple of the aggregated cv performances and the collected cv info. 
             The second term is None if `collect_info` is False.
-        '''
-        params = deepcopy(params)
-        
+        '''        
         skf = RepeatedStratifiedKFold(
             n_splits=self.n_folds, 
             n_repeats=self.n_repeats, 
@@ -130,26 +131,20 @@ class CrossValidator:
             repeat = iter_idx // self.n_folds
             fold = iter_idx - (self.n_folds * repeat)
 
-            if self.pipe:
-                # we create a copy of the pipe at each cv round
-                # to avoid specific classifier implementation problems
-                # related to fitting multiple times the same instance.
-                # for example for catboost is not possible to set new parameters on a fitted instance.
-                pipe = deepcopy(self.pipe)
-            else:
-                # we must remove the preprocessing from params
-                pipe = create_classification_pipeline(
-                    classifier_cls=self.classifier_cls,
-                    preprocessing=params["preprocessing"]
-                )
+            preprocessing = params["preprocessing"] if self.tune_preprocessing else self.preprocessing
+            pipe = create_classification_pipeline(self.classifier_cls, preprocessing)
             
-            set_params_into_clf(pipe, {k:v for k,v in params.items() if k != "preprocessing"})
+            # remove preprocessing when present
+            cls_params = {k:v for k,v in params.items() if k != "preprocessing"}
+            # add fixed and HPO params
+            set_params_into_clf(pipe, self.classifier_fixed_params, set_tabpfn_inference_config=False)
+            set_params_into_clf(pipe, cls_params)
 
             # we overwrite the classifier seed in order to maximize model entropy inside cv, 
             # while assuring uniformity between different cv runs.
             round_cv_seed = {self.clf_random_state_parameter: int(rng.integers(0, 2**32))}
             set_params_into_clf(pipe, round_cv_seed, set_tabpfn_inference_config=False)
-            
+
             X_train, y_train = X[train_idx, :], y[train_idx]
             X_test, y_test = X[test_idx, :], y[test_idx]
 

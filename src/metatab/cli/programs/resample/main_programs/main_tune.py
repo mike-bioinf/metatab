@@ -65,10 +65,7 @@ def main_tune(pars: dict):
     X, y = dl.X, dl.y
     name_dataset = dl.generic_dataset_name
 
-    logger.debug(
-        f"\nLaunching {pars["tune_algo"]} tuned {pars["estimator"]}" + 
-        f" with {pars["tune_space"]} space on {name_dataset}!"
-    )
+    logger.debug(f"\nLaunching {pars["tune_algo"]} tuned {pars["estimator"]} on {name_dataset}!")
 
     # y encoding
     le = LabelEncoder()
@@ -139,7 +136,6 @@ def main_tune(pars: dict):
             "predict_dataset": name_dataset,
             "estimator": pars["estimator"],
             "estimator_mode": pars["estimator_mode"],
-            "tune_space": pars["tune_space"],
             "tune_algo": pars["tune_algo"],
             "tune_n_iter": pars["tune_n_iter"],
             "n_threads": pars["nthreads"],

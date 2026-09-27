@@ -77,7 +77,7 @@ def main():
         df_point.columns = pd.MultiIndex.from_arrays([["hps"] * df_point.shape[1], df_point.columns])
         df_point_mfs = pd.concat([df_point, df_mfs], axis=1)
         # add a variable preprocessing in order to average its influence
-        df_point_mfs[("preprocessing", "preprocessing")] = [PREPROCESSING_OPTIONS][rng_permutations.integers(0, 7)]
+        df_point_mfs[("preprocessing", "preprocessing")] = [PREPROCESSING_OPTIONS][rng_permutations.integers(0, len(PREPROCESSING_OPTIONS))]
 
         map_sensitivity[f"point_{i}"] = compute_feature_sensitivity_map(
             model=surrogate_model,

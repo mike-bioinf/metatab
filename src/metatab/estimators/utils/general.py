@@ -48,7 +48,7 @@ def add_prefix_to_params_when_absent(params_dict: dict[str, Any], string: str) -
 
 def remove_prefix_from_params(params_dict: dict[str, Any], string: str) -> dict:
     '''
-    Utility to remove the string from the beginning of params dict keys.
+    Utility to remove the string (if present) from the beginning of params dict keys.
     Note that the function assumes that the keys are of str type.
     Returns a new dict.
     '''

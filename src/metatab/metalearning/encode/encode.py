@@ -37,7 +37,7 @@ from metatab.preprocessing import PREPROCESSING_OPTIONS
 from metatab.metalearning.encode.transformers import NanToNone, ColToStr, InfToNan
 from metatab.estimators.utils.types import TunableEstimatorType
 
-from metatab.hp_search.tabpfn_search_space import (
+from metatab.estimators.params.tabpfn_space import (
     enumerate_preprocess_transforms,
     TABPFN_CHECKPOINTS
 )

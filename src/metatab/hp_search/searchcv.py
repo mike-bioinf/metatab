@@ -49,6 +49,9 @@ class SearchCV:
     Parameters:
         classifier_cls (Classifier):
             Classifier class
+
+        classifier_fixed_params (dict):
+            Dict of classifier hps that are kept fix during HPO.
         
         type_estimator (TunableEstimatorType):
             String reporting the estimator type. 
@@ -179,7 +182,8 @@ class SearchCV:
     def __init__(
         self,
         *,
-        classifier_cls: Classifier,        
+        classifier_cls: Classifier,
+        classifier_fixed_params: dict,     
         type_estimator: TunableEstimatorType,
         preprocessing: PreprocessingStrategy,
         tune_preprocessing: bool,
@@ -204,6 +208,7 @@ class SearchCV:
         refit_with_best_hps: None | bool = None
     ):
         self.classifier_cls=classifier_cls
+        self.classifier_fixed_params=classifier_fixed_params
         self.type_estimator=type_estimator
         self.preprocessing=preprocessing
         self.tune_preprocessing=tune_preprocessing
@@ -235,7 +240,10 @@ class SearchCV:
         Performs HPO. 
         Returns the instance.
         '''
-        fit_classifier_kwargs = add_prefix_to_params_when_absent(self.fit_classifier_kwargs, f"{self.classifier_cls.__name__.lower()}__") \
+        fit_classifier_kwargs = add_prefix_to_params_when_absent(
+            self.fit_classifier_kwargs, 
+            f"{self.classifier_cls.__name__.lower()}__"
+        ) \
             if self.fit_classifier_kwargs \
             else {}
 
@@ -245,6 +253,7 @@ class SearchCV:
 
         cross_validator = CrossValidator(
             classifier_cls=self.classifier_cls,
+            classifier_fixed_params=self.classifier_fixed_params,
             preprocessing=self.preprocessing,
             tune_preprocessing=self.tune_preprocessing,
             clf_random_state_parameter=self.random_state_parameter,
@@ -299,6 +308,7 @@ class SearchCV:
                 best_cls_params = self.best_params_
  
             best_estimator = create_classification_pipeline(self.classifier_cls, best_preprocessing)
+            set_params_into_clf(best_estimator, self.classifier_fixed_params, set_tabpfn_inference_config=False)
             set_params_into_clf(best_estimator, best_cls_params)   
             
             if self.early_stop_on_validation_set:
