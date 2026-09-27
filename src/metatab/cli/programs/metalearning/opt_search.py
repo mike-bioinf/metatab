@@ -49,8 +49,8 @@ def parse_args(args):
 def log_program_setting(logger: Logger, pars: dict, name_dataset: str):
     logger.debug((
         f"\nLaunching {pars["tune_algo"]} search on {name_dataset} with"
-        f" {pars["estimator"]} on the {pars["tune_space"]} tune space, with"
-        f" {pars["tune_n_iter"]} iterations and {pars["tune_n_cv_repeats"]}-repeat {pars["tune_n_cv_folds"]}-fold cv."
+        f" {pars["estimator"]} with {pars["tune_n_iter"]} iterations and" 
+        f" {pars["tune_n_cv_repeats"]}-repeat {pars["tune_n_cv_folds"]}-fold cv."
     ))
 
 
