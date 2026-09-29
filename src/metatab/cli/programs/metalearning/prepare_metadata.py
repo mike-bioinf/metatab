@@ -103,7 +103,6 @@ def main():
         X = data.drop(columns=pars["target_feature"])
         y = data[pars["target_feature"]]
         metafeatures, _ = cmfe.fit(X, y).extract()
-        print(f"Number of extracted meta-features: {len(metafeatures.keys())}")
 
         # we must add the metafeatures to the corresponding search data for every estimator
         for estimator in [
