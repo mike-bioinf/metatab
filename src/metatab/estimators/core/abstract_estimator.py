@@ -255,7 +255,7 @@ class AbstractBaseEstimator(ABC):
         else:
             pipe = create_classification_pipeline(classifier_cls, self.preprocessing)
             # set refined fixed params
-            set_params_into_clf(pipe, fixed_params, set_tabpfn_inference_config=False)
+            set_params_into_clf(pipe, fixed_params, set_tabpfn_inference_config=True)
             
             fit_classifier_kwargs = add_prefix_to_params_when_absent(
                 fit_classifier_kwargs, 

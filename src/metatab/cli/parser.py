@@ -194,7 +194,7 @@ def make_tune_parser() -> ArgumentParser:
                    help=h("""
                     Strategy used to select the points evaluated and proposed by the meta-framework.
                    These points are the ones that will be tested in the inner cv.
-                   -best: The n '--tune-n-iter' best points according to the surrogate model are selected.
+                   -best: '--tune-n-iter' best points according to the surrogate model are selected.
                    -random_from_best: '--tune-n-iter' points are selected randomly from the best.
                    -uniform_from_best: '--tune-n-iter' points are selected with a fixed step size from the best.
                    -random_uniform_from_best: '--tune-n-iter' points are selected randomly in intervals defined with a fixed step size from the best.

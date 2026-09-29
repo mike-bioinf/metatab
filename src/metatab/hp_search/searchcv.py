@@ -347,7 +347,9 @@ class SearchCV:
         
         meta_generator = MetadataGenerator(
             sampler=HyperoptRandomSampler(),
-            point_corrector=point_corrector,
+            # we use a different corrector which does nothing 
+            # since the surrogate works with uncorrected metadata
+            point_corrector=PointCorrector(),
             mfe=CustomMFE(),
         )
 
