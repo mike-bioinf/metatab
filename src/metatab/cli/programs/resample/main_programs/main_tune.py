@@ -9,6 +9,7 @@ from metatab.metatab_utils.prediction.dataframe import PredictionDataframe
 from metatab.estimators.utils.pick import pick_estimator_class
 from metatab.estimators.estimators import TunedEstimator
 from metatab.metalearning.load import query_surrogate_framework
+from metatab.hp_search.config import ConfigSearchCV
 
 from metatab.cli.programs.resample.helper import (
     pick_splitter,
@@ -37,6 +38,8 @@ from metatab.cli.helper import (
 
 
 def main_tune(pars: dict):
+    ConfigSearchCV.refit_at_k = list(range(4, 104, 4))
+
     logger = create_logger(sys.stdout)
 
     check_target_feature(pars)
@@ -81,6 +84,7 @@ def main_tune(pars: dict):
     configuration_filepath = output_dir / "configuration.json"
     create_json_configuration_file(pars, configuration_filepath)
     dict_results = defaultdict(list)
+    k_dict_results = defaultdict(list)
     df_pred_results = PredictionDataframe()
     dict_hpo = defaultdict(list)
     hpo_filepath = output_dir / "hpo.txt"
@@ -114,6 +118,24 @@ def main_tune(pars: dict):
             tune_configuration=tune_conf
         )
 
+        base_iter_results = {
+            "dataset": name_dataset,
+            "predict_dataset": name_dataset,
+            "estimator": pars["estimator"],
+            "estimator_mode": pars["estimator_mode"],
+            "tune_algo": pars["tune_algo"],
+            "tune_n_iter": pars["tune_n_iter"],
+            "n_threads": pars["nthreads"],
+            "preprocessing": preprocessing_in_out,
+            "splitting_mode": pars["splitting_mode"],
+            "repetition": repetition,
+            "fold": fold,
+            "map_classes": str({c: i for c, i in enumerate(le.classes_)}),
+            "classes": np.arange(le.classes_.size),
+            "classes_counts": np.unique(y_train.to_numpy(), return_counts=True)[1],
+            "y_test": y_test
+        }
+
         t = time()
         estimator.fit(X_train, y_train)
         fit_time = time() - t
@@ -131,29 +153,20 @@ def main_tune(pars: dict):
         predict_time = time() - t
         logger.debug(f"\t-Inference time in minutes: {round(predict_time/60, 2)}\n")
 
-        iter_results = {
-            "dataset": name_dataset,
-            "predict_dataset": name_dataset,
-            "estimator": pars["estimator"],
-            "estimator_mode": pars["estimator_mode"],
-            "tune_algo": pars["tune_algo"],
-            "tune_n_iter": pars["tune_n_iter"],
-            "n_threads": pars["nthreads"],
-            "preprocessing": preprocessing_in_out,
-            "splitting_mode": pars["splitting_mode"],
-            "repetition": repetition,
-            "fold": fold,
-            "map_classes": str({c: i for c, i in enumerate(le.classes_)}),
-            "classes": np.arange(le.classes_.size),
-            "classes_counts": np.unique(y_train.to_numpy(), return_counts=True)[1],
-            "y_test": y_test,
+        main_iter_results = {
+            **base_iter_results,
             "pred_proba": pred_proba,
             "fit_time": fit_time,
             "predict_time": predict_time
         }
 
-        populate_dict_lists_(dict_results, **iter_results)
-    
+        populate_dict_lists_(dict_results, **main_iter_results)
+
+        if ConfigSearchCV.refit_at_k:
+            res_at_k = estimator._predict_proba_best_at_k(X_test)
+            for r in res_at_k:
+                populate_dict_lists_(k_dict_results, **base_iter_results, **r)
+
         populate_dict_lists_(
             dictionary=dict_hpo,
             dataset=name_dataset,
@@ -202,6 +215,11 @@ def main_tune(pars: dict):
     if not df_pred_results.has_recovered:
         df_pred_results.compute_metrics(multiclass="average", average_strategy="macro")
         df_pred_results.to_csv(results_filepath, sep="\t", index=False)
+
+    if ConfigSearchCV.refit_at_k:
+        df_pred_results.build_from_data(**k_dict_results)
+        df_pred_results.compute_metrics(multiclass="average", average_strategy="macro")
+        df_pred_results.to_csv(output_dir / "pred_dataframe_at_k.txt", sep="\t", index=False)
     
     pd.DataFrame(dict_hpo).to_csv(hpo_filepath, sep="\t", index=False)
     logger.debug(f"Outputs created at {output_dir}")

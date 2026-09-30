@@ -371,7 +371,7 @@ class EnsembleEstimator:
 
     def predict_proba(self, X: XType) -> np.ndarray:
         self._check_on_predict_calls()
-        predictions = self._get_members_predicted_probabilities(X)
+        predictions, _, _ = self._get_members_predicted_probabilities(X)
         return np.stack(predictions, axis=0).mean(axis=0)
 
 
@@ -381,21 +381,30 @@ class EnsembleEstimator:
         Returns a dict of member name - predictions couples.
         '''
         self._check_on_predict_calls()
-        predictions = self._get_members_predicted_probabilities(X)
+        predictions, _, _ = self._get_members_predicted_probabilities(X)
         return {k:v for k, v in zip(self.successful_members_, predictions)}
     
 
-    def _get_members_predicted_probabilities(self, X: XType) -> list[np.ndarray]:
+    def _get_members_predicted_probabilities(self, X: XType) -> tuple[list]:
         '''
         Get the predicted probabilities of the ensemble members in a list
         that reflects the order of `self.successful_members_`.
+        Returns also the fit and predict times of each member.
         '''
         predictions = []
+        predict_times = []
+        fit_times = []
         for member in self.successful_members_:
             path_successful_member = self._save_path / f"{member}.pkl"
             member_model: Pipeline = self._try_load_model(path_successful_member)
-            predictions.append(member_model.predict_proba(X))
-        return predictions
+            fit_time = self.df_members_.loc[self.df_members_["member"] == member, "fit_time"].iloc[0]
+            t = time.time()
+            preds = member_model.predict_proba(X)
+            predict_time = time.time() - t
+            predictions.append(preds)
+            fit_times.append(fit_time)
+            predict_times.append(predict_time)
+        return predictions, fit_times, predict_times
 
 
     # We want only this method to work when we raise errors for single

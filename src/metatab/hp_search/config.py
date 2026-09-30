@@ -15,14 +15,19 @@ class ConfigSearchCV:
     
     - build_df_search (bool): 
         Control whether SearchCV builds the df_search when fitted.
+
+    - refit_at_k (list[int])
+        Allows to refit with the best iteration at a series of steps k.
     '''
     raise_error_during_search = False
-    refit_with_best_hps = True
     build_df_search = False
+    refit_with_best_hps = True
+    refit_at_k: list[int] = []
     _attrs = [
         "raise_error_during_search",
+        "build_df_search",
         "refit_with_best_hps", 
-        "build_df_search", 
+        "refit_at_k"
     ]
 
     @classmethod
