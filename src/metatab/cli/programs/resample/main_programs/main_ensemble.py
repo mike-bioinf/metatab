@@ -93,6 +93,10 @@ def main_ensemble(pars: dict):
     # this is to avoid the first download inside the fit call inflating times
     if pars["ensemble_algo"] == "meta" and not pars["ensemble_meta_surrogate_model"]:
         _ = query_surrogate_framework(pars["estimator"])
+
+    ## currently non implemented in the user API (allows to save intermediate steps)
+    ks = []
+    k_dict_results = defaultdict(list)
     
 
     # run resampling
@@ -118,19 +122,7 @@ def main_ensemble(pars: dict):
             ensemble_configuration=ens_conf
         )
 
-        estimator.fit(X_train, y_train)
-        fit_time = estimator.estimator_.fit_time_
-        df_ensemble_members_recap = estimator.estimator_.df_members_
-
-        logger.debug("\t-Ensemble fitted on input data.")
-        logger.debug(f"\t-Fit time in minutes: {round(fit_time/60, 2)}")
-        
-        t = time()
-        pred_proba = estimator.predict_proba(X_test)
-        predict_time = time() - t
-        logger.debug(f"\t-Inference time in minutes: {round(predict_time/60, 2)}\n")
-
-        iter_results = {
+        base_iter_result = {
             "dataset": name_dataset,
             "predict_dataset": name_dataset,
             "estimator": pars["estimator"],
@@ -145,13 +137,49 @@ def main_ensemble(pars: dict):
             "map_classes": str({c: i for c, i in enumerate(le.classes_)}),
             "classes": np.arange(le.classes_.size),
             "classes_counts": np.unique(y_train.to_numpy(), return_counts=True)[1],
-            "y_test": y_test,
+            "y_test": y_test
+        }
+
+        estimator.fit(X_train, y_train)
+        fit_time = estimator.estimator_.fit_time_
+        df_ensemble_members_recap = estimator.estimator_.df_members_
+
+        logger.debug("\t-Ensemble fitted on input data.")
+        logger.debug(f"\t-Fit time in minutes: {round(fit_time/60, 2)}")
+        
+        t = time()
+        pred_proba = estimator.predict_proba(X_test)
+        predict_time = time() - t
+        logger.debug(f"\t-Inference time in minutes: {round(predict_time/60, 2)}\n")
+
+        iter_results = {
+            **base_iter_result,
             "pred_proba": pred_proba,
             "fit_time": fit_time,
             "predict_time": predict_time
         }
 
         populate_dict_lists_(dict_results, **iter_results)
+
+        # for saving intermediate steps (currenly non allowed from user API)
+        if ks:
+            (
+                pred_probas,
+                fit_times, 
+                predict_times
+            ) = estimator.estimator_._get_members_predicted_probabilities(X_test)
+            for k in ks:
+                pred_proba = np.stack(pred_probas[:k], axis=0).mean(axis=0)
+                fit_time = sum(fit_times[:k])
+                predict_time = sum(predict_times[:k])
+                k_iter_result = {
+                    **base_iter_result,
+                    "k": k,
+                    "pred_proba": pred_proba,
+                    "fit_time": fit_time,
+                    "predict_time": predict_time
+                }
+                populate_dict_lists_(k_dict_results, **k_iter_result)
 
         df_ensemble_members_recap["dataset"] = name_dataset
         df_ensemble_members_recap["estimator"] = pars["estimator"]
@@ -195,6 +223,10 @@ def main_ensemble(pars: dict):
     if not df_pred_results.has_recovered:
         df_pred_results.compute_metrics(multiclass="average", average_strategy="macro")
         df_pred_results.to_csv(results_filepath, sep="\t", index=False)
+
+    if ks:
+        df_pred_results.build_from_data(**k_dict_results)
+        df_pred_results.to_csv(output_dir / "pred_dataframe_at_k.txt", sep="\t", index=False)
     
     df_ensemble_info = pd.concat(list_dfs_ensemble_info, axis=0, ignore_index=True)
     df_ensemble_info.to_csv(filepath_df_ensemble_info, sep="\t", index=False)

@@ -7,7 +7,7 @@ import pandas as pd
 from pathlib import Path
 from functools import partial
 from typing import Literal, TYPE_CHECKING
-from hyperopt import STATUS_OK, STATUS_FAIL, tpe, rand, fmin, space_eval
+from hyperopt import STATUS_OK, STATUS_FAIL, tpe, rand, fmin, space_eval, Trials
 from hyperopt.pyll.stochastic import sample
 from metatab.estimators.utils.fit import fit_with_early_stop_on_validation_set, set_params_into_clf
 from metatab.estimators.utils.general import add_prefix_to_params_when_absent
@@ -175,6 +175,14 @@ class SearchCV:
             Contains np.nan for failed iterations.
             The search order is respected.
 
+        search_points_ (list[dict]):
+            List of points evaluated during the search.
+            The search order is respected.
+
+        search_times_ (list[float]):
+            List of cumulative times registered at each step of the search.
+            The search order is respected.
+
         refit_time_ (float):
             Time of refit on the best configuration in seconds.
             Available only when "refit_with_best_hps" is True.
@@ -205,7 +213,8 @@ class SearchCV:
         meta_seed: int = 42,
         raise_error_during_search: None | bool = None,
         build_df_search: None | bool = None,
-        refit_with_best_hps: None | bool = None
+        refit_with_best_hps: None | bool = None,
+        refit_at_k: None | list[int] = None
     ):
         self.classifier_cls=classifier_cls
         self.classifier_fixed_params=classifier_fixed_params
@@ -231,7 +240,8 @@ class SearchCV:
         # controlled by ConfigSearchCV
         self.raise_error_during_search: bool = ConfigSearchCV.get_setting(raise_error_during_search, "raise_error_during_search")
         self.build_df_search: bool = ConfigSearchCV.get_setting(build_df_search, "build_df_search")        
-        self.refit_with_best_hps: bool = ConfigSearchCV.get_setting(refit_with_best_hps, "refit_with_best_hps")    
+        self.refit_with_best_hps: bool = ConfigSearchCV.get_setting(refit_with_best_hps, "refit_with_best_hps")
+        self.refit_at_k: list[int] = ConfigSearchCV.get_setting(refit_at_k, "refit_at_k")
 
 
 
@@ -274,6 +284,9 @@ class SearchCV:
 
         self._dfs_info_iter: list[pd.DataFrame] = []
         self.search_losses_: list[float] = []
+        self.search_points_: list[dict] = []
+        self.search_times_  : list[float] = []
+        self.best_at_k_: list[dict] = []
 
         # with n_iter equal 1 we skip the point evaluation
         # since the single point is the best by definition.
@@ -281,6 +294,7 @@ class SearchCV:
         if self.n_iter == 1:
             # we append nan since we do not evaluate the loss
             self.search_losses_.append(np.nan)
+            self.search_times_.append(np.nan)
             can_df_search_be_built = False
         else:
             can_df_search_be_built = True
@@ -298,36 +312,72 @@ class SearchCV:
             self.df_search_ = self._build_df_search()
 
         # we refit on the original X and y to not influence sklearn expection
-        # about the fit datatype which is checked at predict time 
-        if self.refit_with_best_hps:
-            if self.tune_preprocessing:
-                best_preprocessing = self.best_params_["preprocessing"]
-                best_cls_params = {k:v for k,v in self.best_params_.items() if k != "preprocessing"}
-            else:
-                best_preprocessing = self.preprocessing
-                best_cls_params = self.best_params_
- 
-            best_estimator = create_classification_pipeline(self.classifier_cls, best_preprocessing)
-            set_params_into_clf(best_estimator, self.classifier_fixed_params, set_tabpfn_inference_config=False)
-            set_params_into_clf(best_estimator, best_cls_params)   
-            
-            if self.early_stop_on_validation_set:
-                self.best_estimator_, self.refit_time_ = fit_with_early_stop_on_validation_set(
-                    pipe=best_estimator,
-                    X=X,
-                    y=y,
-                    seed=self.seed,
-                    validation_set_size=self.validation_set_size,
-                    eval_set_parameter=self.eval_set_parameter,
-                    fit_classifier_kwargs=fit_classifier_kwargs,
-                    return_fit_time=True
-                )
-            else:
-                start_refit_time = time.time()
-                self.best_estimator_ = best_estimator.fit(X, y, **fit_classifier_kwargs)
-                self.refit_time_ = time.time() - start_refit_time
-            
+        # about the fit datatype which is checked at predict time
+        self.best_estimator_, self.refit_time_ = self._refit_with_point(X, y, self.best_params_, fit_classifier_kwargs)
+
+        if self.refit_at_k:
+            for k in self.refit_at_k:
+                losses_at_k = np.asarray(self.search_losses_[:k])
+                if np.isnan(losses_at_k).all():
+                    raise ValueError(f"All search iterations up to k={k} have failed.")
+
+                search_time_at_k = self.search_times_[k-1]
+                best_idx_at_k = np.nanargmin(losses_at_k)
+                best_point_at_k = self.search_points_[best_idx_at_k]
+                best_estimator_at_k, refit_time_k = self._refit_with_point(X, y, best_point_at_k, fit_classifier_kwargs,)
+
+                self.best_at_k_.append({
+                    "k": k,
+                    "point": best_point_at_k,
+                    "loss": self.search_losses_[best_idx_at_k],
+                    "fit_time": search_time_at_k + refit_time_k,
+                    "estimator": best_estimator_at_k,
+                })
+
         return self
+
+
+
+    def _refit_with_point(
+        self,
+        X: XType,
+        y: YType, 
+        params: dict, 
+        fit_classifier_kwargs: dict
+    ) -> tuple:
+        '''
+        Helper that abstarct the logic of refitting the pipeline 
+        on the input data with a HP configuration.
+        '''
+        if self.tune_preprocessing:
+            preprocessing = params["preprocessing"]
+            cls_params = {k:v for k,v in params.items() if k != "preprocessing"}
+        else:
+            preprocessing = self.preprocessing
+            cls_params = params
+
+        estimator = create_classification_pipeline(self.classifier_cls, preprocessing)
+        # add the fixed and the HPO params
+        set_params_into_clf(estimator, self.classifier_fixed_params, set_tabpfn_inference_config=False)
+        set_params_into_clf(estimator, cls_params)   
+        
+        if self.early_stop_on_validation_set:
+            fitted_estimator, fit_time = fit_with_early_stop_on_validation_set(
+                pipe=estimator,
+                X=X,
+                y=y,
+                seed=self.seed,
+                validation_set_size=self.validation_set_size,
+                eval_set_parameter=self.eval_set_parameter,
+                fit_classifier_kwargs=fit_classifier_kwargs,
+                return_fit_time=True
+            )
+        else:
+            start_fit_time = time.time()
+            fitted_estimator = estimator.fit(X, y, **fit_classifier_kwargs)
+            fit_time = time.time() - start_fit_time
+
+        return fitted_estimator, fit_time
 
 
 
@@ -341,6 +391,8 @@ class SearchCV:
         Optimize using the meta-inferred points only.        
         Set the `best_params_` attribute.
         '''
+        start_search_time = time.time()
+        
         n_candidate_points = max(1500, self.n_iter) \
             if self.meta_strategy_params is None \
             else self.meta_strategy_params.n_candidate_points
@@ -435,7 +487,9 @@ class SearchCV:
 
         # we do not evaluate the single point since is the best by definition
         if len(points) == 1:
-            self.best_params_ = point_corrector.correct_point(points[0])
+            single_point = point_corrector.correct_point(points[0])
+            self.best_params_ = single_point
+            self.search_points_ = [single_point]
             return None
 
         for point in points:
@@ -443,15 +497,16 @@ class SearchCV:
                 point,
                 cross_validator=cross_validator,
                 point_corrector=point_corrector,
-                returns_type="simple"
+                returns_type="simple",
+                start_search_time=start_search_time
             )
 
         losses = np.array(self.search_losses_)
-
         if np.isnan(losses).all():
             raise ValueError("All search iterations have failed.")
         
         self.best_params_ = point_corrector.correct_point(points[np.nanargmin(losses)])
+        self.search_points_ = [point_corrector.correct_point(p) for p in points]
 
 
     
@@ -468,9 +523,11 @@ class SearchCV:
         # with n_iter to 1 the sampling is always random 
         # and the drawn point is the best by definition
         if self.n_iter == 1:
-            self.best_params_ = point_corrector.correct_point(
+            single_point = point_corrector.correct_point(
                 point=sample(space, np.random.default_rng(self.seed)),
             )
+            self.best_params_ = single_point
+            self.search_points_ = [single_point]
             return None
 
         if self.algo == "random":
@@ -486,25 +543,39 @@ class SearchCV:
         else:
             raise ValueError("Unsupported optimization algorithm.")
 
+        start_search_time = time.time()
+
         fit_point_fn = partial(
             self._fit_point, 
             returns_type="hyperopt",
             cross_validator=cross_validator,
-            point_corrector=point_corrector
+            point_corrector=point_corrector,
+            start_search_time = start_search_time
         )
+
+        trials = Trials()
 
         best = fmin(
             fn=fit_point_fn,
             space=space,
             algo=algo_fn,
             max_evals=self.n_iter,
-            trials=None,
+            trials=trials,
             rstate=np.random.default_rng(self.seed),
             verbose=False
         )
 
-        # hyperopt tracks the uncorrected params
         self.best_params_ = point_corrector.correct_point(space_eval(space, best))
+
+        for trial in sorted(trials.trials, key=lambda t: t["tid"]):
+            # raw hyperopt representation
+            vals = {
+                name: values[0] # hyperopt stores idxs and values in lists of single elements
+                for name, values in trial["misc"]["vals"].items()
+                if values # hyperopt can contain parameters with no value (empty lists) when they are conditional
+            }
+            # convert hyperopt representation back to actual parameter values and apply correction
+            self.search_points_.append(point_corrector.correct_point(space_eval(space, vals)))
 
 
 
@@ -513,7 +584,8 @@ class SearchCV:
         params: dict,
         cross_validator: CrossValidator,
         point_corrector: PointCorrector,
-        returns_type: Literal["hyperopt", "simple"]
+        returns_type: Literal["hyperopt", "simple"],
+        start_search_time: float
     ) -> dict | float:
         '''
         Fit using the input tune space point.
@@ -562,8 +634,9 @@ class SearchCV:
                     f"Encountered the following error during df_search building process: {e}"
                 )
 
-            # this line must be placed after the df_search building code
+            # these lines must be placed after the df_search building code
             self.search_losses_.append(loss)
+            self.search_times_.append(time.time() - start_search_time)
 
             if returns_type == "hyperopt":
                 return {"loss": loss, "status": STATUS_OK}
@@ -577,8 +650,9 @@ class SearchCV:
                     f"The following error is encountered during the search: {e}"
                 )
 
-            # we enforce "search_losses_" to be of length n_iter
+            # we enforce the "search_" attributes to be of length n_iter
             self.search_losses_.append(np.nan)
+            self.search_times_.append(time.time() - start_search_time)
             
             if returns_type == "hyperopt":
                 return {
