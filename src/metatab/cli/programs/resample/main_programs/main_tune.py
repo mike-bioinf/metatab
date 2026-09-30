@@ -38,8 +38,6 @@ from metatab.cli.helper import (
 
 
 def main_tune(pars: dict):
-    ConfigSearchCV.refit_at_k = list(range(4, 104, 4))
-
     logger = create_logger(sys.stdout)
 
     check_target_feature(pars)
