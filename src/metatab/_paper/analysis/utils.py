@@ -7,6 +7,7 @@ from pathlib import Path
 from matplotlib.lines import Line2D
 from matplotlib.patches import Patch
 from matplotlib.legend import Legend
+from metatab._paper.analysis.constants import MAP_CLASSIFIERS, MAP_REGIMES
 
 if TYPE_CHECKING:
     from sklearn.pipeline import Pipeline
@@ -447,4 +448,22 @@ def remove_unused_regime_classifier_categories(df: pd.DataFrame) -> pd.DataFrame
         df["Regime"] = df["Regime"].cat.remove_unused_categories()
     if is_categorical_dtype(df["Classifier"]):
         df["Classifier"] = df["Classifier"].cat.remove_unused_categories()
+    return df
+
+
+def clean_prediction_dataframe(df: pd.DataFrame) -> pd.DataFrame:
+    '''
+    Perform a series of operation commonly done on prediction dataframe:
+    1. Update estimator names.
+    2. update regime names.
+    3. change estimator column in "Classifier".
+    4. change estimator_mode column in "Regime".
+    5. compute runtime column.
+    '''
+    df = df.copy()
+    df = df.rename(columns={"estimator": "Classifier", "estimator_mode": "Regime"})
+    df["Classifier"] = df["Classifier"].replace(MAP_CLASSIFIERS)
+    df["Regime"] = df["Regime"].replace(MAP_REGIMES)
+    df["one_minus_auc"] = 1 - df["auc"]
+    df["runtime"] = df["fit_time"] + df["predict_time"]
     return df

@@ -226,6 +226,7 @@ def main_ensemble(pars: dict):
 
     if ks:
         df_pred_results.build_from_data(**k_dict_results)
+        df_pred_results.compute_metrics(multiclass="average", average_strategy="macro")
         df_pred_results.to_csv(output_dir / "pred_dataframe_at_k.txt", sep="\t", index=False)
     
     df_ensemble_info = pd.concat(list_dfs_ensemble_info, axis=0, ignore_index=True)

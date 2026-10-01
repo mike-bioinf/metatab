@@ -13,6 +13,13 @@ MAP_CLASSIFIERS = {
     "realmlp": "RealMLP"
 }
 
+MAP_REGIMES = {
+    "default": "Default",
+    "tune": "HPO",
+    "ensemble": "Ensemble",
+    "autogluon": "AutoGluon"
+}
+
 CATEGORIES_CLASSIFIERS = [
     "ES-LightGBM", 
     "ES-XGBoost", 
