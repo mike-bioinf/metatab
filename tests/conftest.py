@@ -131,7 +131,14 @@ TEST_ESLGBM_FIXED_PARAMS = {
     "verbose": -1
 }
 
-TEST_TABPFN_FIXED_PARAMS = {
+# here we separate default and non default regimes to avoid warnings
+# related to the "inference_config" arguments
+TEST_TABPFN_FIXED_PARAMS_DEFAULT = {
+    "ignore_pretraining_limits": True,
+    "inference_config__MIN_UNIQUE_FOR_NUMERICAL_FEATURES": 0
+}
+
+TEST_TABPFN_FIXED_PARAMS_NON_DEFAULT = {
     "ignore_pretraining_limits": True
 }
 
@@ -202,7 +209,7 @@ ESTIMATOR_DEFAULT_CONFIGS = {
     "my_es_catboost_classifier.pkl": (MyESCatBoostClassifier, TEST_ESCATBOOST_FIXED_PARAMS, None, None, None),
     "my_lgbm_classifier.pkl": (MyLGBMClassifier, TEST_LGBM_FIXED_PARAMS, None, None, None),
     "my_es_lgbm_classifier.pkl": (MyESLGBMClassifier, TEST_ESLGBM_FIXED_PARAMS, None, None, None),
-    "my_tabpfn_classifier.pkl": (MyTabPFNClassifier, TEST_TABPFN_FIXED_PARAMS, None, None, None),
+    "my_tabpfn_classifier.pkl": (MyTabPFNClassifier, TEST_TABPFN_FIXED_PARAMS_DEFAULT, None, None, None),
     "my_realmpl_classifier.pkl": (MyRealMLPClassifier, TEST_REALMLP_FIXED_PARAMS, None, None, None),
     "my_tabm_classifier.pkl": (MyTabMClassifier, TEST_TABM_FIXED_PARAMS, None, None, None),
 }
@@ -217,7 +224,7 @@ ESTIMATOR_TUNE_CONFIGS = {
     "my_tuned_es_catboost_classifier.pkl": (MyTunedESCatBoostClassifier, TEST_ESCATBOOST_FIXED_PARAMS, TEST_TUNE_CONFIGURATION, None, TuningParams.CATBOOST),
     "my_tuned_lgbm_classifier.pkl": (MyTunedLGBMClassifier, TEST_LGBM_FIXED_PARAMS, TEST_TUNE_CONFIGURATION, None, TuningParams.LGMB),
     "my_tuned_es_lgbm_classifier.pkl": (MyTunedESLGBMClassifier, TEST_ESLGBM_FIXED_PARAMS, TEST_TUNE_CONFIGURATION, None, TuningParams.LGMB),
-    "my_tuned_tabpfn_classifier.pkl": (MyTunedTabPFNClassifier, TEST_TABPFN_FIXED_PARAMS, TEST_TUNE_CONFIGURATION, None, TuningParams.TABPFN),
+    "my_tuned_tabpfn_classifier.pkl": (MyTunedTabPFNClassifier, TEST_TABPFN_FIXED_PARAMS_NON_DEFAULT, TEST_TUNE_CONFIGURATION, None, TuningParams.TABPFN),
     "my_tuned_realmlp_classifier.pkl": (MyTunedRealMLPClassifier, TEST_REALMLP_FIXED_PARAMS, TEST_TUNE_CONFIGURATION, None, TuningParams.REALMLP),
     "my_tuned_tabm_classifier.pkl": (MyTunedTabMClassifier, TEST_TABM_FIXED_PARAMS, TEST_TUNE_CONFIGURATION, None, TuningParams.TABM)
 }
@@ -232,7 +239,7 @@ ESTIMATOR_ENSEMBLE_CONFIGS = {
     "my_ensembled_es_catboost_classifier.pkl": (MyEnsembledESCatBoostClassifier, TEST_ESCATBOOST_FIXED_PARAMS, None, TEST_ENSEMBLE_CONFIGURATION, TuningParams.CATBOOST),
     "my_ensembled_lgbm_classifier.pkl": (MyEnsembledLGBMClassifier, TEST_LGBM_FIXED_PARAMS, None, TEST_ENSEMBLE_CONFIGURATION, TuningParams.LGMB),
     "my_ensembled_es_lgbm_classifier.pkl": (MyEnsembledESLGBMClassifier, TEST_ESLGBM_FIXED_PARAMS, None, TEST_ENSEMBLE_CONFIGURATION, TuningParams.LGMB),
-    "my_ensembled_tabpfn_classifier.pkl": (MyEnsembledTabPFNClassifier, TEST_TABPFN_FIXED_PARAMS, None, TEST_ENSEMBLE_CONFIGURATION, TuningParams.TABPFN),
+    "my_ensembled_tabpfn_classifier.pkl": (MyEnsembledTabPFNClassifier, TEST_TABPFN_FIXED_PARAMS_NON_DEFAULT, None, TEST_ENSEMBLE_CONFIGURATION, TuningParams.TABPFN),
     "my_ensembled_realmlp_classifier.pkl": (MyEnsembledRealMLPClassifier, TEST_REALMLP_FIXED_PARAMS, None, TEST_ENSEMBLE_CONFIGURATION, TuningParams.REALMLP),
     "my_ensembled_tabm_classifier.pkl": (MyEnsembledTabMClassifier, TEST_TABM_FIXED_PARAMS, None, TEST_ENSEMBLE_CONFIGURATION, TuningParams.TABM)
 }

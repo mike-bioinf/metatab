@@ -1,4 +1,4 @@
-"""Script used to generate metadata
+"""Script to generate metadata
 
 We generate the metadata from the search data, metafeatures and (eventually) preprocessing info.
 The three components are concatenated in the right order since the resulting feature order is relevant 

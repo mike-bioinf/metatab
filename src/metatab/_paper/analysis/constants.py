@@ -13,12 +13,56 @@ MAP_CLASSIFIERS = {
     "realmlp": "RealMLP"
 }
 
+EARLY_STOPPED_CLASSIFIERS = [
+    "TabM", 
+    "RealMLP",
+    "ES-CatBoost",
+    "ES-LightGBM",
+    "ES-XGBoost"
+]
+
+EARLY_STOPPED_GBDTS = [
+    "ES-CatBoost",
+    "ES-LightGBM",
+    "ES-XGBoost"
+]
+
+GBDTS = [
+    "ES-CatBoost",
+    "ES-LightGBM",
+    "ES-XGBoost",
+    "CatBoost",
+    "LightGBM",
+    "XGBoost"
+]
+
 MAP_REGIMES = {
     "default": "Default",
     "tune": "HPO",
     "ensemble": "Ensemble",
     "autogluon": "AutoGluon"
 }
+
+
+MAP_PREPROCESSING = {
+    "base": "TSS",
+    "log": "Log",
+    "clr": "CLR",
+    "rclr": "rCLR",
+    "ilr": "ILR",
+    "arcsin": "aSIN",
+    "rss": "RSS"
+}
+
+CATEGORIES_PREPROCESSING = [
+    "TSS",
+    "Log",
+    "CLR",
+    "rCLR",
+    "ILR",
+    "aSIN",
+    "RSS"
+]
 
 CATEGORIES_CLASSIFIERS = [
     "ES-LightGBM", 
@@ -35,6 +79,16 @@ CATEGORIES_CLASSIFIERS = [
     "AutoGluon", 
     "CFE"
 ]
+
+PALETTE_PREPROCESSING = {
+    "TSS": "#7F7F7F",
+    "Log": "#E69F00",
+    "CLR": "#0072B2",
+    "rCLR": "#56B4E9",
+    "ILR": "#009E73",
+    "aSIN": "#CC79A7",
+    "RSS": "#D55E00",
+}
 
 PALETTE_CLASSIFIERS = {
     "ES-LightGBM": "#1f77b4",

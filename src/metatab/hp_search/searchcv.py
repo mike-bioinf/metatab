@@ -338,49 +338,6 @@ class SearchCV:
 
 
 
-    def _refit_with_point(
-        self,
-        X: XType,
-        y: YType, 
-        params: dict, 
-        fit_classifier_kwargs: dict
-    ) -> tuple:
-        '''
-        Helper that abstarct the logic of refitting the pipeline 
-        on the input data with a HP configuration.
-        '''
-        if self.tune_preprocessing:
-            preprocessing = params["preprocessing"]
-            cls_params = {k:v for k,v in params.items() if k != "preprocessing"}
-        else:
-            preprocessing = self.preprocessing
-            cls_params = params
-
-        estimator = create_classification_pipeline(self.classifier_cls, preprocessing)
-        # add the fixed and the HPO params
-        set_params_into_clf(estimator, self.classifier_fixed_params, set_tabpfn_inference_config=False)
-        set_params_into_clf(estimator, cls_params)   
-        
-        if self.early_stop_on_validation_set:
-            fitted_estimator, fit_time = fit_with_early_stop_on_validation_set(
-                pipe=estimator,
-                X=X,
-                y=y,
-                seed=self.seed,
-                validation_set_size=self.validation_set_size,
-                eval_set_parameter=self.eval_set_parameter,
-                fit_classifier_kwargs=fit_classifier_kwargs,
-                return_fit_time=True
-            )
-        else:
-            start_fit_time = time.time()
-            fitted_estimator = estimator.fit(X, y, **fit_classifier_kwargs)
-            fit_time = time.time() - start_fit_time
-
-        return fitted_estimator, fit_time
-
-
-
     def _fit_with_meta_points(
         self, 
         space: dict,
@@ -662,6 +619,49 @@ class SearchCV:
                 }
             else:
                 return np.nan
+
+
+
+    def _refit_with_point(
+        self,
+        X: XType,
+        y: YType, 
+        params: dict, 
+        fit_classifier_kwargs: dict
+    ) -> tuple:
+        '''
+        Helper that abstarct the logic of refitting the pipeline 
+        on the input data with a HP configuration.
+        '''
+        if self.tune_preprocessing:
+            preprocessing = params["preprocessing"]
+            cls_params = {k:v for k,v in params.items() if k != "preprocessing"}
+        else:
+            preprocessing = self.preprocessing
+            cls_params = params
+
+        estimator = create_classification_pipeline(self.classifier_cls, preprocessing)
+        # add the fixed and the HPO params
+        set_params_into_clf(estimator, self.classifier_fixed_params, set_tabpfn_inference_config=False)
+        set_params_into_clf(estimator, cls_params)   
+        
+        if self.early_stop_on_validation_set:
+            fitted_estimator, fit_time = fit_with_early_stop_on_validation_set(
+                pipe=estimator,
+                X=X,
+                y=y,
+                seed=self.seed,
+                validation_set_size=self.validation_set_size,
+                eval_set_parameter=self.eval_set_parameter,
+                fit_classifier_kwargs=fit_classifier_kwargs,
+                return_fit_time=True
+            )
+        else:
+            start_fit_time = time.time()
+            fitted_estimator = estimator.fit(X, y, **fit_classifier_kwargs)
+            fit_time = time.time() - start_fit_time
+
+        return fitted_estimator, fit_time
 
 
 
