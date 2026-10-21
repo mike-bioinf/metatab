@@ -7,7 +7,7 @@ from sklearn.pipeline import make_pipeline
 from metatab.estimators.utils.types import TunableEstimatorType
 from metatab.metalearning.encode.encode import get_encoding_scheme
 from metatab.metalearning.encode.transformers import NanToNone, ColToStr, InfToNan
-from metatab.preprocessing.types import PreprocessingStrategy
+from metatab.preprocessing import PreprocessingStrategy
 
 
 
@@ -18,7 +18,6 @@ def load_metadata(
     df = pd.read_csv(Path(__file__).parent / "data/metadata" / f"{estimator}.txt", sep="\t")
     df["preprocessing"] = preprocessing
     return df
-
 
 
 @pytest.mark.skipif(not (Path(__file__).parent / "data/metadata").exists(), reason="Missing Metadata")
@@ -37,7 +36,6 @@ def test_that_nan_to_none_transformer_works():
     assert not any(is_nan_list), "NanToNone transformer is not converting nan to None"
 
 
-
 @pytest.mark.skipif(not (Path(__file__).parent / "data/metadata").exists(), reason="Missing Metadata")
 def test_that_col_to_str_transformer_works():
     metadata = load_metadata("tabpfn")
@@ -53,7 +51,6 @@ def test_that_col_to_str_transformer_works():
         assert isinstance(value, str), "ColToStr doesn't cast to str."
 
 
-
 @pytest.mark.skipif(not (Path(__file__).parent / "data/metadata").exists(), reason="Missing Metadata")
 def test_that_inf_to_nan_transformer_works():
     X = pd.DataFrame([[np.inf, -np.inf], [1, None]], dtype="object")
@@ -61,7 +58,6 @@ def test_that_inf_to_nan_transformer_works():
     X_trans = transformer.fit_transform(X)
     assert X_trans.iloc[1, 1] is None, "InfToNan automatically downcast columns and values."
     assert X_trans.iloc[0, :].isna().sum() == 2, "InfToNan does not convert +/- inf values to nan"
-
 
 
 @pytest.mark.parametrize("estimator", ["random_forest", "xgb", "lgbm", "tabpfn", "catboost", "extra_trees", "realmlp", "tabm"])

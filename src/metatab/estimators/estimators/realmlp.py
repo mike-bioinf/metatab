@@ -5,7 +5,8 @@ import pandas as pd
 from typing import TYPE_CHECKING, Literal
 from sklearn.utils.validation import check_is_fitted
 from pytabkit import RealMLP_TD_Classifier
-from metatab.estimators.params import DefaultParams, TuningParams
+from metatab.estimators.params.space import TuningParams
+from metatab.estimators.params.default import DefaultParams
 
 from metatab.estimators.core import (
     AbstractBaseEstimator,
@@ -158,8 +159,7 @@ class MyRealMLPClassifier(DefaultEstimatorMixin, AbstractBaseEstimator):
             is_early_stopped=True,
             early_stop_rounds_parameter=None, # it uses best-last-epoch selection
             n_threads_parameter="n_threads",
-            device_parameter="device",
-            density_feature_selector_strategy="undersample" # to speed up
+            device_parameter="device"
         )
         return self
     
@@ -184,8 +184,7 @@ class MyTunedRealMLPClassifier(TunedEstimatorMixin, AbstractBaseEstimator):
             is_early_stopped=True,
             early_stop_rounds_parameter=None, # it uses best-last-epoch selection or adaptive patience
             n_threads_parameter="n_threads",
-            device_parameter="device",
-            density_feature_selector_strategy="undersample" # to speed up.
+            device_parameter="device"
         )
         return self
     
@@ -210,7 +209,6 @@ class MyEnsembledRealMLPClassifier(EnsembleEstimatorMixin, AbstractBaseEstimator
             is_early_stopped=True,
             early_stop_rounds_parameter=None, # it uses best-last-epoch selection or adaptive patience
             n_threads_parameter="n_threads",
-            device_parameter="device",
-            density_feature_selector_strategy="undersample" # to speed up.
+            device_parameter="device"
         )
         return self

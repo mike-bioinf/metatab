@@ -10,12 +10,11 @@ from metatab.estimators.utils.general import learn_sklearn_features_attributes
 from metatab.estimators.utils.general import check_predict_features
 from metatab.estimators.core.configurations import EarlyStopConfiguration, EnsembleConfiguration
 from metatab.estimators.params.utils import pick_estimator_tune_space
-from metatab.estimators.utils.general import check_meta_tuning_options
 
 if TYPE_CHECKING:
     import numpy as np
     from metatab.metalearning.types import MetaStrategy, MetaStrategyParams
-    from metatab.preprocessing.types import PreprocessingStrategy
+    from metatab.preprocessing import PreprocessingStrategy
     from metatab.estimators.estimators import EnsembledEstimator
     from metatab.metatab_utils.types import XType, YType
 
@@ -38,8 +37,6 @@ class MetaEnsembleInitializer:
         meta_strategy_params: None | MetaStrategyParams = None,
         meta_surrogate_model: None | str | Path = None,
         meta_seed: int = 42,
-        preprocessing: PreprocessingStrategy = "estimator_default",
-        tune_space: Literal["default"] = "default"
     ):
         '''
         The meta ensembled estimators are backed by a meta-learning framework that suggests,
@@ -67,10 +64,8 @@ class MetaEnsembleInitializer:
 
         
         ### User Note:
-            We highly suggest to NOT preprocess the microbial profiles apart 
-            expressing them in the "relative" format (i.e rows summing to 1). 
-            This is because we automatically select the most appropiate preprocessing scheme for the classifier.
-            In addition we learn the data metafeatures before preprocessing. 
+            We highly suggest to not use custom preprocessing on the microbial profiles.
+            This is because the meta-learning gramework has been trained only considering our preprocessing options.
             Therefore a custom pre-preprocessing can potentially hurt performance.
 
 
@@ -146,16 +141,7 @@ class MetaEnsembleInitializer:
                 a subset of the prior points is selected.
                 - If the number exceeds 1500, "new" points are drawn in addition 
                 to the prior points.
-            
-            preprocessing (PreprocessingStrategy, optional):
-                Preprocessing strategy to apply. 
-                Is highly suggested to leave "estimator_default",
-                since other options could affect performance negatively.
-                See the user note above for details.
-
-            tune_space (Literal["default"], optional):
-                Must be "default". Can be ignored by users.
-
+        
 
         ## Attributes:
 
@@ -208,8 +194,8 @@ class MetaEnsembleInitializer:
         self.meta_strategy_params=meta_strategy_params
         self.meta_surrogate_model=meta_surrogate_model
         self.meta_seed=meta_seed
-        self.preprocessing=preprocessing
-        self.tune_space=tune_space
+        self.preprocessing="base"
+        self.vary_preprocessing=False
 
 
 
@@ -219,8 +205,8 @@ class StandardEnsembleInitializer:
         save_path: str | Path,
         name: str = "random_ens",
         n_members: int = 16,
-        preprocessing: PreprocessingStrategy = "estimator_default",
-        tune_space: str = "default",
+        preprocessing: PreprocessingStrategy = "base",
+        vary_preprocessing: bool = False,
         seed: int = 0,
         time_limit: int = 10_000_000,
         log: int = 20,
@@ -247,20 +233,11 @@ class StandardEnsembleInitializer:
                 In other terms the number of hps configuration to use.
 
             preprocessing (PreprocessingStrategy, optional):
-                Preprocessing strategy applied to the data.
-                - For non early stopped classifiers, it is recommended to disable preprocessing ("no") 
-                and apply it beforehand, when possible, for efficiency, as otherwise it is 
-                repeated for every ensemble member.
-                - When early stopping is enabled, different validation splits are used.
-                Using this API ensures preprocessing is applied correctly across these splits.
-                - Custom preprocessing cannot be specified via this.
+                Preprocessing strategy to apply.
 
-            tune_space (str, optional):
-                Pre-defined tuning space to use. 
-                Use strings like "c{integer}" to select a specific space. 
-                For non-GBDT classifiers, only "default" or "c0" can be used. 
-                The default is recommended, as this parameter may be deprecated in the future 
-                and internal tests showed no major performance differences among alternative spaces.
+            vary_preprocessing (bool, optional):
+                Whether to vary the preprocessing for ensemble members.
+                When enabled overwrites the 'preprocessing' parameter. 
             
             seed (int, optional):
                 Seed controlling the randomness inherent to the estimators, hyperparameter 
@@ -288,9 +265,9 @@ class StandardEnsembleInitializer:
                 Number of threads used to parallelize the classifiers fitting process.
 
             device (Literal["cpu", "cuda", "auto"], optional):
-                Device where to fit the model(s). 
-                Note that for some estimators cannot be run on "cuda" raising an error.
-                If "auto" then it selects cuda if available AND the estimator requires GPU else cpu.
+                Device to fit the model(s) on.
+                - "cpu" or "cuda" explicitly selects the device.
+                - "auto" uses GPU if available and supported by the classifier; otherwise CPU.
 
                 
          ## Attributes:
@@ -334,7 +311,7 @@ class StandardEnsembleInitializer:
         self.n_members=n_members
         self.save_path=save_path
         self.preprocessing=preprocessing
-        self.tune_space=tune_space
+        self.vary_preprocessing=vary_preprocessing
         self.seed=seed
         self.time_limit=time_limit
         self.log=log
@@ -361,13 +338,6 @@ class BaseEnsemble(ClassifierMixin, BaseEstimator):
         if self.type_ensemble == "random":
             meta_ensemble_parameters = {}
         else:
-            # only this check is necessary here
-            check_meta_tuning_options(
-                estimator=self.type_estimator,
-                preprocessing=self.preprocessing,
-                tune_space=self.tune_space
-            )
-
             meta_ensemble_parameters = {
                 "meta_strategy": self.meta_strategy,
                 "meta_strategy_params": self.meta_strategy_params,
@@ -380,7 +350,7 @@ class BaseEnsemble(ClassifierMixin, BaseEstimator):
             algo=self.type_ensemble,
             n_members=self.n_members,
             save_path=self.save_path,
-            params_distributions=pick_estimator_tune_space(self.type_estimator, self.tune_space),
+            params_distributions=pick_estimator_tune_space(self.type_estimator),
             time_limit=self.time_limit,
             log=self.log,
             raise_error_fit_member=self.raise_error_fit_member,
@@ -390,6 +360,7 @@ class BaseEnsemble(ClassifierMixin, BaseEstimator):
 
         estimator: EnsembledEstimator = self.myclass(
             preprocessing=self.preprocessing,
+            vary_preprocessing=self.vary_preprocessing,
             seed=self.seed,
             n_threads=self.n_threads,
             device=self.device,
@@ -398,14 +369,11 @@ class BaseEnsemble(ClassifierMixin, BaseEstimator):
         )
 
         self.estimator_ = estimator.fit(X, y)
-        
         self.classes_ = le.classes_
         sklearn_info = learn_sklearn_features_attributes(X)
         ensemble_info = self.estimator_.collect_ensemble_fit_info()
         fit_info = {**sklearn_info, **ensemble_info}
-        for k, v in fit_info.items():
-            setattr(self, k, v)
-        
+        for k, v in fit_info.items(): setattr(self, k, v)
         return self
     
 

@@ -14,7 +14,6 @@ def test_surrogate_random_forest_predictions():
     assert pred_values.size == 100,  "The surrogate model returns a wrong number of predictions."
 
 
-
 ### --- testing the surrogate models loading process ----------------------------------------------------------------- 
 
 TEST_MANIFEST = {
@@ -41,7 +40,6 @@ TEST_MANIFEST = {
 def test_resolve_surrogate_models_folder_utility(
     tmp_path, monkeypatch, pkg_version, expected_folder
 ):
-
     manifest_path = tmp_path / "manifest.json"
     manifest_path.write_text(json.dumps(TEST_MANIFEST))
 

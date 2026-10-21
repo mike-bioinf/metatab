@@ -4,18 +4,18 @@ from sklearn.datasets import load_iris
 from sklearn.pipeline import make_pipeline
 from hyperopt.pyll.stochastic import sample
 from lightgbm import LGBMClassifier
-from metatab.estimators.params import TuningParams
+from metatab.estimators.params.space import TuningParams
 from metatab.estimators.estimators.lgbm import ignore_lgbm_feature_name_warning
 from metatab.hp_search.cv import CrossValidator
 
 
 
 def create_cross_validator() -> CrossValidator:
-    lgbm_fixed_params = TuningParams.LGBM_FIXED_PARAMS
-    pipe = make_pipeline(LGBMClassifier(**lgbm_fixed_params))
-
-    cross_validator = CrossValidator(
-        pipe=pipe,
+    return CrossValidator(
+        classifier_cls=LGBMClassifier,
+        classifier_fixed_params={},
+        preprocessing="base",
+        tune_preprocessing=False,
         clf_random_state_parameter="random_state",
         early_stop_on_validation_set=False,
         eval_set_parameter=None,
@@ -27,13 +27,11 @@ def create_cross_validator() -> CrossValidator:
         seed=0
     )
 
-    return cross_validator
-
 
 @ignore_lgbm_feature_name_warning
 def fit_cross_validator(cross_validator: CrossValidator) -> tuple[float, pd.DataFrame, CrossValidator]:
     X, y = load_iris(return_X_y=True, as_frame=False)
-    lgbm_tune_space = TuningParams.LGMB_C0
+    lgbm_tune_space = TuningParams.LGMB
     params = sample(lgbm_tune_space, rng=np.random.default_rng(0))
     loss, df_info = cross_validator.fit(X, y, params, "sum", True)
     return loss, df_info, cross_validator
@@ -46,7 +44,6 @@ def test_cross_validator_fitting_procedure_not_raise_expections():
 def test_cross_validator_works_as_expected():
     _, df_info, _ = fit_cross_validator(create_cross_validator())
     assert df_info.shape[0] == 3, "Wrong number of rows for df_info"
-
     try:
         for col in ["repeat", "fold", "loss"]:
             if col not in df_info.columns:

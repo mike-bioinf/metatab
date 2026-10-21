@@ -6,10 +6,10 @@ from dataclasses import asdict
 from pydantic import BaseModel, ConfigDict, field_serializer, model_validator
 from metatab.metatab_utils.general import enlist
 from metatab.metatab_utils.device import check_device_estimator_combination
-from metatab.preprocessing.types import PreprocessingStrategy
+from metatab.preprocessing import PreprocessingStrategy
 from metatab.metalearning.types import MetaStrategy, MetaStrategyParams
 from metatab.estimators.utils.types import TunableEstimatorType
-from metatab.estimators.utils.general import check_meta_tuning_options, check_validation_set_options
+from metatab.estimators.utils.general import check_validation_set_options
 
 from metatab.estimators.utils.constants import (
     NON_EARLY_STOPPED_ESTIMATORS,
@@ -37,8 +37,6 @@ class UserEnsembleConfiguration(BaseModel):
             Strategy used to derive hyperparameter configurations.
             - "random": random sampling from the tune space.
             - "meta": use metatab meta-learning framework.
-            Requires the estimator default `tune_space`, 
-            and works best when using the estimator default preprocessing (`preprocessing` parameter).
 
         n_members (int):
             Number of ensemble members.
@@ -48,12 +46,10 @@ class UserEnsembleConfiguration(BaseModel):
             
         preprocessing (PreprocessingStrategy):
             Preprocessing strategy to use.
-            Use "estimator_default" to apply the estimator default preprocessing.
 
-        tune_space (str): 
-            Hyperparameter space to use.
-            - Use "default" or "c0" for the estimator default.
-            - For GBDTs, multiple spaces are available ("c{number}").
+        vary_preprocessing (bool):
+            Whether to vary the data-preprocessing strategy for ensemble members.
+            When enabled overwrites the 'preprocessing' parameter.
 
         early_stop_on_validation_set (bool):
            Whether to enable early stopping using a validation set. 
@@ -113,9 +109,9 @@ class UserEnsembleConfiguration(BaseModel):
     algo: Literal["random", "meta"]
     n_members: int
     estimator: TunableEstimatorType
-    preprocessing: PreprocessingStrategy
-    tune_space: str
     early_stop_on_validation_set: bool
+    preprocessing: PreprocessingStrategy = "base"
+    vary_preprocessing: bool = False
     early_stop_rounds: int = 100
     validation_set_size: float = 0.3
     meta_surrogate_model: None | str | Path = None
@@ -167,7 +163,8 @@ class UserEnsembleConfiguration(BaseModel):
         check_device_estimator_combination(self.device, self.estimator)
         if self.algo == "meta": 
             check_meta_strategy_params(self.meta_strategy, self.meta_strategy_params, safe_none_params=True)
-            check_meta_tuning_options(self.estimator, self.preprocessing, self.tune_space)
+            if self.preprocessing != "base" or self.vary_preprocessing:
+                raise ValueError("Preprocessing cannot be varied and must be equal to 'base'.")
         return self
 
 
@@ -233,7 +230,7 @@ class CollectionUserEnsembleConfiguration:
         - the second component selects the ensemble algorithm.
         - n_members is the number of ensemble members.
 
-        Default settings are used for preprocessing, tuning space, and early stopping.
+        Default settings are used for preprocessing and early stopping.
 
         Parameters:
             wildcard (str): Wildcard string defining the collection.
@@ -271,8 +268,8 @@ class CollectionUserEnsembleConfiguration:
                     algo=ensemble_algo,
                     n_members=n_members,
                     estimator=estimator,
-                    preprocessing="estimator_default",
-                    tune_space="default",
+                    preprocessing="base",
+                    vary_preprocessing=False,
                     early_stop_on_validation_set=estimator not in NON_EARLY_STOPPED_ESTIMATORS
                 )
             )

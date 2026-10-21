@@ -11,7 +11,7 @@ from autogluon.tabular import TabularPredictor
 from metatab.metatab_utils.data_loader import DataLoader
 from metatab.metatab_utils.prediction.dataframe import PredictionDataframe
 from metatab.metatab_utils.general import create_unique_column_name
-from metatab.preprocessing.density_selector import DensityFeatureSelector
+from metatab.preprocessing import DensityFeatureSelector
 
 from metatab.cli.programs.resample.helper import (
     pick_splitter,
@@ -38,7 +38,6 @@ def main_autogluon(pars: dict):
 
     check_target_feature(pars)
     check_holdout_train_size(pars)
-
     adjust_io_paths_(pars, "input_data", "output_dir")
     manage_output_path(pars, "output_dir", True)
 
@@ -105,6 +104,7 @@ def main_autogluon(pars: dict):
         )
 
         t = time()
+
         autogluon_predictor.fit(
             train_data=train_data,
             presets=pars["preset"],
@@ -113,8 +113,8 @@ def main_autogluon(pars: dict):
             num_gpus=pars["ngpus"],
             auto_stack=True
         )
+        
         fit_time = time() - t
-
         logger.debug("\t-Estimator fitted on input data.")
         logger.debug(f"\t-Fit time in minutes: {round(fit_time/60, 2)}")
         

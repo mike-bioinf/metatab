@@ -28,8 +28,8 @@ def fit_with_early_stop_on_validation_set(
  ) -> Pipeline | tuple[Pipeline, float]:
     '''
     Utility to fit an estimator with early stop on a validation set.
-    The estimator must implement the early stop capability at its 
-    fit interface, following a GBDT-like API ("eval_set-like" parameter).
+    The estimator must implement the early stop capability in its fit interface, 
+    following a GBDT-like API ("eval_set-like" parameter).
 
     Parameters:
         pipe (Pipeline): 
@@ -117,7 +117,7 @@ def set_params_into_clf(
 ) -> None:
     '''
     Set the classifier (pipeline head) parameters in place. 
-    The method works with all classifiers, and with pipeline or classifier formatted params.
+    The method works with all classifiers, and with pipeline- or classifier-formatted params.
     The method overwrites the pre-existent parameters values for the ones specified in params.
     For tabpfn classifiers is possible to micro manage the setting of the `inference_config__` 
     marked parameters.

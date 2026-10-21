@@ -69,10 +69,10 @@ class MetadataGenerator():
     def generate(
         self,
         n_points: int,
-        point_corrector_kwargs: None | dict = None,
         mfe_fit_kwargs: None | dict = None,
         mfe_extract_kwargs: None | dict = None,
-        set_metagroups_in_index: bool = False
+        set_metagroups_in_index: bool = False,
+        set_as_last: str | None = "preprocessing"
     ) -> tuple[pd.DataFrame, list[dict]]:
         '''
         Generate the meta-data, i.e. sampled hps + data metafeatures.
@@ -80,9 +80,6 @@ class MetadataGenerator():
         Parameters:
             n_points (int): 
                 Number of points to draw from the hp space.
-            
-            point_corrector_kwargs (None | dict, optional):
-                Kwargs to pass to the PointCorrector `correct_point` method.
 
             mfe_fit_kwargs (None | dict, optional):
                 Kwargs to pass to the mfe `fit` method.
@@ -99,6 +96,11 @@ class MetadataGenerator():
                 The resulting multiindex has two levels namely "group"
                 and "feature" in this order. 
 
+            set_as_last (str | None, optional):
+                Set the specified feature as last feature in the resulting dataframe of candidates.
+                It is set to "preprocessing" by default since usually needed for this feature.
+                If the feature is not present then it does nothing.
+
         Returns:
             tuple[pd.DataFrame,list[dict]]:
             Returns the meta-data plus the list of hp points used to build it.
@@ -106,12 +108,11 @@ class MetadataGenerator():
             that the first row is built upon the first point in the list and so on.
         '''
         check_is_fitted(self, "is_fitted_")
-        point_corrector_kwargs = ensure_or_create(point_corrector_kwargs, dict)
         mfe_fit_kwargs = ensure_or_create(mfe_fit_kwargs, dict)
         mfe_extract_kwargs = ensure_or_create(mfe_extract_kwargs, dict)
 
         candidate_points = [
-            self.point_corrector.correct_point(sample, **point_corrector_kwargs)
+            self.point_corrector.correct_point(sample)
             for sample in self.sampler.fit(self.hp_space, self.seed).sample_points(n_points)
         ]
         
@@ -130,5 +131,20 @@ class MetadataGenerator():
                 [groups, df_candidate_points.columns],
                 names=["group", "feature"]
             )
+
+        if set_as_last:
+            columns = df_candidate_points.columns
+
+            if isinstance(columns, pd.MultiIndex):
+                feature_values = columns.get_level_values("feature")
+
+                if set_as_last in feature_values:
+                    mask = feature_values == set_as_last
+                    df_candidate_points = df_candidate_points.loc[:, list(columns[~mask]) + list(columns[mask])]
+
+            elif set_as_last in columns:
+                df_candidate_points = df_candidate_points[
+                    [col for col in columns if col != set_as_last] + [set_as_last]
+                ]
 
         return df_candidate_points, candidate_points

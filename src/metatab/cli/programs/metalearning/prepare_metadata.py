@@ -1,149 +1,125 @@
-"""Program to adapt and prepare search data as meta-data.
+"""Script to generate metadata
 
-In addition to the seach data, the program needs external info, in detail:
-- the dataset on which the search data has been generated
-- the preprocessing option used for the search
+We generate the metadata from the search data, metafeatures and (eventually) preprocessing info.
+The three components are concatenated in the right order since the resulting feature order is relevant 
+in the fitting and predict procedures of the the surrogate framework. We want the hps-metafeatures-preprocessing order.
 """
 
 import sys
 import argparse
-import logging
 import warnings
 import pandas as pd
-from metatab.metatab_utils.data_loader import DataLoader
+from pathlib import Path
 from metatab.metalearning.metafeatures import CustomMFE
-
-from metatab.cli.helper import (
-    create_logger,
-    adjust_paths_,
-    check_target_feature,
-    manage_output_path
-)
-
 
 
 
 def parse_args(args):
     p = argparse.ArgumentParser()
-
-    p.add_argument("-i", "--input-file", required=True, help="Input search data filepath.")
-
-    p.add_argument("-o", "--output-file", required=True, help="Output filepath.")
-
-    p.add_argument("-d", "--data-file", required=True, 
-                   help="""Filepath of the data on which the search data has been generated. Needed to obtain metafeatures.""")
     
-    p.add_argument("-m", "--input-mode", required=True, choices=["xy", "df"], 
-                   help="Defines the data input format. One between 'xy' and 'df'.")
+    p.add_argument("--profiles-folder", required=True, help="Path to the folder with the microbial profiles.")
     
-    p.add_argument("-y", "--target-feature", default=None,
-                    help="Name of the target feature column. Must be provided if --input-mode is equal to 'df'")
+    p.add_argument("--search-data-folder", required=True, 
+                   help="""Path to the folder with the search data for every estimator.
+                   The expected folder structure is 'estimator_folder' with txt files of search data nominated after the datasets.""")
+    
+    p.add_argument("--target-feature", default="Group", help="Name of the target feature column.")
 
-    p.add_argument("-p", "--preprocessing", required=True, choices=["base", "density_filter", "pca"],
-                   help="One must specify the preprocessing option used to generate the search data.")
+    p.add_argument("--preprocessing", 
+                   help="""
+                   If specified, add this string as the last column in the metadata.
+                   If unspecified, search for the preprocessing column and set it as last column in metadata.
+                   """)
     
-    p.add_argument("-s", "--seed", default=42, type=int, 
-                    help="Seed used to control the randomness inherent to some metafeatures")
-    
-    p.add_argument("--create-outdir", action="store_true", help="Create the output directory if does not exists.")
-
+    p.add_argument("--n-opt-iter", type=int, default=1500, help="The number of iterations in the search data to keep.")
+    p.add_argument("--output-folder", required=True, help="Path of the output folder")
     return p.parse_args(args)
 
 
 
-def log_program_setting(pars: dict, logger: logging.Logger) -> None:
-    logger.debug(
-        (
-            f"Launching the prepare-metadata program on '{pars["input_file"]}' as search data"
-            f" and '{pars["data_file"]}' as data, with '{pars["preprocessing"]}' as preprocessing info.\n"
-
-        )
-    )
-
-
-
-def aggregate_df_search(
-    df_search: pd.DataFrame, 
-    groupby_column: str = "search_iter",
-    loss_column: str = "loss",
-    remove_groupby_column: bool = False
-) -> pd.DataFrame:
+def prepare_search_data(df: pd.DataFrame, n_iter_keep: int) -> pd.DataFrame:
     '''
-    Abstract the logic to aggregate the df search.
-    Apply mean aggregation on the loss column and first aggregation on the others.
-    Returns the aggregated dataframe.
+    Prepare the search data by:
+    1. Selecting only the desired number of iterations starting from the top.
+    2. Aggregating the iteration cv losses.
+    3. Z-normalizing losses.
     '''
+    # 1. select
+    df = df.drop(columns=["fold", "repeat"])
+    df = df.loc[df["search_iter"] < n_iter_keep, :]
+
+    # 2. aggregate
     agg_dict = {}
-    for col in df_search.columns:
-        agg_func = "mean" if col == loss_column else "first"
+    for col in df.columns:
+        agg_func = "mean" if col == "loss" else "first"
         agg_dict[col] = agg_func
 
-    del agg_dict[groupby_column]
-    df_search_agg = df_search.groupby(groupby_column).agg(agg_dict).reset_index()
+    del agg_dict["search_iter"]
+    df_agg = df.groupby("search_iter").agg(agg_dict).reset_index()
+    del df_agg["search_iter"]
 
-    if remove_groupby_column:
-        del df_search_agg[groupby_column]
+    # 3. z-normalize loss
+    loss_col = df_agg["loss"]
+    df_agg["z_normalized_loss"] = (loss_col - loss_col.mean()) / loss_col.std()
+    del df_agg["loss"]
 
-    return df_search_agg
+    return df_agg
+
+
+
+def prepare_metadata(search_data: pd.DataFrame, metafeatures: dict, pars: dict):
+    '''
+    Prepare metadata from search data and metafeatures. In particular does 2 things:
+    1. Add metafeatures to search data.
+    2. Manage the preprocessing column.
+    '''
+    # we create a copy since the original df is not optimized in memory due to assign
+    with warnings.catch_warnings():
+        warnings.filterwarnings(action="ignore", category=pd.errors.PerformanceWarning)
+        metadata = search_data.assign(**metafeatures).copy()
+
+    if pars["preprocessing"] is None:
+        metadata = metadata[
+            [col for col in metadata.columns if col != "preprocessing"] + ["preprocessing"]
+        ]
+    else:
+        metadata["preprocessing"] = pars["preprocessing"]
+
+    return metadata
 
 
 
 
 def main():
-    logger = create_logger(sys.stdout)
-    pars = vars(parse_args(sys.argv[1:]))
-    check_target_feature(pars)
-    adjust_paths_(pars, "input_file", "output_file", "data_file")
-    manage_output_path(pars, "output_file", False)
-    
-    log_program_setting(pars, logger)
+    pars=vars(parse_args(sys.argv[1:]))
+    profiles_folder = Path(pars["profiles_folder"])
+    search_data_folder = Path(pars["search_data_folder"])
+    output_folder=Path(pars["output_folder"])
+    cmfe = CustomMFE()
 
-    # the sep specification is uniform accross our programs
-    df_search = pd.read_csv(pars["input_file"], sep="\t")
-    logger.debug("Search data loaded in memory!")
+    for path_dataset in profiles_folder.iterdir():
+        name_dataset_file = path_dataset.name
+        data = pd.read_table(path_dataset, sep="\t")
+        X = data.drop(columns=pars["target_feature"])
+        y = data[pars["target_feature"]]
+        metafeatures, _ = cmfe.fit(X, y).extract()
 
-    dl = DataLoader()
-
-    dl.load(
-        mode=pars["input_mode"],
-        path=pars["data_file"],
-        target_feature=pars["target_feature"],
-        load_as="generic"
-    )
-
-    X, y = dl.X, dl.y
-    logger.debug("Data loaded in memory!")
-
-    # remove the non useful columns
-    del df_search["fold"]
-    del df_search["repeat"]
-    
-    df_search_agg = aggregate_df_search(
-        df_search,
-        groupby_column="search_iter",
-        remove_groupby_column=True
-    )
-        
-    # z-normalize the loss column
-    loss_col = df_search_agg["loss"]
-    df_search_agg["z_normalized_loss"] = (loss_col - loss_col.mean()) / loss_col.std()
-    del df_search_agg["loss"]
-    
-    # add metafeatures
-    mfe = CustomMFE(seed=pars["seed"])
-    metafeatures, _ = mfe.fit(X, y).extract()
-
-    # we create a copy since the original df is not optimized in memory due to assign
-    with warnings.catch_warnings():
-        warnings.filterwarnings(action="ignore", category=pd.errors.PerformanceWarning)
-        df_search_agg = df_search_agg.assign(**metafeatures).copy()
-
-    # add preprocessing column as last column
-    df_search_agg["preprocessing"] = pars["preprocessing"]
-    
-    # save
-    df_search_agg.to_csv(pars["output_file"], sep="\t", index=False)
-    logger.debug(f"Output saved at {pars["output_file"]}")
+        # we must add the metafeatures to the corresponding search data for every estimator
+        for estimator in [
+            "random_forest", "extra_trees", "lgbm", "es_lgbm", "xgb", "es_xgb", 
+            "catboost", "es_catboost", "tabpfn", "tabm", "realmlp"
+        ]:
+            # create output folder
+            path_estimator_out = output_folder / estimator
+            path_estimator_out.mkdir(parents=True, exist_ok=True)
+            
+            for psde in (search_data_folder / estimator).iterdir():
+                # here we skip when the search data and metafeatures are computed on different datasets
+                if psde.name != name_dataset_file: continue
+                search_data = pd.read_table(psde, sep="\t")
+                search_data = prepare_search_data(search_data, pars["n_opt_iter"])
+                metadata = prepare_metadata(search_data, metafeatures, pars)
+                metadata.to_csv(path_estimator_out / name_dataset_file, sep="\t", index=False)
 
 
 

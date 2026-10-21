@@ -28,7 +28,7 @@ classifiers = [
 requires-python = ">=3.10,<3.14"
 dependencies = [
     "packaging>=25.0,<26.0",
-    "numpy>=2.1.3,<3",
+    "numpy>=2.1.3,<2.4", ## pymfe computes degenerate quantile statistics with numpy >= 2.4 (to restore <3 when corrected)
     "pandas>=2.2.3,<3",
     "hf-xet>=1.2.0",
     "huggingface-hub>=0.33.0",
@@ -42,6 +42,7 @@ dependencies = [
     "pydantic>=2.12.5,<3",
     "pytabkit>=1.7.3,<2",
     "autogluon.tabular[all,tabicl,mitra]>=1.4,<2",
+    "scikit-bio>=0.7.4,<1",
     "sentencepiece>=0.2,!=0.2.1", # the latest 0.2.1 version gives installation problem on python 3.12
     "joblib==1.5.1",  # the exact version should assures the deserialization of the surrogate models
     "tabpfn==2.1.3",  # TODO: to update with tabpfn. Checkpoint download process rely on this specific version for now
@@ -70,7 +71,6 @@ metatab-opt-search = "metatab.cli.programs.metalearning.opt_search:main"
 metatab-prepare-metadata = "metatab.cli.programs.metalearning.prepare_metadata:main"
 metatab-fit-surrogate = "metatab.cli.programs.metalearning.fit_surrogate:main"
 metatab-fit-surrogate-loo = "metatab.cli.programs.metalearning.fit_surrogate_loo:main"
-metatab-mfe-sensitivity = "metatab._paper.analysis.mfe_sensitivity.permutation:main"
 metatab-predict-surrogate = "metatab.cli.programs.metalearning.predict_surrogate:main"
 
 [tool.setuptools.packages.find]

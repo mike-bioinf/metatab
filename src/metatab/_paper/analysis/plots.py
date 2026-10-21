@@ -247,7 +247,7 @@ def draw_scatter_diagonal_plot(
         **sns_scatterplot_args
     )
     
-    ax.plot([0, 1], [0, 1], color='black', linestyle='-', transform=ax.transAxes)
+    ax.plot([0, 1], [0, 1], color='black', linestyle='-', linewidth=0.7, transform=ax.transAxes)
     min_value = min(df[x_column].min(), df[y_column].min())
     max_value = max(df[x_column].max(), df[y_column].max())
     ax.set_xlim(right=max_value, left=min_value)
@@ -754,4 +754,155 @@ def draw_win_rate_lolliplot(
     ax.set_xlabel("Win")
     ax.set_ylabel(category_column)
     ax.grid(axis="x", alpha=0.3)
+    return ax
+
+
+def draw_categorical_scatter(
+    ax: Axes,
+    df: pd.DataFrame,
+    *,
+    x: str,
+    y: str,
+    hue: str,
+    x_order: list,
+    palette: dict,
+    style: str | None = None,
+    markers: dict | None = None,
+    p_col: str | None = None,
+    p_corrected_col: str | None = None,
+    alpha_level: float = 0.05,
+    ref_line: float | None = None,
+    jitter_step: float = 0.08,
+    max_width: float = 0.6,
+    jitter_decimals: int = 3,
+    point_size: float = 80,
+    n_full: int = 4,
+    min_size: float = 25
+) -> Axes:
+    '''
+    Function to generate a scatterplot with a categorical x axis and a numeric y axis.
+ 
+    Parameters:
+        ax (Axes): 
+            Axes on which to draw the plot.
+        
+        df (pd.DataFrame): 
+            Dataframe in long format with one row per point to draw.
+        
+        x (str): 
+            Name of the column with the categories shown on the x axis.
+        
+        y (str): 
+            Name of the column with the numeric values shown on the y axis.
+        
+        hue (str): 
+            Name of the column mapped to the point colour.
+        
+        x_order (list): 
+            Order of the x categories. 
+            Rows with a category not in this list are dropped.
+        
+        palette (dict): 
+            Colour for each category of the hue column.  
+        
+        style (str | None, optional): 
+            Name of the column mapped to the marker shape.
+            If None circle are used.
+        
+        markers (dict | None, optional): 
+            Marker shape for each category of the style column.
+            If None and style is not None random default markers are assigned.
+        
+        p_col (str | None, optional): 
+            Name of the column with the p-values. 
+            Points with p < alpha_level are opaque, the others are faded. 
+            If None, all points are opaque.
+        
+        p_corrected_col (str | None, optional): 
+            Name of the column with the corrected p-values. 
+            Points with p < alpha_level have a thick edge. 
+            If None, all edges are thin.
+        
+        alpha_level (float, optional): 
+            Significance threshold used for p_col and p_corrected_col.
+        
+        ref_line (float | None, optional): 
+            y value of the dashed reference line (e.g. 0 for differences, 0.5 for win-rate). 
+            If None, no line is drawn.
+        
+        jitter_step (float, optional): 
+            Horizontal distance between neighbouring overlapping points (1.0 = distance between two x ticks).
+        
+        max_width (float, optional): 
+            Maximum total horizontal width of a cluster of overlapping points. Should be below 1.0.
+        
+        jitter_decimals (int, optional): 
+            Decimals used to round y when deciding whether points overlap.
+        
+        point_size (float, optional): 
+            Marker size of isolated points.
+        
+        n_full (int, optional): 
+            Number of overlapping points up to which the marker keeps full size. 
+            Beyond it, the size shrinks proportionally.
+        
+        min_size (float, optional): 
+            Minimum marker size.
+ 
+    Returns:
+        Axes: return the ax.
+    '''
+    d = df.copy()
+ 
+    # 1) x position of each category (drop rows that cannot be placed)
+    d["xpos"] = d[x].map({c: i for i, c in enumerate(x_order)})
+    d = d.dropna(subset=["xpos", y])
+ 
+    # 2) overlapping points = same x position and same (rounded) y
+    grp = d.groupby(["xpos", d[y].round(jitter_decimals)])
+    n = grp[y].transform("size")  # points in the group, repeated on each row
+    k = grp.cumcount()  # index of the point inside its group
+ 
+    # 3) fixed step, centred on the tick, total width capped
+    step = np.minimum(jitter_step, max_width / (n - 1).clip(lower=1))
+    d["xjit"] = d["xpos"] + (k - (n - 1) / 2) * step
+ 
+    # 4) marker size: full up to n_full points, then shrinks, never below min_size
+    d["size"] = np.maximum(point_size * np.minimum(1, n_full / n), min_size)
+ 
+    # 5) visual encodings
+    d["color"] = d[hue].map(palette)
+    d["alpha"] = np.where(d[p_col] < alpha_level, 0.9, 0.3) if p_col else 0.9
+    d["lw"] = np.where(d[p_corrected_col] < alpha_level, 1.5, 0.5) if p_corrected_col else 0.5
+ 
+    # 6) one scatter call per marker shape (matplotlib takes one marker per call)
+    if style is None:
+        groups = [("circle", d)]
+        markers = {"circle": "o"}
+    else:
+        if markers is None:
+            default_markers = ["o", "D", "s", "^", "v", "P", "X", "*"]
+            markers = {
+                v: default_markers[i % len(default_markers)]
+                for i, v in enumerate(d[style].unique())
+            }
+        groups = d.groupby(style, sort=False)
+ 
+    for key, g in groups:
+        ax.scatter(
+            g["xjit"], g[y],
+            c=list(g["color"]),
+            marker=markers[key],
+            alpha=g["alpha"].to_numpy(),
+            edgecolors="black",
+            linewidths=g["lw"].to_numpy(),
+            s=g["size"].to_numpy(),
+        )
+ 
+    # 7) axes formatting
+    ax.set_xticks(range(len(x_order)))
+    ax.set_xticklabels(x_order, rotation=45, ha="right", size=9)
+    ax.tick_params(axis="y", labelsize=9)
+    if ref_line is not None:
+        ax.axhline(ref_line, color="gray", linestyle="--", linewidth=0.8)
     return ax

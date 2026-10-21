@@ -29,6 +29,7 @@ if TYPE_CHECKING:
     from sklearn.preprocessing import LabelEncoder
     from metatab.estimators.estimators import Estimator
     from metatab.ensemble.family import FamilyEnsembleEstimator
+    from metatab.preprocessing import PreprocessingStrategy
     from autogluon.tabular import TabularPredictor
 
 
@@ -38,20 +39,6 @@ def check_target_feature(pars: dict) -> None:
     '''Check that the target feature is set with df input-mode'''
     if pars["input_mode"] == "df" and pars["target_feature"] is None:
         raise ValueError("'--target-feature' must be specified when '--input-mode' equal 'df'.")
-
-
-# def check_not_tunable_estimators(pars: dict, scenario: Literal["tune", "ensemble"]) -> None:
-#     if (estimator := pars["estimator"]) in NON_TUNABLE_ESTIMATORS:
-#         scenario_string = "tuned" if scenario == "tuned" else "ensembled"
-#         raise ValueError(f"Estimator '{estimator}' cannot be {scenario_string}.")
-
-
-# def check_incompatible_estimator_preprocessing(pars: dict) -> None:
-#     if (
-#         (estimator := pars["estimator"]) in PCA_INCOMPATIBLE_ESTIMATORS and 
-#         pars["preprocessing"] == "pca"
-#     ):
-#         raise ValueError(f"PCA preprocessing cannot be used with '{estimator}' estimator.")
 
 
 def check_early_stop_parameters(pars: dict) -> None:
@@ -71,6 +58,21 @@ def check_holdout_train_size(pars: dict) -> None:
             "'holdout_train_size' must be a float in (0, 1)."
         )
 
+
+def check_meta_preprocessing(pars: dict, regime: str) -> None:
+    if regime not in ["tune", "ensemble"]:
+        raise ValueError("regime can be one of: 'tune' and 'ensemble'.")
+
+    vary_preprocessing_param = "tune_preprocessing" if regime == "tune" else "vary_preprocessing"
+    algo_param = "tune_algo" if regime == "tune" else "ensemble_algo"
+    
+    if pars[algo_param] != "meta": return None
+
+    if pars[vary_preprocessing_param]:
+        raise ValueError("Meta-learning cannot be used varying the preprocessing.")
+    if pars["preprocessing"] != "base":
+        raise ValueError("Meta-learning can be used only with 'base' preprocessing.")
+    
 
 def check_device(pars: dict) -> None:
     '''General check on the device'''
@@ -130,7 +132,7 @@ def build_tune_configuration(pars: dict) -> TuneConfiguration:
         n_iter=pars["tune_n_iter"],
         n_cv_repeats=pars["tune_n_cv_repeats"],
         n_cv_folds=pars["tune_n_cv_folds"],
-        params_distributions=pick_estimator_tune_space(pars["estimator"], pars["tune_space"]),
+        params_distributions=pick_estimator_tune_space(pars["estimator"]),
         meta_surrogate_model=pars["tune_meta_surrogate_model"],
         meta_strategy=pars["tune_meta_strategy"]
     )
@@ -142,7 +144,7 @@ def build_ensemble_configuration(pars: dict) -> EnsembleConfiguration:
         algo=pars["ensemble_algo"],
         n_members=pars["ensemble_n_members"],
         save_path=pars["output_dir"] / "models",
-        params_distributions=pick_estimator_tune_space(pars["estimator"], pars["ensemble_space"]),
+        params_distributions=pick_estimator_tune_space(pars["estimator"]),
         meta_strategy=pars["ensemble_meta_strategy"],
         meta_surrogate_model=pars["ensemble_meta_surrogate_model"],
         time_limit=pars["ensemble_time_limit"],
@@ -164,7 +166,9 @@ def add_predict_attrs_to_estimator(
     label_encoder: LabelEncoder,
     X_train: pd.DataFrame,
     y_train: pd.Series,
-    fit_dataset_name: str
+    fit_dataset_name: str,
+    preprocessing: PreprocessingStrategy | None = None,
+    vary_preprocessing: bool | None = None
 ) -> None:
     '''
     Add to the estimator object the info needed by the predict program.
@@ -176,7 +180,9 @@ def add_predict_attrs_to_estimator(
         classes = label_encoder.classes_,
         classes_counts = np.unique(y_train.to_numpy(), return_counts=True)[1],
         fit_dataset_name = fit_dataset_name,
-        fit_features = X_train.columns.to_numpy()
+        fit_features = X_train.columns.to_numpy(),
+        preprocessing = preprocessing,
+        vary_preprocessing = vary_preprocessing
     )
 
 
@@ -227,7 +233,6 @@ def create_logger(stream) -> logging.Logger:
     logger.addHandler(stream_handler)
     logger.propagate = False
     return logger
-
 
 
 def h(text: str) -> str:

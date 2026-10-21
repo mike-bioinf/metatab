@@ -8,8 +8,8 @@ from metatab.metatab_utils.data_loader import DataLoader
 from metatab.metatab_utils.prediction.dataframe import PredictionDataframe
 from metatab.estimators.utils.pick import pick_estimator_class
 from metatab.estimators.estimators import TunedEstimator
-from metatab.estimators.utils.general import check_meta_tuning_options
 from metatab.metalearning.load import query_surrogate_framework
+from metatab.hp_search.config import ConfigSearchCV
 
 from metatab.cli.programs.resample.helper import (
     pick_splitter,
@@ -28,6 +28,7 @@ from metatab.cli.helper import (
     check_device,
     check_early_stop_parameters,
     check_holdout_train_size,
+    check_meta_preprocessing,
     adjust_io_paths_,
     manage_output_path,
     build_early_stop_configuration,
@@ -44,13 +45,7 @@ def main_tune(pars: dict):
     check_device(pars)
     check_early_stop_parameters(pars)
     check_holdout_train_size(pars)
-
-    if pars["tune_algo"] == "meta":
-        check_meta_tuning_options(
-            pars["estimator"],
-            pars["preprocessing"],
-            pars["tune_space"]
-        )
+    check_meta_preprocessing(pars, regime="tune")
 
     adjust_io_paths_(pars, "input_data", "output_dir")
     manage_output_path(pars, "output_dir", True)
@@ -73,10 +68,7 @@ def main_tune(pars: dict):
     X, y = dl.X, dl.y
     name_dataset = dl.generic_dataset_name
 
-    logger.debug(
-        f"\nLaunching {pars["tune_algo"]} tuned {pars["estimator"]}" + 
-        f" with {pars["tune_space"]} space on {name_dataset}!"
-    )
+    logger.debug(f"\nLaunching {pars["tune_algo"]} tuned {pars["estimator"]} on {name_dataset}!")
 
     # y encoding
     le = LabelEncoder()
@@ -92,9 +84,11 @@ def main_tune(pars: dict):
     configuration_filepath = output_dir / "configuration.json"
     create_json_configuration_file(pars, configuration_filepath)
     dict_results = defaultdict(list)
+    k_dict_results = defaultdict(list)
     df_pred_results = PredictionDataframe()
     dict_hpo = defaultdict(list)
     hpo_filepath = output_dir / "hpo.txt"
+    preprocessing_in_out = "variable" if pars["tune_preprocessing"] else pars["preprocessing"]
 
     if not pars["disable_additional_txt_output"]: 
         txt_folder = output_dir / "additional_txt_info"
@@ -116,6 +110,7 @@ def main_tune(pars: dict):
         # we pass different seeds to maximize resample entropy
         estimator: TunedEstimator = estimator_class(
             preprocessing=pars["preprocessing"],
+            vary_preprocessing=pars["tune_preprocessing"],
             seed=int(rng_estimator.integers(0, 2**32)),
             n_threads=pars["nthreads"],
             device=pars["device"],
@@ -123,13 +118,30 @@ def main_tune(pars: dict):
             tune_configuration=tune_conf
         )
 
+        base_iter_results = {
+            "dataset": name_dataset,
+            "predict_dataset": name_dataset,
+            "estimator": pars["estimator"],
+            "estimator_mode": pars["estimator_mode"],
+            "tune_algo": pars["tune_algo"],
+            "tune_n_iter": pars["tune_n_iter"],
+            "n_threads": pars["nthreads"],
+            "preprocessing": preprocessing_in_out,
+            "splitting_mode": pars["splitting_mode"],
+            "repetition": repetition,
+            "fold": fold,
+            "map_classes": str({c: i for c, i in enumerate(le.classes_)}),
+            "classes": np.arange(le.classes_.size),
+            "classes_counts": np.unique(y_train.to_numpy(), return_counts=True)[1],
+            "y_test": y_test
+        }
+
         t = time()
         estimator.fit(X_train, y_train)
         fit_time = time() - t
         logger.debug("\t-Estimator fitted on input data.")
         logger.debug(f"\t-Fit time in minutes: {round(fit_time/60, 2)}")
         
-        fit_preprocessing_dict: dict = estimator.collect_fit_preprocessing_info()
         best_hps = estimator.get_best_hps()
         refit_time = estimator.get_refit_time()
         search_losses = estimator.get_search_losses()
@@ -141,36 +153,24 @@ def main_tune(pars: dict):
         predict_time = time() - t
         logger.debug(f"\t-Inference time in minutes: {round(predict_time/60, 2)}\n")
 
-        iter_results = {
-            "dataset": name_dataset,
-            "predict_dataset": name_dataset,
-            "estimator": pars["estimator"],
-            "estimator_mode": pars["estimator_mode"],
-            "tune_space": pars["tune_space"],
-            "tune_algo": pars["tune_algo"],
-            "tune_n_iter": pars["tune_n_iter"],
-            "n_threads": pars["nthreads"],
-            "preprocessing": pars["preprocessing"],
-            "splitting_mode": pars["splitting_mode"],
-            "repetition": repetition,
-            "fold": fold,
-            **fit_preprocessing_dict,
-            "map_classes": str({c: i for c, i in enumerate(le.classes_)}),
-            "classes": np.arange(le.classes_.size),
-            "classes_counts": np.unique(y_train.to_numpy(), return_counts=True)[1],
-            "y_test": y_test,
+        main_iter_results = {
+            **base_iter_results,
             "pred_proba": pred_proba,
             "fit_time": fit_time,
             "predict_time": predict_time
         }
 
-        populate_dict_lists_(dict_results, **iter_results)
-    
+        populate_dict_lists_(dict_results, **main_iter_results)
+
+        if ConfigSearchCV.refit_at_k:
+            res_at_k = estimator._predict_proba_best_at_k(X_test)
+            for r in res_at_k:
+                populate_dict_lists_(k_dict_results, **base_iter_results, **r)
+
         populate_dict_lists_(
             dictionary=dict_hpo,
             dataset=name_dataset,
             estimator=pars["estimator"],
-            preprocessing=pars["preprocessing"],
             algo=pars["tune_algo"],
             n_iter=pars["tune_n_iter"],
             n_cv_repeats=pars["tune_n_cv_repeats"],
@@ -182,10 +182,22 @@ def main_tune(pars: dict):
             **best_hps,
             best_loss=best_loss,
             **search_losses_dict
-            )
+        )
+
+        # when we tune the preprocessing it is already added to 'dict_hpo' via 'best_hps'
+        if not pars["tune_preprocessing"]:
+            populate_dict_lists_(dict_hpo, preprocessing=pars["preprocessing"])
 
         if pars["save_estimators"]:
-            add_predict_attrs_to_estimator(estimator, le, X_train, y_train, name_dataset)
+            add_predict_attrs_to_estimator(
+                estimator=estimator, 
+                label_encoder=le, 
+                X_train=X_train, 
+                y_train=y_train, 
+                fit_dataset_name=name_dataset, 
+                preprocessing=pars["preprocessing"], 
+                vary_preprocessing=pars["tune_preprocessing"]
+            )
             estimator.save(get_iteration_estimator_filepath(pars, repetition, fold))
 
         if not pars["disable_additional_txt_output"]:
@@ -203,6 +215,11 @@ def main_tune(pars: dict):
     if not df_pred_results.has_recovered:
         df_pred_results.compute_metrics(multiclass="average", average_strategy="macro")
         df_pred_results.to_csv(results_filepath, sep="\t", index=False)
+
+    if ConfigSearchCV.refit_at_k:
+        df_pred_results.build_from_data(**k_dict_results)
+        df_pred_results.compute_metrics(multiclass="average", average_strategy="macro")
+        df_pred_results.to_csv(output_dir / "pred_dataframe_at_k.txt", sep="\t", index=False)
     
     pd.DataFrame(dict_hpo).to_csv(hpo_filepath, sep="\t", index=False)
     logger.debug(f"Outputs created at {output_dir}")

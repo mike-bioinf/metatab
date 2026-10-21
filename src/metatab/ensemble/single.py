@@ -8,26 +8,27 @@ import pickle
 import logging
 import numpy as np
 import pandas as pd
-from copy import deepcopy
 from pathlib import Path
 from typing import Literal, TYPE_CHECKING
 from functools import partial
 from sklearn.utils.validation import check_is_fitted
 from metatab.metatab_utils.exceptions import TimiLimitError
 from metatab.estimators.utils.fit import fit_with_early_stop_on_validation_set, set_params_into_clf
+from metatab.estimators.utils.general import add_prefix_to_params_when_absent
 from metatab.hp_search.point_corrector import PointCorrector
 from metatab.metalearning.acquisition_funcs import compute_upper_confidence_bound
-from metatab.metalearning.utils import check_meta_strategy, check_meta_strategy_params, get_estimator_n_candidate_points
+from metatab.metalearning.utils import check_meta_strategy, check_meta_strategy_params
 from metatab.metalearning.sampler import HyperoptRandomSampler
 from metatab.metalearning.metafeatures import CustomMFE
 from metatab.metalearning.metadata_evaluator import MetadataEvaluator
 from metatab.metalearning.load import query_surrogate_framework
-from metatab.metatab_utils.general import ensure_or_create
+from metatab.estimators.params.space import add_preprocessing_to_cls_search_space
+from metatab.preprocessing import create_classification_pipeline
 
 if TYPE_CHECKING:
     from sklearn.pipeline import Pipeline
-    from metatab.estimators.utils.types import TunableEstimatorType
-    from metatab.preprocessing.types import ResolvedPreprocessingStrategy
+    from metatab.estimators.utils.types import TunableEstimatorType, Classifier
+    from metatab.preprocessing import PreprocessingStrategy
     from metatab.metalearning.types import MetaStrategy, MetaStrategyParams
     from metatab.metatab_utils.types import XType, YType
 
@@ -35,7 +36,7 @@ if TYPE_CHECKING:
 
 class EnsembleEstimator:
     '''
-    Class that implements inner-estimator ensemble with a fixed preprocessing.
+    Class that implements inner-estimator ensemble.
 
     Key features:
     - Allows to select estimator hps configuration using the 'random' or 'meta' algo.
@@ -60,16 +61,22 @@ class EnsembleEstimator:
             named after the members (name ensemble + number member).
             Note that the folder is created if not existent.
 
-        pipe (Pipeline):
-            Pipeline object headed with a classifier.
+        classifier_cls (Classifier):
+            Classifier class.
+
+        classifier_fixed_params (dict):
+            Dict of classifier hps that are kept fix during ensembling.
         
         type_estimator (TunableEstimatorType):
             String estimator type. 
             Info needed in meta-optimization (`meta` algo).
             
-        preprocessing (ResolvedPreprocessingStrategy):
-            Type of preprocessing used for the pipe object.
-            Info needed in meta-optimization (`meta` algo).
+        preprocessing (PreprocessingStrategy):
+            Preprocessing strategy to use.
+
+        vary_preprocessing (bool):
+            Whether to vary the data-preprocessing strategy for ensemble members.
+            When enabled overwrites the 'preprocessing' parameter.
 
         params_distributions (dict): 
             Classifier search space from which the hps configuration are taken.
@@ -172,9 +179,11 @@ class EnsembleEstimator:
         algo: Literal["random", "meta"],
         n_members: int,
         save_path: str | Path,
-        pipe: Pipeline,
+        classifier_cls: Classifier,
+        classifier_fixed_params: dict,
         type_estimator: TunableEstimatorType,
-        preprocessing: ResolvedPreprocessingStrategy,
+        preprocessing: PreprocessingStrategy,
+        vary_preprocessing: bool,
         params_distributions: dict,
         early_stop_on_validation_set: bool, 
         eval_set_parameter: str = "eval_set",
@@ -196,9 +205,11 @@ class EnsembleEstimator:
         self.algo=algo
         self.n_members=n_members
         self.save_path=save_path
-        self.pipe=pipe
+        self.classifier_cls=classifier_cls
+        self.classifier_fixed_params=classifier_fixed_params
         self.type_estimator=type_estimator
         self.preprocessing=preprocessing
+        self.vary_preprocessing=vary_preprocessing
         self.params_distributions=params_distributions
         self.early_stop_on_validation_set=early_stop_on_validation_set
         self.eval_set_parameter=eval_set_parameter
@@ -233,8 +244,18 @@ class EnsembleEstimator:
         self._save_path = self.save_path if isinstance(self.save_path, Path) else Path(self.save_path)
         self._save_path.mkdir(parents=True, exist_ok=True)
         
-        fit_classifier_kwargs = ensure_or_create(self.fit_classifier_kwargs, dict)
-        hps_confs = self._get_hps_configurations(X, y)
+        fit_classifier_kwargs = add_prefix_to_params_when_absent(
+            self.fit_classifier_kwargs, 
+            f"{self.classifier_cls.__name__.lower()}__"
+        ) \
+            if self.fit_classifier_kwargs \
+            else {}
+
+        space = add_preprocessing_to_cls_search_space(self.params_distributions) \
+            if self.vary_preprocessing \
+            else self.params_distributions
+
+        hps_confs = self._get_hps_configurations(X, y, space)
         member_names = [self.name + "_m" + str(i) for i in range(self.n_members)]
         
         time_prepation = round((time.time() - start_time)/60, 2)
@@ -255,9 +276,17 @@ class EnsembleEstimator:
                 if self._is_time_limit_violated(start_time):
                     raise TimiLimitError("Violated time limit")
                 
-                # deepcopy necessary since catboost cannot be refitted
-                pipe = deepcopy(self.pipe)
-                set_params_into_clf(pipe, hp_conf)
+                if self.vary_preprocessing:
+                    member_preprocessing = hp_conf["preprocessing"]
+                    cls_conf = {k:v for k, v in hp_conf.items() if k != "preprocessing"}
+                else:
+                    member_preprocessing = self.preprocessing
+                    cls_conf = hp_conf
+
+                pipe = create_classification_pipeline(self.classifier_cls, member_preprocessing)
+                # add fixed and sampled hps
+                set_params_into_clf(pipe, self.classifier_fixed_params, set_tabpfn_inference_config=False)
+                set_params_into_clf(pipe, cls_conf)
             
                 if self.early_stop_on_validation_set:
                     pipe, fit_time = fit_with_early_stop_on_validation_set(
@@ -289,6 +318,7 @@ class EnsembleEstimator:
 
                 self._recap_members.append({
                     "member": member_name,
+                    "preprocessing": member_preprocessing,
                     "fit_successful": True,
                     "fit_time": fit_time,
                     "error": None
@@ -306,6 +336,7 @@ class EnsembleEstimator:
 
                 self._recap_members.append({
                     "member": member_name,
+                    "preprocessing": member_preprocessing,
                     "fit_successful": False,
                     "fit_time": np.nan,
                     "error": str(e)
@@ -340,7 +371,7 @@ class EnsembleEstimator:
 
     def predict_proba(self, X: XType) -> np.ndarray:
         self._check_on_predict_calls()
-        predictions = self._get_members_predicted_probabilities(X)
+        predictions, _, _ = self._get_members_predicted_probabilities(X)
         return np.stack(predictions, axis=0).mean(axis=0)
 
 
@@ -350,21 +381,30 @@ class EnsembleEstimator:
         Returns a dict of member name - predictions couples.
         '''
         self._check_on_predict_calls()
-        predictions = self._get_members_predicted_probabilities(X)
+        predictions, _, _ = self._get_members_predicted_probabilities(X)
         return {k:v for k, v in zip(self.successful_members_, predictions)}
     
 
-    def _get_members_predicted_probabilities(self, X: XType) -> list[np.ndarray]:
+    def _get_members_predicted_probabilities(self, X: XType) -> tuple[list]:
         '''
         Get the predicted probabilities of the ensemble members in a list
         that reflects the order of `self.successful_members_`.
+        Returns also the fit and predict times of each member.
         '''
         predictions = []
+        predict_times = []
+        fit_times = []
         for member in self.successful_members_:
             path_successful_member = self._save_path / f"{member}.pkl"
             member_model: Pipeline = self._try_load_model(path_successful_member)
-            predictions.append(member_model.predict_proba(X))
-        return predictions
+            fit_time = self.df_members_.loc[self.df_members_["member"] == member, "fit_time"].iloc[0]
+            t = time.time()
+            preds = member_model.predict_proba(X)
+            predict_time = time.time() - t
+            predictions.append(preds)
+            fit_times.append(fit_time)
+            predict_times.append(predict_time)
+        return predictions, fit_times, predict_times
 
 
     # We want only this method to work when we raise errors for single
@@ -439,13 +479,18 @@ class EnsembleEstimator:
         return (time.time() - start_time) > self.time_limit
         
 
-    def _get_hps_configurations(self, X: XType, y: YType) -> list[dict]:
+    def _get_hps_configurations(
+        self, 
+        X: XType, 
+        y: YType,
+        space: dict
+    ) -> list[dict]:
         sampler = HyperoptRandomSampler()
-        point_corrector = PointCorrector()
+        point_corrector = PointCorrector(apply_hypeopt_corrections=True, estimator=self.type_estimator)
         mfe = CustomMFE()
         
         if self.algo == "random":
-            sampler.fit(self.params_distributions, seed=self.seed)    
+            sampler.fit(space, self.seed)    
             points = sampler.sample_points(self.n_members)
 
         elif self.algo == "meta":
@@ -453,15 +498,13 @@ class EnsembleEstimator:
                 metafeatures, _ = mfe.fit(X, y).extract()
             else:
                 metafeatures = self.meta_features
-
-            metafeatures["preprocessing"] = self.preprocessing
             
             if self.meta_candidate_points is None:
-                n_candidate_points = max(get_estimator_n_candidate_points(self.type_estimator), self.n_members) \
+                n_candidate_points = max(1500, self.n_members) \
                     if self.meta_strategy_params is None \
                     else self.meta_strategy_params.n_candidate_points
                 
-                sampler.fit(self.params_distributions, seed=self.meta_seed)
+                sampler.fit(space, self.meta_seed)
                 candidate_points = sampler.sample_points(n_candidate_points)
             else:
                 candidate_points = self.meta_candidate_points
@@ -472,6 +515,12 @@ class EnsembleEstimator:
             with warnings.catch_warnings():
                 warnings.filterwarnings(action="ignore", category=pd.errors.PerformanceWarning)
                 metadata = df_candidate_points.assign(**metafeatures).copy()
+
+            # move or add the preprocessing
+            if self.vary_preprocessing:
+                metadata = metadata[[col for col in metadata.columns if col != "preprocessing"] + ["preprocessing"]]
+            else:
+                metadata["preprocessing"] = self.preprocessing
 
             acquisition_func = partial(
                 compute_upper_confidence_bound,
@@ -531,12 +580,4 @@ class EnsembleEstimator:
                     seed=self.seed if self.meta_strategy_params is None else self.meta_strategy_params.seed
                 )
 
-        return [
-            point_corrector.correct_point(
-                point, 
-                apply_hypeopt_corrections=True, 
-                estimator=self.type_estimator,
-                estimator_corrections="all"
-            )
-            for point in points
-        ]
+        return [point_corrector.correct_point(point) for point in points]

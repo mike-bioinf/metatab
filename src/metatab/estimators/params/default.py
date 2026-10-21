@@ -7,7 +7,7 @@ class DefaultParams:
     the parameters controlling the early stop procedure for some estimators.
     '''
     
-    RANDOM_FOREST_DEFAULT_PARAMS = {}
+    RF_DEFAULT_PARAMS = {}
 
     EXTRA_TREES_DEFAULT_PARAMS = {}
 
@@ -63,7 +63,7 @@ class DefaultParams:
         "ignore_pretraining_limits": True,
         # suppressing categorical transformation 
         # that leads to testing data loss with small sparse data
-        "inference_config": {"MIN_UNIQUE_FOR_NUMERICAL_FEATURES": 0}
+        "inference_config__MIN_UNIQUE_FOR_NUMERICAL_FEATURES": 0
     }
 
     REALMLP_DEFAULT_PARAMS = {

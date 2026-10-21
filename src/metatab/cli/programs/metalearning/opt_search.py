@@ -49,21 +49,9 @@ def parse_args(args):
 def log_program_setting(logger: Logger, pars: dict, name_dataset: str):
     logger.debug((
         f"\nLaunching {pars["tune_algo"]} search on {name_dataset} with"
-        f" {pars["estimator"]} on the {pars["tune_space"]} tune space, with"
-        f" {pars["tune_n_iter"]} iterations and {pars["tune_n_cv_repeats"]}-repeat {pars["tune_n_cv_folds"]}-fold cv."
+        f" {pars["estimator"]} with {pars["tune_n_iter"]} iterations and" 
+        f" {pars["tune_n_cv_repeats"]}-repeat {pars["tune_n_cv_folds"]}-fold cv."
     ))
-
-
-
-def check_n_iter(pars: dict) -> None:
-    '''
-    SearchCV skips the evaluation when optimizing for a single point.
-    The df search is not constructed in this scenario.
-    '''
-    if pars["tune_n_iter"] == 1:
-        raise ValueError(
-            "Is not possible to collect the search data when 'tune_n_iter' equal 1."
-        )
 
 
 
@@ -73,7 +61,11 @@ def main():
 
     check_target_feature(pars)
     check_early_stop_parameters(pars)
-    check_n_iter(pars)
+
+    if pars["tune_n_iter"] == 1:
+        raise ValueError(
+            "Is not possible to collect the search data when 'tune_n_iter' equal 1."
+        )
     
     adjust_io_paths_(pars, "input_data", "output_dir")
     manage_output_path(pars, "output_dir", True)
@@ -106,6 +98,7 @@ def main():
 
     estimator: Estimator = estimator_class(
         preprocessing=pars["preprocessing"],
+        vary_preprocessing=pars["tune_preprocessing"],
         seed=pars["seed"],
         n_threads=pars["nthreads"],
         device=pars["device"],

@@ -11,12 +11,11 @@ from sklearn.preprocessing import LabelEncoder
 from autogluon.tabular import TabularPredictor
 from metatab.metatab_utils.data_loader import DataLoader
 from metatab.metatab_utils.general import create_unique_column_name
-from metatab.estimators.utils.general import check_meta_tuning_options
 from metatab.estimators.utils.pick import pick_estimator_class
 from metatab.estimators.estimators import Estimator
 from metatab.ensemble.family import FamilyEnsembleEstimator
 from metatab.ensemble.utils import BagCV
-from metatab.preprocessing.density_selector import DensityFeatureSelector
+from metatab.preprocessing import DensityFeatureSelector
 from metatab.metalearning.load import query_surrogate_framework
 
 from metatab.cli.helper import (
@@ -25,6 +24,7 @@ from metatab.cli.helper import (
     check_early_stop_parameters,
     check_device,
     check_target_feature,
+    check_meta_preprocessing,
     create_logger,
     build_early_stop_configuration,
     build_tune_configuration,
@@ -32,7 +32,7 @@ from metatab.cli.helper import (
     get_ensemble_configuration,
     download_required_surrogate_models,
     create_json_configuration_file,
-    add_predict_attrs_to_estimator
+    add_predict_attrs_to_estimator,
 )
 
 from metatab.cli.parser import (
@@ -82,14 +82,18 @@ def main():
         (pars["estimator_mode"] == "tune" and pars["tune_algo"] == "meta") or
         (pars["estimator_mode"] == "ensemble" and pars["ensemble_algo"] == "meta")
     ):
-        space_attr = "ensemble_space" if pars["estimator_mode"] == "ensemble" else "tune_space"
-        check_meta_tuning_options(
-            pars["estimator"], 
-            pars["preprocessing"], 
-            pars[space_attr]
-        )
-        # this is to avoid the first download inside the fit call inflating times
+        # avoid the first download inside the fit call inflating execution times
         query_surrogate_framework(pars["estimator"])
+        # check preprocessing
+        check_meta_preprocessing(pars, regime=pars["estimator_mode"])
+        
+    if (
+        (pars["estimator_mode"] == "tune" and pars["tune_preprocessing"]) or
+        (pars["estimator_mode"] == "ensemble" and pars["vary_preprocessing"])
+    ):
+        vary_preprocessing = True
+    else:
+        vary_preprocessing = False
     
     adjust_io_paths_(pars, "input_data", "output_dir")
     manage_output_path(pars, "output_dir", True)
@@ -176,6 +180,7 @@ def main():
         
         estimator: Estimator = estimator_class(
             preprocessing=pars["preprocessing"],
+            vary_preprocessing=vary_preprocessing,
             seed=pars["seed"],
             n_threads=pars["nthreads"],
             device=pars["device"],
@@ -195,7 +200,9 @@ def main():
         label_encoder=le,
         X_train=X,
         y_train=y_enc,
-        fit_dataset_name=fit_dataset_name
+        fit_dataset_name=fit_dataset_name,
+        preprocessing=pars.get("preprocessing", None),
+        vary_preprocessing=vary_preprocessing
     )
 
     out_filepath = pars["output_dir"] / "estimator.pkl"

@@ -33,7 +33,7 @@ if TYPE_CHECKING:
 
 class FamilyEnsembleEstimator:
     '''
-    Hierarchical ensemble of inner or first level ensembles.
+    Hierarchical ensemble of inner (first level) classifier ensembles.
 
     Parameters:
         name (str): Family ensemble name.
@@ -226,7 +226,7 @@ class FamilyEnsembleEstimator:
         logger.info("Preparation phase: processed metafeatures directive.")
 
         # TODO: for now we do not optimize-cache the candidate points drawing process
-        # since it's more difficult to control this and the raw process is quite fast        
+        # since it's more difficult to control and the raw process is quite fast        
         meta_candidate_points = None
         logger.info("Preparation phase: processed meta_candidate_points directive.")
 
@@ -440,7 +440,7 @@ class FamilyEnsembleEstimator:
             algo=conf.algo,
             n_members=conf.n_members,
             save_path=self._save_path / conf.name,
-            params_distributions=pick_estimator_tune_space(conf.estimator, conf.tune_space),
+            params_distributions=pick_estimator_tune_space(conf.estimator),
             meta_strategy=conf.meta_strategy,
             meta_strategy_params=conf.meta_strategy_params,
             meta_surrogate_model=conf.meta_surrogate_model,
@@ -462,7 +462,8 @@ class FamilyEnsembleEstimator:
             esc = None
 
         return estimator_class(
-            preprocessing=conf.preprocessing, 
+            preprocessing=conf.preprocessing,
+            vary_preprocessing=conf.vary_preprocessing,
             seed=conf.seed,
             n_threads=self.n_jobs,
             device=conf.device,

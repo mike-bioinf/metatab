@@ -94,6 +94,7 @@ def main_default(pars: dict):
         # we pass different seeds to maximize resample entropy
         estimator: DefaultEstimator = estimator_class(
             preprocessing=pars["preprocessing"],
+            vary_preprocessing=False,
             seed=int(rng_estimator.integers(0, 2**32)),
             n_threads=pars["nthreads"],
             device=pars["device"],
@@ -105,8 +106,6 @@ def main_default(pars: dict):
         fit_time = time() - t
         logger.debug("\t-Estimator fitted on input data.")
         logger.debug(f"\t-Fit time in minutes: {round(fit_time/60, 2)}")
-        
-        fit_preprocessing_dict: dict = estimator.collect_fit_preprocessing_info()
     
         t = time()
         pred_proba = estimator.predict_proba(X_test)
@@ -124,7 +123,6 @@ def main_default(pars: dict):
             "splitting_mode": pars["splitting_mode"],
             "repetition": repetition,
             "fold": fold,
-            **fit_preprocessing_dict,
             "map_classes": str({c: i for c, i in enumerate(le.classes_)}),
             "classes": np.arange(le.classes_.size),
             "classes_counts": np.unique(y_train.to_numpy(), return_counts=True)[1],
@@ -137,7 +135,15 @@ def main_default(pars: dict):
         populate_dict_lists_(dict_results, **iter_results)
 
         if pars["save_estimators"]:
-            add_predict_attrs_to_estimator(estimator, le, X_train, y_train, name_dataset)
+            add_predict_attrs_to_estimator(
+                estimator=estimator, 
+                label_encoder=le, 
+                X_train=X_train, 
+                y_train=y_train, 
+                fit_dataset_name=name_dataset, 
+                preprocessing=pars["preprocessing"], 
+                vary_preprocessing=False
+            )
             estimator.save(get_iteration_estimator_filepath(pars, repetition, fold))
 
         if not pars["disable_additional_txt_output"]:
