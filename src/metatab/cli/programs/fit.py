@@ -24,6 +24,7 @@ from metatab.cli.helper import (
     check_early_stop_parameters,
     check_device,
     check_target_feature,
+    check_meta_preprocessing,
     create_logger,
     build_early_stop_configuration,
     build_tune_configuration,
@@ -31,7 +32,7 @@ from metatab.cli.helper import (
     get_ensemble_configuration,
     download_required_surrogate_models,
     create_json_configuration_file,
-    add_predict_attrs_to_estimator
+    add_predict_attrs_to_estimator,
 )
 
 from metatab.cli.parser import (
@@ -83,7 +84,9 @@ def main():
     ):
         # avoid the first download inside the fit call inflating execution times
         query_surrogate_framework(pars["estimator"])
-
+        # check preprocessing
+        check_meta_preprocessing(pars, regime=pars["estimator_mode"])
+        
     if (
         (pars["estimator_mode"] == "tune" and pars["tune_preprocessing"]) or
         (pars["estimator_mode"] == "ensemble" and pars["vary_preprocessing"])

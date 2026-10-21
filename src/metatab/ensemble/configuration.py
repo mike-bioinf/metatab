@@ -163,6 +163,8 @@ class UserEnsembleConfiguration(BaseModel):
         check_device_estimator_combination(self.device, self.estimator)
         if self.algo == "meta": 
             check_meta_strategy_params(self.meta_strategy, self.meta_strategy_params, safe_none_params=True)
+            if self.preprocessing != "base" or self.vary_preprocessing:
+                raise ValueError("Preprocessing cannot be varied and must be equal to 'base'.")
         return self
 
 

@@ -28,6 +28,7 @@ from metatab.cli.helper import (
     check_device,
     check_early_stop_parameters,
     check_holdout_train_size,
+    check_meta_preprocessing,
     adjust_io_paths_,
     manage_output_path,
     build_early_stop_configuration,
@@ -44,6 +45,7 @@ def main_tune(pars: dict):
     check_device(pars)
     check_early_stop_parameters(pars)
     check_holdout_train_size(pars)
+    check_meta_preprocessing(pars, regime="tune")
 
     adjust_io_paths_(pars, "input_data", "output_dir")
     manage_output_path(pars, "output_dir", True)

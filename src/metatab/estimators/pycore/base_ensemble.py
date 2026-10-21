@@ -26,8 +26,6 @@ class MetaEnsembleInitializer:
         save_path: str | Path,
         name: str = "meta_ens",
         n_members: int = 16,
-        preprocessing: PreprocessingStrategy = "base",
-        vary_preprocessing: bool = False,
         seed: int = 0,
         time_limit: int = 10_000_000,
         log: int = 20,
@@ -84,13 +82,6 @@ class MetaEnsembleInitializer:
             n_members (int, optional):
                 Number of ensemble members.
                 In other terms the number of hps configuration to derive.
-
-            preprocessing (PreprocessingStrategy, optional):
-                Preprocessing strategy to apply.
-
-            vary_preprocessing (bool, optional):
-                Whether to consider all preprocessing options.
-                When enabled overwrites the 'preprocessing' parameter. 
 
             seed (int, optional):
                 Seed controlling the randomness inherent to the classifier and validation splits when used.
@@ -192,8 +183,6 @@ class MetaEnsembleInitializer:
         self.name=name
         self.n_members=n_members
         self.save_path=save_path
-        self.preprocessing=preprocessing
-        self.vary_preprocessing=vary_preprocessing
         self.seed=seed
         self.time_limit=time_limit
         self.log=log
@@ -205,6 +194,8 @@ class MetaEnsembleInitializer:
         self.meta_strategy_params=meta_strategy_params
         self.meta_surrogate_model=meta_surrogate_model
         self.meta_seed=meta_seed
+        self.preprocessing="base"
+        self.vary_preprocessing=False
 
 
 

@@ -26,8 +26,6 @@ class MetaTuneInitializer:
         n_iter: int = 1,
         n_cv_repeats: int = 1,
         n_cv_folds: int = 5, 
-        preprocessing: PreprocessingStrategy = "base",
-        tune_preprocessing: bool = False,
         seed: int = 0,
         n_threads: int = 1,
         device: Literal["cpu", "cuda", "auto"] = "auto",
@@ -82,13 +80,7 @@ class MetaTuneInitializer:
 
             n_cv_repeats (int, optional):
                 Number of times the inner cross-validation is repeated for each hyperparameter configuration.
-            
-            preprocessing (PreprocessingStrategy, optional):
-                Preprocessing strategy to apply. 
 
-            tune_preprocessing (bool, optional):
-                Whether tune the preprocessing.
-                Overwrites 'preprocessing' parameter when enabled.
 
             seed (int, optional):
                 Random seed controlling classifier randomness and the inner cross-validation procedure.
@@ -177,8 +169,6 @@ class MetaTuneInitializer:
         self.n_iter=n_iter
         self.n_cv_repeats=n_cv_repeats
         self.n_cv_folds=n_cv_folds
-        self.preprocessing=preprocessing
-        self.tune_preprocessing=tune_preprocessing
         self.seed=seed
         self.n_threads=n_threads
         self.device=device
@@ -189,6 +179,8 @@ class MetaTuneInitializer:
         self.build_df_search=build_df_search
         self.raise_error_during_search=raise_error_during_search
         self.algo=algo
+        self.preprocessing="base"
+        self.tune_preprocessing=False
 
 
 class StandardTuneInitializer:

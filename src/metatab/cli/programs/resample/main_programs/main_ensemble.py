@@ -24,6 +24,7 @@ from metatab.cli.helper import (
     create_json_configuration_file,
     check_target_feature,
     check_early_stop_parameters,
+    check_meta_preprocessing,
     check_device,
     check_holdout_train_size,
     adjust_io_paths_,
@@ -42,6 +43,7 @@ def main_ensemble(pars: dict):
     check_device(pars)
     check_early_stop_parameters(pars)
     check_holdout_train_size(pars)
+    check_meta_preprocessing(pars, regime="ensemble")
 
     adjust_io_paths_(pars, "input_data", "output_dir")
     manage_output_path(pars, "output_dir", True)

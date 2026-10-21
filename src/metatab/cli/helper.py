@@ -41,20 +41,6 @@ def check_target_feature(pars: dict) -> None:
         raise ValueError("'--target-feature' must be specified when '--input-mode' equal 'df'.")
 
 
-# def check_not_tunable_estimators(pars: dict, scenario: Literal["tune", "ensemble"]) -> None:
-#     if (estimator := pars["estimator"]) in NON_TUNABLE_ESTIMATORS:
-#         scenario_string = "tuned" if scenario == "tuned" else "ensembled"
-#         raise ValueError(f"Estimator '{estimator}' cannot be {scenario_string}.")
-
-
-# def check_incompatible_estimator_preprocessing(pars: dict) -> None:
-#     if (
-#         (estimator := pars["estimator"]) in PCA_INCOMPATIBLE_ESTIMATORS and 
-#         pars["preprocessing"] == "pca"
-#     ):
-#         raise ValueError(f"PCA preprocessing cannot be used with '{estimator}' estimator.")
-
-
 def check_early_stop_parameters(pars: dict) -> None:
     if pars["estimator"] in EARLY_STOPPED_ESTIMATORS:
         if pars["early_stop_rounds"] < 0 and pars["estimator"] not in ["realmlp", "tabm"]:
@@ -72,6 +58,21 @@ def check_holdout_train_size(pars: dict) -> None:
             "'holdout_train_size' must be a float in (0, 1)."
         )
 
+
+def check_meta_preprocessing(pars: dict, regime: str) -> None:
+    if regime not in ["tune", "ensemble"]:
+        raise ValueError("regime can be one of: 'tune' and 'ensemble'.")
+
+    vary_preprocessing_param = "tune_preprocessing" if regime == "tune" else "vary_preprocessing"
+    algo_param = "tune_algo" if regime == "tune" else "ensemble_algo"
+    
+    if pars[algo_param] != "meta": return None
+
+    if pars[vary_preprocessing_param]:
+        raise ValueError("Meta-learning cannot be used varying the preprocessing.")
+    if pars["preprocessing"] != "base":
+        raise ValueError("Meta-learning can be used only with 'base' preprocessing.")
+    
 
 def check_device(pars: dict) -> None:
     '''General check on the device'''
