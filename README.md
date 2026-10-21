@@ -4,13 +4,13 @@ A comprehensive classification framework for microbial taxonomic profiles.
 
 ## Features
 - **Wide Model Library**: Includes 9 models spanning trees, deep learning methods, and AutoGluon
-- **Tailored HPO Search Spaces**: Offers hyperparameter spaces tailored for microbial profiles
+- **Tailored Hyperparameter Search Spaces**: Offers hyperparameter serach spaces tailored for microbial profiles
 - **Flexible HPO Optimization**: Supports different hyperparameter optimization algorithms
-- **Default, Tune and Ensemble Model Versions**: Each model supports default parameters, HPO tuned and ensembled versions
-- **Metalearning options**: Provides metalearning capabilities to guide HPO
-- **Hierarchical Post Hoc Ensembling**: Enables building inner and/or cross model ensembles of model ensembles
-- **Multiple CLI Fitting Strategies**: Supports whole-dataset, holdout, and cross-validation fitting strategies via CLI on custom datasets
+- **Default, Tune, and Ensemble Model Versions**: Each model supports default parameters, HPO tuned and ensembled versions
+- **Meta-learning options**: Provides meta-learning capabilities for hyperparameter selection
 - **Preprocessing Support**: Supports a suite of data preprocessing options tailored for microbial profiles
+- **Hierarchical Post Hoc Ensembling**: Enables building inner and/or cross model ensembles of model ensembles
+- **Multiple CLI Fitting Strategies**: Supports whole-dataset, holdout, and cross-validation fitting strategies via CLI
 
 
 ## Installation
@@ -92,11 +92,12 @@ The creation of these additional redundant outputs can be avoided via the "--dis
 
 
 ### Data preprocessing
-MetaTab support seven different data preprocessing strategies commonly used in metagenomic analysis (see paper for more info).
-In HPO-based regimes is possible to tune the preprocessing strategy along the classifier hyperparameters by enabling the
-'--tune-preprocessing' flag. Similarly in ememble-based regimes is possible to vary the preprocessing 
-for the ensemble members by enabling the '--vary-preprocessing' flag.
-For AutoGluon is not possible to use these strategies since it relies on its internal preprocessing machinery.
+MetaTab supports seven data preprocessing strategies commonly used in metagenomic analysis (see the paper for details)
+In the HPO regime, the preprocessing strategy can be optimized alongside classifier hyperparameters by enabling 
+the --tune-preprocessing flag. Similarly, in the Ensemble regime, preprocessing can be varied across ensemble members 
+by enabling the --vary-preprocessing flag. 
+For meta-learning-guided regimes, preprocessing optimization and variation are not supported, and the preprocessing strategy must be set to "base". 
+These strategies are also not available for AutoGluon, which relies on its own internal preprocessing pipeline.
 
 ```bash
 # consult help pages for detailed info
@@ -160,7 +161,6 @@ metatab-fit ensemble \
     --input-mode df \
     --target-feature "Group" \
     --estimator extra_trees \
-    --preprocessing base \
     --ensemble-algo meta \
     --ensemble-n-members 8 \
     --ensemble-time-limit 600 \
