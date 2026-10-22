@@ -1,28 +1,34 @@
-from metatab.estimators.estimators.rf import MyTunedRandomForestClassifier, MyEnsembledRandomForestClassifier
-from metatab.estimators.estimators.extra_trees import MyTunedExtraTreesClassifier, MyEnsembledExtraTreesClassifier
-from metatab.estimators.estimators.tabpfn import MyTunedTabPFNClassifier, MyEnsembledTabPFNClassifier
-from metatab.estimators.estimators.tabm import MyTunedTabMClassifier, MyEnsembledTabMClassifier
-from metatab.estimators.estimators.realmlp import MyTunedRealMLPClassifier, MyEnsembledRealMLPClassifier
+from metatab.estimators.estimators.rf import MyTunedRandomForestClassifier, MyEnsembledRandomForestClassifier, MyRandomForestClassifier
+from metatab.estimators.estimators.extra_trees import MyTunedExtraTreesClassifier, MyEnsembledExtraTreesClassifier, MyExtraTreesClassifier
+from metatab.estimators.estimators.tabpfn import MyTunedTabPFNClassifier, MyEnsembledTabPFNClassifier, MyTabPFNClassifier
+from metatab.estimators.estimators.tabm import MyTunedTabMClassifier, MyEnsembledTabMClassifier, MyTabMClassifier
+from metatab.estimators.estimators.realmlp import MyTunedRealMLPClassifier, MyEnsembledRealMLPClassifier, MyRealMLPClassifier
 
 from metatab.estimators.estimators.catboost import (
     MyTunedCatBoostClassifier,
     MyTunedESCatBoostClassifier,
     MyEnsembledCatBoostClassifier,
-    MyEnsembledESCatBoostClassifier
+    MyEnsembledESCatBoostClassifier,
+    MyCatBoostClassifier,
+    MyESCatBoostClassifier
 )
 
 from metatab.estimators.estimators.lgbm import (
     MyTunedLGBMClassifier,
     MyTunedESLGBMClassifier,
     MyEnsembledLGBMClassifier, 
-    MyEnsembledESLGBMClassifier
+    MyEnsembledESLGBMClassifier,
+    MyESLGBMClassifier,
+    MyLGBMClassifier
 )
 
 from metatab.estimators.estimators.xgb import (
     MyTunedXGBClassifier,
     MyTunedESXGBClassifier,
     MyEnsembledXGBClassifier, 
-    MyEnsembledESXGBClassifier
+    MyEnsembledESXGBClassifier,
+    MyXGBClassifier,
+    MyESXGBClassifier
 )
 
 from metatab.estimators.pycore.fit_interface import (
@@ -42,6 +48,45 @@ from metatab.estimators.pycore.base_tune import (
     MetaTuneInitializer,
     BaseTune
 )
+
+from metatab.estimators.pycore.base_default import BaseDefault
+
+
+
+### Default classes -----------------------------------------------------------------------------------------------------
+
+class DefaultRandomForestClassifier(FitInterfaceNoES, BaseDefault):
+    myclass=MyRandomForestClassifier
+
+class DefaultExtraTreesClassifier(FitInterfaceNoES, BaseDefault):
+    myclass=MyExtraTreesClassifier
+
+class DefaultTabPFNClassifier(FitInterfaceNoES, BaseDefault):
+    myclass=MyTabPFNClassifier
+
+class DefaultXGBClassifier(FitInterfaceNoES, BaseDefault):
+    myclass=MyXGBClassifier
+
+class DefaultLGBMClassifier(FitInterfaceNoES, BaseDefault):
+    myclass=MyLGBMClassifier
+
+class DefaultCatBoostClassifier(FitInterfaceNoES, BaseDefault):
+    myclass=MyCatBoostClassifier
+
+class DefaultEsXGBClassifier(FitInterfaceWithFullES, BaseDefault):
+    myclass=MyESXGBClassifier
+
+class DefaultEsLGBMClassifier(FitInterfaceWithFullES, BaseDefault):
+    myclass=MyESLGBMClassifier
+
+class DefaultEsCatBoostClassifier(FitInterfaceWithFullES, BaseDefault):
+    myclass=MyESCatBoostClassifier
+
+class DefaultTabMClassifier(FitInterfaceWithES, BaseDefault):
+    myclass=MyTabMClassifier
+
+class DefaultRealMLPClassifier(FitInterfaceWithES, BaseDefault):
+    myclass=MyRealMLPClassifier
 
 
 
