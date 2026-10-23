@@ -14,22 +14,9 @@ from argparse import ArgumentParser
 from pathlib import Path
 from sklearn.model_selection import RepeatedStratifiedKFold
 from sklearn.feature_selection import VarianceThreshold
-from sklearn.metrics import log_loss
 from metatab.cli.helper import create_logger
-
-from metatab.estimators.pycore.estimators import (
-    DefaultCatBoostClassifier,
-    DefaultLGBMClassifier,
-    DefaultXGBClassifier,
-    DefaultExtraTreesClassifier,
-    DefaultRandomForestClassifier,
-    DefaultRealMLPClassifier,
-    DefaultTabMClassifier,
-    DefaultTabPFNClassifier,
-    DefaultEsCatBoostClassifier,
-    DefaultEsLGBMClassifier,
-    DefaultEsXGBClassifier
-)
+from metatab.estimators.pycore.estimators import *
+from shutil import rmtree
 
 
 
@@ -39,9 +26,10 @@ def parse_args(args):
     p.add_argument("--output-folder", required=True, help="Path to the output folder")
     p.add_argument(
         "--estimator", required=True, 
-        choices=["random_forest", "extratrees", "catboost", "xgb", "lgbm", "realmlp", "tabm", "tabpfn", "es_xgb", "es_lgbm", "es_catboost"], 
+        choices=["random_forest", "extra_trees", "catboost", "xgb", "lgbm", "realmlp", "tabm", "tabpfn", "es_xgb", "es_lgbm", "es_catboost"], 
         help="Classifier to use"
     )
+    p.add_argument("--estimator-mode", default="default", choices=["default", "tune", "ensemble"], help="How to train the classifier")
     p.add_argument("--y", default="Group", help="Name of the target column")
     p.add_argument("--n-permutation", default=20, type=int, help="Number of permutation to use to compute feature importance scores")
     p.add_argument("--permutation-batch-size", default=20, type=int, help="Number of feature whose permutations are processed together")
@@ -54,32 +42,96 @@ def parse_args(args):
 
 
 
-def dispatch_estimator(estimator: str):
-    match estimator:
-        case "catboost":
-            return DefaultCatBoostClassifier
-        case "xgb":
-            return DefaultXGBClassifier
-        case "lgbm":
-            return DefaultLGBMClassifier
-        case "random_forest":
-            return DefaultRandomForestClassifier
-        case "extratrees":
-            return DefaultExtraTreesClassifier
-        case "realmlp":
-            return DefaultRealMLPClassifier
-        case "tabm":
-            return DefaultTabMClassifier
-        case "tabpfn":
-            return DefaultTabPFNClassifier
-        case "es_xgb":
-            return DefaultEsXGBClassifier
-        case "es_lgbm":
-            return DefaultEsLGBMClassifier
-        case "es_catboost":
-            return DefaultEsCatBoostClassifier
-        case _:
-            return ValueError(f"Unsupported estimator: {estimator}")
+def dispatch_estimator(estimator: str, estimator_mode: str):
+    estimators = {
+        "catboost": {
+            "default": DefaultCatBoostClassifier,
+            "tune": StandardTuneCatBoostClassifier,
+            "ensemble": StandardEnsembleCatBoostClassifier,
+        },
+        "xgb": {
+            "default": DefaultXGBClassifier,
+            "tune": StandardTuneXGBClassifier,
+            "ensemble": StandardEnsembleXGBClassifier,
+        },
+        "lgbm": {
+            "default": DefaultLGBMClassifier,
+            "tune": StandardTuneLGBMClassifier,
+            "ensemble": StandardEnsembleLGBMClassifier,
+        },
+        "random_forest": {
+            "default": DefaultRandomForestClassifier,
+            "tune": StandardTuneRandomForestClassifier,
+            "ensemble": StandardEnsembleRandomForestClassifier,
+        },
+        "extra_trees": {
+            "default": DefaultExtraTreesClassifier,
+            "tune": StandardTuneExtraTreesClassifier,
+            "ensemble": StandardEnsembleExtraTreesClassifier,
+        },
+        "realmlp": {
+            "default": DefaultRealMLPClassifier,
+            "tune": StandardTuneRealMLPClassifier,
+            "ensemble": StandardEnsembleRealMLPClassifier,
+        },
+        "tabm": {
+            "default": DefaultTabMClassifier,
+            "tune": StandardTuneTabMClassifier,
+            "ensemble": StandardEnsembleTabMClassifier,
+        },
+        "tabpfn": {
+            "default": DefaultTabPFNClassifier,
+            "tune": StandardTuneTabPFNClassifier,
+            "ensemble": StandardEnsembleTabPFNClassifier,
+        },
+        "es_xgb": {
+            "default": DefaultEsXGBClassifier,
+            "tune": StandardTuneEsXGBClassifier,
+            "ensemble": StandardEnsembleEsXGBClassifier,
+        },
+        "es_lgbm": {
+            "default": DefaultEsLGBMClassifier,
+            "tune": StandardTuneEsLGBMClassifier,
+            "ensemble": StandardEnsembleEsLGBMClassifier,
+        },
+        "es_catboost": {
+            "default": DefaultEsCatBoostClassifier,
+            "tune": StandardTuneEsCatBoostClassifier,
+            "ensemble": StandardEnsembleEsCatBoostClassifier,
+        },
+    }
+
+    if estimator not in estimators:
+        raise ValueError(f"Unsupported estimator: {estimator}")
+
+    if estimator_mode not in estimators[estimator]:
+        raise ValueError(f"Unsupported estimator mode: {estimator_mode}")
+
+    return estimators[estimator][estimator_mode]
+
+
+def binary_logloss(y_true: np.ndarray, predictions: np.ndarray, eps=1e-15) -> np.ndarray:
+    '''
+    Compute element-wise binary log-loss.
+    Inputs must have broadcast-compatible shapes.
+    '''
+    # we convert to float64 to avoid "clipping failures" with larger eps
+    p = np.clip(predictions.astype(np.float64), eps, 1 - eps)
+    return -(y_true * np.log(p) + (1 - y_true) * np.log1p(-p))
+
+
+def get_estimator_mode_specs(estimator_mode: str, output_path: Path) -> dict:
+    '''
+    Returns a dict of specs specific to the training regime to follow in training.
+    '''
+    if estimator_mode == "default":
+        return {}
+    elif estimator_mode == "tune":
+        return {"n_iter": 20, "algo": "random"}
+    elif estimator_mode == "ensemble":
+        return {"save_path": output_path / "ensemble"}
+    else:
+        return ValueError(f"Unsupported estimator mode: {estimator_mode}")
 
 
 
@@ -104,9 +156,10 @@ def main():
         random_state=pars["seed"]
     )
 
+    cls_args = get_estimator_mode_specs(pars["estimator_mode"], output_folder)
     n_permutations = pars["n_permutation"]
     permutation_batch_size = pars["permutation_batch_size"]
-    cls_class = dispatch_estimator(pars["estimator"])
+    cls_class = dispatch_estimator(pars["estimator"], pars["estimator_mode"])
     dfs_pfi = []
     
     # we remove 0 variance features to not permute them in the test set
@@ -131,7 +184,8 @@ def main():
             preprocessing="base",
             device=pars["device"],
             seed = pars["seed"], 
-            n_threads = pars["n_threads"]
+            n_threads = pars["n_threads"],
+            **cls_args
         )
 
         cls.fit(X_train_sel, y_train)
@@ -141,7 +195,7 @@ def main():
 
         # Baseline predictions
         baseline_pred = cls.predict_proba(X_test_sel)[:, 1]
-        baseline_loss = log_loss(y_test, baseline_pred, labels=[0, 1])
+        baseline_loss = binary_logloss(y_test, baseline_pred).mean()
 
         # Shape: (n_permutations, n_features)
         importances = np.zeros((n_permutations, n_features))
@@ -168,24 +222,18 @@ def main():
             X_batch = pd.concat(batches, ignore_index=True)
 
             # One prediction call for the entire batch
-            predictions = cls.predict_proba(X_batch)[:, 1]
+            predictions = cls.predict_proba(X_batch)[:, 1].astype(np.float64)
 
             # Shape: (feature, permutation, sample)
             predictions = predictions.reshape(end - start, n_permutations, n_samples)
 
-            # Avoid log(0)
-            p = np.clip(predictions, 1e-15, 1 - 1e-15)
-
             # Shape: (1, 1, sample)
             y_true = np.asarray(y_test)[None, None, :]
 
-            # Binary log-loss per sample
-            losses = -(
-                y_true * np.log(p) +
-                (1 - y_true) * np.log1p(-p)
-            )
+            # compute loss
+            losses = binary_logloss(y_true, predictions)
 
-            # compute mean across samples --> (Feature, Permutation)
+            # compute mean loss across samples --> (Feature, Permutation)
             permuted_losses = losses.mean(axis=2)
             importances[:, start:end] = (permuted_losses - baseline_loss).T
             logger.info(f"Processed batch {n_batch} of {n_batches - 1}")
@@ -204,6 +252,10 @@ def main():
         sep="\t",
         index=False
     )
+
+    # clean ensemble models
+    if pars["estimator_mode"] == "ensemble":
+        rmtree(output_folder / "ensemble")
 
     logger.info(f"Output created at {output_folder}")
 
