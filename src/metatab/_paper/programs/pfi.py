@@ -25,7 +25,10 @@ from metatab.estimators.pycore.estimators import (
     DefaultRandomForestClassifier,
     DefaultRealMLPClassifier,
     DefaultTabMClassifier,
-    DefaultTabPFNClassifier
+    DefaultTabPFNClassifier,
+    DefaultEsCatBoostClassifier,
+    DefaultEsLGBMClassifier,
+    DefaultEsXGBClassifier
 )
 
 
@@ -36,7 +39,7 @@ def parse_args(args):
     p.add_argument("--output-folder", required=True, help="Path to the output folder")
     p.add_argument(
         "--estimator", required=True, 
-        choices=["random_forest", "extratrees", "catboost", "xgb", "lgbm", "realmlp", "tabm", "tabpfn"], 
+        choices=["random_forest", "extratrees", "catboost", "xgb", "lgbm", "realmlp", "tabm", "tabpfn", "es_xgb", "es_lgbm", "es_catboost"], 
         help="Classifier to use"
     )
     p.add_argument("--y", default="Group", help="Name of the target column")
@@ -69,6 +72,12 @@ def dispatch_estimator(estimator: str):
             return DefaultTabMClassifier
         case "tabpfn":
             return DefaultTabPFNClassifier
+        case "es_xgb":
+            return DefaultEsXGBClassifier
+        case "es_lgbm":
+            return DefaultEsLGBMClassifier
+        case "es_catboost":
+            return DefaultEsCatBoostClassifier
         case _:
             return ValueError(f"Unsupported estimator: {estimator}")
 
