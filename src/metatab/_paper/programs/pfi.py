@@ -14,6 +14,7 @@ from argparse import ArgumentParser
 from pathlib import Path
 from sklearn.model_selection import RepeatedStratifiedKFold
 from sklearn.feature_selection import VarianceThreshold
+from sklearn.metrics import roc_auc_score
 from metatab.cli.helper import create_logger
 from metatab.estimators.pycore.estimators import *
 from shutil import rmtree
@@ -160,7 +161,7 @@ def main():
     n_permutations = pars["n_permutation"]
     permutation_batch_size = pars["permutation_batch_size"]
     cls_class = dispatch_estimator(pars["estimator"], pars["estimator_mode"])
-    dfs_pfi = []
+    dfs_pfi = {"loss": [], "auc": []}
     
     # we remove 0 variance features to not permute them in the test set
     # NOTE: we don't account for the feature filtered for the early-stopped estimators
@@ -196,9 +197,11 @@ def main():
         # Baseline predictions
         baseline_pred = cls.predict_proba(X_test_sel)[:, 1]
         baseline_loss = binary_logloss(y_test, baseline_pred).mean()
+        baseline_auc = roc_auc_score(y_test, baseline_pred)
 
         # Shape: (n_permutations, n_features)
-        importances = np.zeros((n_permutations, n_features))
+        importances_loss = np.zeros((n_permutations, n_features))
+        importances_auc = np.zeros((n_permutations, n_features))
 
         # Process multiple features in each batch
         seq_start_batches = list(range(0, n_features, permutation_batch_size))
@@ -207,7 +210,6 @@ def main():
         for n_batch, start in enumerate(seq_start_batches):
             end = min(start + permutation_batch_size, n_features)
             batches = []
-            batch_info = []
 
             for feature_idx in range(start, end):
                 original_values = X_test_sel.iloc[:, feature_idx].to_numpy()
@@ -216,7 +218,6 @@ def main():
                     X_perm = X_test_sel.copy()
                     X_perm.iloc[:, feature_idx] = original_values[rng.permutation(n_samples)]
                     batches.append(X_perm)
-                    batch_info.append((p, feature_idx))
 
             # Concatenate all permuted datasets
             X_batch = pd.concat(batches, ignore_index=True)
@@ -230,28 +231,38 @@ def main():
             # Shape: (1, 1, sample)
             y_true = np.asarray(y_test)[None, None, :]
 
-            # compute loss
-            losses = binary_logloss(y_true, predictions)
+            # compute losses (average across samples --> (Feature, Permutation))
+            permuted_losses = binary_logloss(y_true, predictions).mean(axis=2)
 
-            # compute mean loss across samples --> (Feature, Permutation)
-            permuted_losses = losses.mean(axis=2)
-            importances[:, start:end] = (permuted_losses - baseline_loss).T
+            # computes aucs --> (feature, permutation)
+            permuted_aucs = np.empty((end - start, n_permutations))
+            for f in range(end - start):
+                for p in range(n_permutations):
+                    permuted_aucs[f, p] = roc_auc_score(y_test, predictions[f, p])
+            
+            importances_loss[:, start:end] = (permuted_losses - baseline_loss).T
+            importances_auc[:, start:end] = (baseline_auc - permuted_aucs).T
             logger.info(f"Processed batch {n_batch} of {n_batches - 1}")
 
-        # Restore original feature space
-        df_pfi = pd.DataFrame(importances, columns=X_test_sel.columns)
-        df_pfi = df_pfi.reindex(columns=X.columns,fill_value=0.0)
-        df_pfi["repeat"] = repeat
-        df_pfi["fold"] = fold
-        dfs_pfi.append(df_pfi)
+        # restore the original feature space for both metrics
+        for metric, importances in (("loss", importances_loss), ("auc", importances_auc)):
+            df_pfi = pd.DataFrame(importances, columns=X_test_sel.columns)
+            df_pfi = df_pfi.reindex(columns=X.columns, fill_value=0.0)
+            df_pfi["repeat"] = repeat
+            df_pfi["fold"] = fold
+            df_pfi["Classifier"] = pars["estimator"]
+            df_pfi["Regime"] = pars["estimator_mode"]
+            df_pfi["dataset"] = Path(pars["dataset_path"]).stem
+            dfs_pfi[metric].append(df_pfi)
 
 
-    # concat and save
-    pd.concat(dfs_pfi, axis=0, ignore_index=True).to_csv(
-        output_folder / f"pfi.txt",
-        sep="\t",
-        index=False
-    )
+    # save metrics separately
+    for metric, frames in dfs_pfi.items():
+        pd.concat(frames, axis=0, ignore_index=True).to_csv(
+            output_folder / f"pfi_{metric}.txt",
+            sep="\t",
+            index=False
+        )
 
     # clean ensemble models
     if pars["estimator_mode"] == "ensemble":
