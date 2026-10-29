@@ -56,6 +56,7 @@ class MyESXGBClassifier(DefaultEstimatorMixin, AbstractBaseEstimator):
             y=y,
             classifier_cls=XGBClassifier,
             type_estimator="es_xgb",
+            is_early_stopped=True,
             callbacks_on_fixed_params=[
                 partial(adjust_objective_logloss_and_num_classes, framework="xgboost"),
                 partial(adjust_es_logloss_metric, framework="xgboost")
